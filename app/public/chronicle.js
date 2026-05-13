@@ -1,54 +1,141 @@
-// Almari Shroom — Nigehban's chronicle column.
-// Scrolling vertical list of his journal entries, newest at top.
+// Almari Shroom — Chronicle (parchment).
+// Ported from claude.ai design's locked-vision kit (ui.jsx). Aged paper
+// background drawn in a canvas, IM Fell English italic body, IM Fell DW
+// Pica SC for the signature, Nastaliq for Urdu interjections that come
+// out of Nigehban's tools.
 
-function Chronicle({ theme: t, entries }) {
+const _chPlex    = '"IBM Plex Sans", system-ui, sans-serif';
+const _chSerif   = '"IM Fell English", serif';
+const _chSerifSC = '"IM Fell DW Pica SC", serif';
+
+// Aged-paper background. Drawn at component mount; pure canvas — no DOM
+// blend modes. Foxing, grain, edge darkening, a single deep crease.
+function ParchmentBg() {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const W = c.width, H = c.height;
+    const grd = ctx.createLinearGradient(0, 0, W * 0.6, H);
+    grd.addColorStop(0,   '#d4c3a0');
+    grd.addColorStop(0.5, '#cfbe98');
+    grd.addColorStop(1,   '#bda782');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+    function rng(seed) { let s = seed | 1; return () => { s = (s * 1664525 + 1013904223) | 0; return ((s >>> 0) % 1e6) / 1e6; }; }
+    const r = rng(13);
+    // Foxing spots.
+    for (let i = 0; i < 60; i++) {
+      const x = r() * W, y = r() * H, rad = 3 + r() * 16;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, 'rgba(120, 90, 60, 0.12)');
+      g.addColorStop(1, 'rgba(120, 90, 60, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+    }
+    // Grain.
+    for (let i = 0; i < 2400; i++) {
+      const x = (r() * W) | 0, y = (r() * H) | 0;
+      ctx.fillStyle = `rgba(120, 90, 60, ${0.04 + r() * 0.05})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+    // Edge burn.
+    const edgeY = ctx.createLinearGradient(0, 0, 0, H);
+    edgeY.addColorStop(0,   'rgba(80, 50, 30, 0.18)');
+    edgeY.addColorStop(0.1, 'rgba(80, 50, 30, 0)');
+    edgeY.addColorStop(0.9, 'rgba(80, 50, 30, 0)');
+    edgeY.addColorStop(1,   'rgba(80, 50, 30, 0.22)');
+    ctx.fillStyle = edgeY; ctx.fillRect(0, 0, W, H);
+    const edgeX = ctx.createLinearGradient(0, 0, W, 0);
+    edgeX.addColorStop(0,    'rgba(80, 50, 30, 0.18)');
+    edgeX.addColorStop(0.06, 'rgba(80, 50, 30, 0)');
+    edgeX.addColorStop(0.94, 'rgba(80, 50, 30, 0)');
+    edgeX.addColorStop(1,    'rgba(80, 50, 30, 0.18)');
+    ctx.fillStyle = edgeX; ctx.fillRect(0, 0, W, H);
+    // Crease.
+    ctx.strokeStyle = 'rgba(100, 70, 40, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, H * 0.36 + 6);
+    for (let x = 0; x < W; x += 4) ctx.lineTo(x, H * 0.36 + Math.sin(x * 0.02 + 2) * 1.5);
+    ctx.stroke();
+  }, []);
+  return <canvas ref={ref} width={520} height={680}
+    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />;
+}
+
+// Roman lowercase day numbers (1 → "i", 12 → "xii", etc). Goes funny past
+// 50 entries but the user will never see that many — the worst case is
+// fine. (Decorative; not parsed back.)
+const _ROMAN = [
+  '', 'i','ii','iii','iv','v','vi','vii','viii','ix','x',
+  'xi','xii','xiii','xiv','xv','xvi','xvii','xviii','xix','xx',
+  'xxi','xxii','xxiii','xxiv','xxv','xxvi','xxvii','xxviii','xxix','xxx',
+];
+function roman(n) {
+  if (n < _ROMAN.length) return _ROMAN[n];
+  // crude beyond table — just decimal in a parchment frame.
+  return String(n);
+}
+
+function Chronicle({ entries }) {
+  const ink     = '#3a2a1c';
+  const inkSoft = 'rgba(58, 42, 28, 0.7)';
+
   if (!entries) {
     return (
-      <Card theme={t} style={{ padding: 16 }}>
-        <div style={{ color: t.muted, fontFamily: t.type.mono, fontSize: 12 }}>loading…</div>
-      </Card>
+      <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 }}>
+        <ParchmentBg />
+        <div style={{ position: 'relative', padding: 36, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 16, color: ink }}>
+          loading…
+        </div>
+      </div>
     );
   }
   if (entries.length === 0) {
     return (
-      <Card theme={t} style={{ padding: 16 }}>
-        <div style={{ fontSize: 11, color: t.muted, fontFamily: t.type.mono, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 8 }}>chronicle</div>
-        <div style={{ color: t.muted, fontFamily: t.type.serif, fontSize: 14 }}>khaamoshi — he has not yet written.</div>
-      </Card>
+      <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 }}>
+        <ParchmentBg />
+        <div style={{ position: 'relative', padding: 36, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 18, color: ink }}>
+          khaamoshi <span style={{ fontFamily: '"Noto Nastaliq Urdu", serif', fontSize: 22 }}>خاموشی</span> — he has not yet written.
+        </div>
+      </div>
     );
   }
-  // Newest first
+  // Newest first.
   const ordered = entries.slice().reverse();
-
-  // Group by volume → day for header chips
-  let lastVol = null;
   return (
-    <Card theme={t} style={{ padding: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ padding: '14px 16px 8px', fontSize: 11, color: t.muted, fontFamily: t.type.mono, letterSpacing: '0.16em', textTransform: 'uppercase', borderBottom: `1px solid ${t.border}` }}>
-        chronicle <span style={{ color: t.muted, opacity: 0.6 }}>· {entries.length} entries</span>
-      </div>
-      <div style={{ overflowY: 'auto', padding: '8px 16px 16px', flex: 1, minHeight: 0 }}>
-        {ordered.map((e, i) => {
-          const showVolHeader = e.volume !== lastVol;
-          lastVol = e.volume;
-          return (
-            <div key={i} style={{ marginTop: i === 0 ? 4 : 14 }}>
-              {showVolHeader && (
-                <div style={{ fontFamily: t.type.mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: t.muted, marginBottom: 8, marginTop: i === 0 ? 0 : 6 }}>
-                  · volume {e.volume} ·
-                </div>
-              )}
-              <div style={{ fontFamily: t.type.mono, fontSize: 10, color: t.muted, marginBottom: 4 }}>
-                day {e.day} {e.reason && e.reason !== 'periodic' ? `· ${e.reason}` : ''}
-              </div>
-              <div style={{ fontFamily: t.type.serif, fontSize: 14, lineHeight: 1.55, color: t.fg }}>
-                {e.text}
-              </div>
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 }}>
+      <ParchmentBg />
+      <div style={{
+        position: 'relative', padding: '32px 36px', height: '100%', overflowY: 'auto',
+        fontFamily: _chSerif, color: ink,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+          <h2 style={{ fontFamily: _chSerifSC, fontSize: 24, margin: 0, color: ink, letterSpacing: '0.04em', fontWeight: 'normal' }}>
+            Chronicle
+          </h2>
+          <span style={{ fontFamily: _chSerif, fontSize: 12, fontStyle: 'italic', color: inkSoft }}>
+            kept by Nigehbān
+          </span>
+        </div>
+        <div style={{ height: 1, background: 'linear-gradient(to right, transparent, rgba(58,42,28,0.4), transparent)', margin: '10px 0 18px' }} />
+
+        {ordered.map((e, i) => (
+          <div key={i} style={{ marginBottom: 22 }}>
+            <div style={{ fontFamily: _chSerifSC, fontSize: 11, color: inkSoft, letterSpacing: '0.16em', marginBottom: 4 }}>
+              day {roman(e.day)}{e.reason && e.reason !== 'periodic' ? ` · ${e.reason}` : ''}
             </div>
-          );
-        })}
+            <div style={{ fontFamily: _chSerif, fontStyle: 'italic', fontSize: 16, lineHeight: 1.55, color: ink, textWrap: 'pretty' }}>
+              {e.text}
+            </div>
+          </div>
+        ))}
+        <div style={{ marginTop: 18, textAlign: 'right' }}>
+          <span style={{ fontFamily: _chSerifSC, fontSize: 14, color: ink, letterSpacing: '0.08em' }}>— Nigehbān</span>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

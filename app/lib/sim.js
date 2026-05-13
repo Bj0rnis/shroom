@@ -261,6 +261,19 @@ function fellTree(world, t) {
   const x0        = fallDir === 1 ? baseX : baseX - logWidth;
   const yTop      = GRASS_Y - logHeight;
   paintLogCapsule(world, x0, yTop, logWidth, logHeight, t.logRichness, t.species);
+
+  // Record the new log so the renderer can paint it as its actual species
+  // (oak/birch/pine/willow) instead of always-oak. Older logs accrue moss
+  // visually based on (currentTick - foundedTick); see canvas state translator.
+  world.meta.logs = world.meta.logs || [];
+  world.meta.logs.push({
+    id: world.meta.nextLogId || (world.meta.logs.length + 1),
+    x0, y0: yTop, w: logWidth, h: logHeight,
+    species: t.species,
+    foundedTick: world.meta.tick,
+    mossy: false,    // age-derived in the renderer
+  });
+  world.meta.nextLogId = (world.meta.nextLogId || (world.meta.logs.length)) + 1;
 }
 
 function paintLogCapsule(world, x0, yTop, logWidth, logHeight, richness, species) {

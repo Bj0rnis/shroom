@@ -59,6 +59,11 @@ const OLD_AGE_DIE_RISK_MAX   = 0.0003;           // per-cell at full old-age
 // ── Fruiting / spores ────────────────────────────────────
 const FRUIT_BASE_RATE        = 0.0025;
 const FRUIT_MATURE_TICKS     = 80;
+// Minimum horizontal source-res cell-distance between simultaneously-active
+// caps from the same colony. The locked-vision mocks let caps cluster too
+// tightly; the renderer's smoothed cap-glow piles up and reads as a
+// gradient blob instead of individual mushrooms. 5 cells ~= 20px at 4×.
+const FRUIT_MIN_X_SPACING    = 5;
 const SPORE_DRIFT_GRAVITY    = 0.02;
 const SPORE_AGE_LIMIT        = 200;
 const SPORE_HARD_CAP         = 250;
@@ -515,6 +520,17 @@ function handleFruiting(world) {
     world.fruits = world.fruits.filter(f => !f.spent);
   }
 
+  // Per-colony list of x positions for currently-active (not spent) caps,
+  // including any placed earlier in this same tick. Used to enforce
+  // FRUIT_MIN_X_SPACING so caps don't pile up into a smear of glow.
+  const activeX = new Map();
+  for (const f of world.fruits) {
+    if (f.spent) continue;
+    let arr = activeX.get(f.colonyId);
+    if (!arr) { arr = []; activeX.set(f.colonyId, arr); }
+    arr.push(f.x);
+  }
+
   // Walk all hypha-on-log cells whose 'above' cell is AIR.
   // Random sampling missed these — they're <0.5% of the grid. Direct scan is cheap.
   for (let i = 0; i < kind.length; i++) {
@@ -528,11 +544,25 @@ function handleFruiting(world) {
     const fruitThreshold = col.genome[3];
     const prob = FRUIT_BASE_RATE * seasonMult * (0.3 + fruitThreshold * 1.4);
     if (Math.random() > prob) continue;
+
+    const fx = above % W;
+    const xs = activeX.get(cid);
+    if (xs) {
+      let tooClose = false;
+      for (let k = 0; k < xs.length; k++) {
+        if (Math.abs(xs[k] - fx) < FRUIT_MIN_X_SPACING) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+    }
+
     kind[above] = FRUIT;
     world.fruits.push({
-      x: above % W, y: Math.floor(above / W),
+      x: fx, y: Math.floor(above / W),
       colonyId: cid, age: 0, mature: false, spent: false,
     });
+    let arr = activeX.get(cid);
+    if (!arr) { arr = []; activeX.set(cid, arr); }
+    arr.push(fx);
   }
 }
 

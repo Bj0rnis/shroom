@@ -475,83 +475,48 @@
     }
   }
 
-  // ── hyphae — option B (painterly walker bounded by colony bbox) ─────
-  // Each colony: { cx, cy, hue, sat, tips, maxLen, spread, seed, stain,
-  //                density, thickness } — translator fills these from bbox.
-  function paintHyphae(pb, cfg, colonies) {
-    for (const col of colonies) {
-      const density = col.density != null ? col.density : 0.45;
-      const tipRgb     = hsl(col.hue, col.sat || 30, 82);
-      const interior   = hsl(col.hue, (col.sat || 30) * 0.65, 56);
-      const aged       = hsl(col.hue, 20, 32);
-      const tipShoulder = hsl(col.hue, (col.sat || 30) * 0.6, 64);
-      const rng = mkRng(col.seed || 13);
-
-      // Claimed-territory stain bleeds into the substrate beneath the colony.
-      if (col.stain) {
-        const sx = col.cx, sy = col.cy + col.thickness + 2;
-        for (let y = sy; y < Math.min(H, sy + 30); y++) {
-          for (let x = sx - 30; x < sx + 30; x++) {
-            const dx = x - sx, dy = y - sy;
-            const d = Math.sqrt(dx * dx + dy * dy * 0.6);
-            if (d > 26) continue;
-            const a = Math.round((1 - d / 26) * (22 + density * 22));
-            const c = hsl(col.hue, 14, 10);
-            pb.blend(x, y, c[0], c[1], c[2], a);
-          }
-        }
-      }
-
-      // Dense colonies grow a visible mat over the log surface.
-      if (density > 0.55) {
-        const matAlpha = Math.round((density - 0.55) * 260);
-        const spread = col.spread || 22;
-        for (let dy = -3; dy <= 1; dy++) {
-          for (let dx = -Math.round(spread * 0.7); dx <= Math.round(spread * 0.7); dx++) {
-            const x = col.cx + dx, y = col.cy + dy - 1;
-            if (rng() < 0.4) continue;
-            pb.blend(x, y, interior[0], interior[1], interior[2],
-              Math.max(0, matAlpha - Math.abs(dx) * 4));
-          }
-        }
-      }
-
-      const passes = density > 0.7 ? 3 : (density > 0.4 ? 2 : 1);
-      const tipsPerPass = col.tips || 14;
-      for (let pass = 0; pass < passes; pass++) {
-        const passTips   = Math.round(tipsPerPass * (pass === 0 ? 1 : 0.7));
-        const passOffset = pass === 0 ? 0 : (pass === 1 ? -1 : 1);
-        for (let t = 0; t < passTips; t++) {
-          let x = col.cx + (rng() - 0.5) * (col.spread || 22) + passOffset;
-          let y = col.cy - 1;
-          let angle = -Math.PI / 2 + (rng() - 0.5) * 0.4;
-          const dirBias = rng() < 0.5 ? -1 : 1;
-          const len = 4 + (rng() * (col.maxLen || 16)) | 0;
-          for (let i = 0; i < len; i++) {
-            if (y < col.cy - 1) angle = -Math.PI / 2 + (rng() - 0.5) * 0.6;
-            else if (y > col.cy + col.thickness) angle = Math.PI / 2 + (rng() - 0.5) * 0.8 + dirBias * 0.2;
-            else angle += (rng() - 0.5) * 0.5;
-            x += Math.cos(angle); y += Math.sin(angle);
-            const xi = x | 0, yi = y | 0;
-            const isTip = i > len - 3;
-            const c = isTip ? tipRgb : (i < len * 0.35 ? aged : interior);
-            pb.blend(xi, yi, c[0], c[1], c[2], isTip ? 255 : 230);
-            if (isTip) {
-              pb.blend(xi + 1, yi,     tipShoulder[0], tipShoulder[1], tipShoulder[2], 130);
-              pb.blend(xi - 1, yi,     tipShoulder[0], tipShoulder[1], tipShoulder[2], 130);
-              pb.blend(xi,     yi - 1, tipShoulder[0], tipShoulder[1], tipShoulder[2], 130);
-            }
-            if (i > 2 && rng() < 0.14 + density * 0.1) {
-              let bx = x, by = y;
-              let ba = angle + (rng() < 0.5 ? -1 : 1) * (0.7 + rng() * 0.6);
-              for (let j = 0; j < 3 + (rng() * 4 | 0); j++) {
-                bx += Math.cos(ba); by += Math.sin(ba);
-                pb.blend(bx | 0, by | 0, interior[0], interior[1], interior[2], 200);
-              }
-            }
-          }
-        }
-      }
+  // ── hyphae — cell-grid honest (option A) ────────────────────────────
+  // Walks the full colony Uint16Array; each filled cell paints exactly
+  // one pixel, hue from the colony's gene, brightness from whether the
+  // cell is a tip (any 4-neighbour is empty) or interior. No parametric
+  // bushes — what you see is exactly what the sim grew.
+  //
+  // Caches per-colony palettes so we don't reroll hsl() per pixel.
+  function paintHyphaeFromGrid(pb, colonyU16, coloniesByCid) {
+    // Pre-resolve per-colony colors once.
+    const palette = {};
+    for (const cid of Object.keys(coloniesByCid)) {
+      const c = coloniesByCid[cid];
+      if (!c || !c.alive) continue;
+      const hue = c.capHue || 0;
+      palette[cid] = {
+        tip:      hsl(hue, 50, 76),    // bright tip
+        interior: hsl(hue, 30, 48),    // mid filament
+        aged:     hsl(hue, 20, 32),    // dim interior — used for crowded packing
+      };
+    }
+    const len = colonyU16.length;
+    for (let i = 0; i < len; i++) {
+      const cid = colonyU16[i];
+      if (cid === 0) continue;
+      const pal = palette[cid];
+      if (!pal) continue;
+      const x = i % W;
+      const y = (i / W) | 0;
+      // Tip = any 4-neighbour empty (treat off-grid as empty).
+      const isTip =
+        (x === 0           || colonyU16[i - 1]     === 0) ||
+        (x === W - 1       || colonyU16[i + 1]     === 0) ||
+        (i < W             || colonyU16[i - W]     === 0) ||
+        (i >= len - W      || colonyU16[i + W]     === 0);
+      // Count fully-surrounded neighbours to spot crowded mats.
+      const sameNeighbours =
+        (x > 0           && colonyU16[i - 1]   === cid ? 1 : 0) +
+        (x < W - 1       && colonyU16[i + 1]   === cid ? 1 : 0) +
+        (i >= W          && colonyU16[i - W]   === cid ? 1 : 0) +
+        (i < len - W     && colonyU16[i + W]   === cid ? 1 : 0);
+      const c = isTip ? pal.tip : (sameNeighbours === 4 ? pal.aged : pal.interior);
+      pb.set(x, y, c[0], c[1], c[2]);
     }
   }
 
@@ -865,7 +830,7 @@
     PB,
     paintSky, paintSunMoon, paintStars, paintClouds, paintFarLayer,
     paintSoil, paintGrass, paintLog, paintStone, paintTree,
-    paintHyphae, paintMushroom, paintDecayStain, paintCritters, paintEraScar,
+    paintHyphaeFromGrid, paintMushroom, paintDecayStain, paintCritters, paintEraScar,
     skyPreset,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

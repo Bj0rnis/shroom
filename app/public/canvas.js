@@ -249,6 +249,11 @@ function drawScene(ctx, snap) {
   const cfg = worldToCfg(snap, new Date());
   if (!cfg) return;
 
+  // Decode colony grid once for option-A cell painting.
+  const colonyBytes = b64ToBytes(snap.colony);
+  // Uint16 view on the underlying buffer. View length = bytes / 2.
+  const colonyU16 = new Uint16Array(colonyBytes.buffer, colonyBytes.byteOffset, colonyBytes.byteLength / 2);
+
   // 1. Build the 320×180 pixel buffer.
   const pb = new A.PB(SHROOM_W, SHROOM_H);
   A.paintSky(pb, cfg);
@@ -261,7 +266,8 @@ function drawScene(ctx, snap) {
   for (const s of cfg.stones) A.paintStone(pb, s);
   for (const t of cfg.trees)  A.paintTree(pb, t, cfg);
   for (const lg of cfg.logs)  A.paintLog(pb, lg);
-  A.paintHyphae(pb, cfg, cfg.colonies);
+  // Hyphae painted from the actual cell grid — one pixel per filled cell.
+  A.paintHyphaeFromGrid(pb, colonyU16, snap.colonies);
   A.paintDecayStain(pb, cfg.stains);
   A.paintGrass(pb, cfg);
   A.paintCritters(pb, cfg.critters);
@@ -288,11 +294,50 @@ function drawScene(ctx, snap) {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(off, 0, 0, CANVAS_W, CANVAS_H);
 
-  // 3. Smoothed overlays (post-upscale). Slice 3 refines these.
-  paintOverlays(ctx, cfg);
+  // 3. Smoothed overlays (post-upscale). The hyphae glow now derives
+  // from the cell grid too: build an offscreen hue-tinted glow buffer
+  // (tip pixels emit bright, interior dim), blur, composite additive.
+  paintOverlays(ctx, cfg, colonyU16, snap.colonies);
 }
 
-function paintOverlays(ctx, cfg) {
+// Build an offscreen 320×180 glow buffer from the cell grid. Tip cells
+// (any 4-neighbour empty) emit at full alpha in the colony's hue;
+// interior cells emit dimly. Returned as a canvas that drawScene blurs
+// + composites with `lighter` for the soft hero-light bloom.
+function buildHyphaeGlowCanvas(colonyU16, coloniesByCid, A) {
+  const off = document.createElement('canvas');
+  off.width = SHROOM_W; off.height = SHROOM_H;
+  const img = off.getContext('2d').createImageData(SHROOM_W, SHROOM_H);
+  const data = img.data;
+  const palette = {};
+  for (const cid of Object.keys(coloniesByCid)) {
+    const c = coloniesByCid[cid];
+    if (!c || !c.alive) continue;
+    palette[cid] = A.hsl(c.capHue || 0, 60, 64);
+  }
+  const len = colonyU16.length;
+  for (let i = 0; i < len; i++) {
+    const cid = colonyU16[i];
+    if (cid === 0) continue;
+    const rgb = palette[cid];
+    if (!rgb) continue;
+    const x = i % SHROOM_W;
+    const isTip =
+      (x === 0           || colonyU16[i - 1]        === 0) ||
+      (x === SHROOM_W - 1 || colonyU16[i + 1]       === 0) ||
+      (i < SHROOM_W      || colonyU16[i - SHROOM_W] === 0) ||
+      (i >= len - SHROOM_W || colonyU16[i + SHROOM_W] === 0);
+    const o = i * 4;
+    data[o]     = rgb[0];
+    data[o + 1] = rgb[1];
+    data[o + 2] = rgb[2];
+    data[o + 3] = isTip ? 180 : 40;
+  }
+  off.getContext('2d').putImageData(img, 0, 0);
+  return off;
+}
+
+function paintOverlays(ctx, cfg, colonyU16, coloniesByCid) {
   const A = window.ShroomAtoms;
   const sx = CANVAS_W / SHROOM_W;
   const sy = CANVAS_H / SHROOM_H;
@@ -325,47 +370,25 @@ function paintOverlays(ctx, cfg) {
     ctx.restore();
   }
 
-  // ── hyphae tip glow — HERO LIGHT (per-colony, additive). ─────────
-  // Glow-budget clamp: design layering doc caps combined additive alpha
-  // around 0.65 to keep the night sky from washing out. With N alive
-  // colonies the per-colony alpha falls as 1/sqrt(N/4) past 4 colonies,
-  // so 4 keeps full power, 16 falls to 0.5×, 64 to 0.25×. Below 4 the
-  // clamp is a no-op.
+  // ── hyphae glow — HERO LIGHT, cell-grid honest. ──────────────────
+  // Build a per-pixel glow buffer from the colony grid (tip pixels emit
+  // bright, interior pixels dim), then upscale + blur + additive
+  // composite. What you see follows the sim exactly: 1 new cell = 1
+  // new emitter. Budget clamp scales overall alpha when many colonies
+  // are alive (layering doc caps combined ≤ ~0.65).
   const budgetScale = cfg.aliveCount > 4
     ? Math.min(1, Math.sqrt(4 / cfg.aliveCount))
     : 1;
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.globalCompositeOperation = 'lighter';
-  // Per-tip glow + ambient bloom. Tuned organic, not magma:
-  // tips ~0.10-0.18 alpha (was 0.32-0.60), smaller radius, fewer tips.
-  // Ambient bloom only kicks in for proper mat density (> 0.55).
-  for (const col of cfg.colonies) {
-    const rgb = A.hsl(col.hue, 50, 64);
-    const glowAlpha = (0.10 + col.density * 0.08) * budgetScale;
-    const rng = A.mkRng((col.seed || 1) * 5);
-    const tipCount = 3 + Math.round(col.density * 5);   // was 6-14, now 3-8
-    for (let i = 0; i < tipCount; i++) {
-      const tx = (col.cx + (rng() - 0.5) * (col.spread || 22) * 0.8) * sx;
-      const ty = (col.cy - 3 - rng() * 6) * sy;
-      const tr = (8 + rng() * 8) * (0.7 + col.density * 0.4); // smaller radius
-      const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, tr);
-      g.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${glowAlpha})`);
-      g.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2); ctx.fill();
-    }
-    // Ambient bloom — only on mature mat colonies, very subtle.
-    if (col.density > 0.55) {
-      const cx0 = col.cx * sx, cy0 = col.cy * sy;
-      const rr  = (col.spread || 22) * sx * 1.1;
-      const g2 = ctx.createRadialGradient(cx0, cy0 - 6, 0, cx0, cy0 - 6, rr);
-      const ambient = (col.density - 0.55) * 0.16 * budgetScale; // 0..0.07
-      g2.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${ambient})`);
-      g2.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
-      ctx.fillStyle = g2;
-      ctx.beginPath(); ctx.arc(cx0, cy0 - 6, rr, 0, Math.PI * 2); ctx.fill();
-    }
+  if (colonyU16 && coloniesByCid) {
+    const glowCanvas = buildHyphaeGlowCanvas(colonyU16, coloniesByCid, A);
+    ctx.filter = 'blur(6px)';
+    ctx.globalAlpha = 0.65 * budgetScale;
+    ctx.drawImage(glowCanvas, 0, 0, CANVAS_W, CANVAS_H);
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
   }
 
   // ── mushroom cap glow — dusk/night only, cool-blue ~3× warm. ─────

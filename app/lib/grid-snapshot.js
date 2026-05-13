@@ -12,15 +12,10 @@ function buildGridSnapshot(world) {
   const { kind, colony, moisture, age } = world.grid;
   const [W, H] = world.shape;
 
-  // Compact "occupied" mask — clients only need to know whether a cell is
-  // owned, not which colony (mushroom colour comes from the fruit's colonyId).
-  const occupied = new Uint8Array(colony.length);
-  for (let i = 0; i < colony.length; i++) occupied[i] = colony[i] === 0 ? 0 : 1;
-
-  // Per-colony bbox + cell count. The new renderer paints hyphae as a
-  // painterly walker bounded by the colony's actual footprint (option B
-  // from the kit critique). Computed once per tick from the colony grid
-  // instead of shipping the full Uint16Array per frame.
+  // Per-colony bbox + cell count. Kept for the smoothed-glow overlay
+  // placement; the actual hyphae pixels come from the full colony grid
+  // which we now ship (option A — cell-grid honest, kit's option-B walker
+  // was painting plausible bushes instead of real growth).
   const bboxes = {};                // id -> {minX, minY, maxX, maxY, count}
   for (let i = 0; i < colony.length; i++) {
     const id = colony[i];
@@ -60,7 +55,7 @@ function buildGridSnapshot(world) {
     meta: world.meta,
     shape: world.shape,
     kind:     packBytes(kind),
-    occupied: packBytes(occupied),
+    colony:   packBytes(colony),       // Uint16Array — colony id per cell
     moisture: packBytes(moisture),
     spores:   world.spores.map(s => ({ x: s.x, y: s.y, age: s.age })),
     fruits:   world.fruits.filter(f => !f.spent).map(f => ({

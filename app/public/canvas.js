@@ -191,6 +191,20 @@ function worldToCfg(snap, now) {
     body = { kind: 'moon', x: Math.round(mx), y: Math.round(my), r: 7 };
   }
 
+  // ── persona wisp ────────────────────────────────────────────────────
+  // Smokeless-fire wisp at dusk (19:00–19:30 local), hovering above a
+  // deterministic log chosen by world seed so it always returns to the
+  // same place. Slice 3 wiring; in v3 this gets sim-driven (Nigehban
+  // chooses the log via a tool call).
+  let personaWisp = null;
+  if (sky.hour >= 19.0 && sky.hour < 19.5 && logs.length > 0) {
+    const pick = logs[Math.abs((snap.meta.seed || 0) * 13) % logs.length];
+    personaWisp = {
+      x: Math.round((pick.x1 + pick.x2) / 2),
+      y: pick.y - 6,   // hovers 6 cells above the log surface
+    };
+  }
+
   return {
     sky, body,
     stars: sky.stars,
@@ -202,7 +216,7 @@ function worldToCfg(snap, now) {
     stains: [],          // dead-colony stains — slice 4 (needs sim hook)
     eraScar: (snap.eraScars && snap.eraScars[0]) || null,
     dew:        sky.hour < 7.5,
-    personaWisp: false,  // wired in slice 3
+    personaWisp,
     autumnFog:  season === 'autumn' && sky.hour < 9,
     fallingLeaves: season === 'autumn',
     aliveCount,
@@ -302,13 +316,20 @@ function paintOverlays(ctx, cfg) {
   }
 
   // ── hyphae tip glow — HERO LIGHT (per-colony, additive). ─────────
-  // Slice 3 adds the budget clamp; this is the un-clamped version.
+  // Glow-budget clamp: design layering doc caps combined additive alpha
+  // around 0.65 to keep the night sky from washing out. With N alive
+  // colonies the per-colony alpha falls as 1/sqrt(N/4) past 4 colonies,
+  // so 4 keeps full power, 16 falls to 0.5×, 64 to 0.25×. Below 4 the
+  // clamp is a no-op.
+  const budgetScale = cfg.aliveCount > 4
+    ? Math.min(1, Math.sqrt(4 / cfg.aliveCount))
+    : 1;
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.globalCompositeOperation = 'lighter';
   for (const col of cfg.colonies) {
     const rgb = A.hsl(col.hue, 60, 72);
-    const glowAlpha = 0.32 + col.density * 0.28;
+    const glowAlpha = (0.32 + col.density * 0.28) * budgetScale;
     const rng = A.mkRng((col.seed || 1) * 5);
     const tipCount = 6 + Math.round(col.density * 8);
     for (let i = 0; i < tipCount; i++) {
@@ -325,7 +346,7 @@ function paintOverlays(ctx, cfg) {
       const cx0 = col.cx * sx, cy0 = col.cy * sy;
       const rr  = (col.spread || 22) * sx * 1.6;
       const g2 = ctx.createRadialGradient(cx0, cy0 - 8, 0, cx0, cy0 - 8, rr);
-      const ambient = 0.08 + col.density * 0.18;
+      const ambient = (0.08 + col.density * 0.18) * budgetScale;
       g2.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${ambient})`);
       g2.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
       ctx.fillStyle = g2;
@@ -334,12 +355,17 @@ function paintOverlays(ctx, cfg) {
   }
 
   // ── mushroom cap glow — dusk/night only, cool-blue ~3× warm. ─────
+  // Per-cap glow is also budgeted — clamp by sqrt(mushrooms/8) so a
+  // heavy fruiting wave doesn't go nova.
   const isDim = cfg.sky.hour < 7 || cfg.sky.hour > 19;
+  const capBudget = cfg.mushrooms.length > 8
+    ? Math.min(1, Math.sqrt(8 / cfg.mushrooms.length))
+    : 1;
   if (isDim) {
     for (const m of cfg.mushrooms) {
       if (!m.mature) continue;
       const inCool = m.hue >= 180 && m.hue <= 240;
-      const baseAlpha = inCool ? 0.30 : 0.10;
+      const baseAlpha = (inCool ? 0.30 : 0.10) * capBudget;
       const rgb = A.hsl(m.hue, 70, 70);
       const cx0 = m.x * sx;
       const cy0 = (m.baseY - m.stemH) * sy;
@@ -395,6 +421,33 @@ function paintOverlays(ctx, cfg) {
       ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.85)`;
       ctx.beginPath();
       ctx.ellipse(lx, ly, 2.2 * sx, 1.1 * sx, lrng() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── persona wisp (Nigehban — smokeless fire, dusk only). ─────────
+  if (cfg.personaWisp) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalCompositeOperation = 'lighter';
+    const wx = cfg.personaWisp.x * sx;
+    const wy = cfg.personaWisp.y * sy;
+    // Hot core
+    const grd = ctx.createRadialGradient(wx, wy, 0, wx, wy, 22 * sx / 4);
+    grd.addColorStop(0,   'rgba(255, 200, 120, 0.95)');
+    grd.addColorStop(0.4, 'rgba(220, 110, 60, 0.4)');
+    grd.addColorStop(1,   'rgba(220, 110, 60, 0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(wx, wy, 22 * sx / 4, 0, Math.PI * 2); ctx.fill();
+    // Upward flicker — narrow trail of ellipses.
+    for (let i = 0; i < 5; i++) {
+      const trailY = wy - (i * 6 + 4) * sy / 4;
+      const a = 0.32 - i * 0.05;
+      ctx.fillStyle = `rgba(255, 180, 110, ${a})`;
+      ctx.beginPath();
+      ctx.ellipse(wx + Math.sin(i) * 2, trailY,
+        (3 - i * 0.4) * sx / 4, (4 - i * 0.4) * sx / 4, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();

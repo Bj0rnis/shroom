@@ -277,13 +277,23 @@
       pine:   hsl(16, 45, 10),
       willow: hsl(36, 30, 22),
     }[species] || hsl(20, 38, 16);
+    // Proper capsule clipping — matches lib/world.js generateLog so the
+    // rendered silhouette is exactly the cell-grid log shape (rectangle
+    // core + semicircular caps). The kit's minor corner clip was visible
+    // on thin (6-8) logs but invisible on our 22-28 thick logs, making
+    // them read as bricks. Hypot-based caps fix this at any thickness.
+    const r = log.thickness / 2;
+    const cy = log.y + r - 0.5;
+    const xCoreL = log.x1 + r;
+    const xCoreR = log.x2 - r;
     for (let y = log.y; y < log.y + log.thickness; y++) {
       for (let x = log.x1; x <= log.x2; x++) {
-        const distFromEnd = Math.min(x - log.x1, log.x2 - x);
+        let inside;
+        if (x >= xCoreL && x <= xCoreR)      inside = Math.abs(y - cy) <= r;
+        else if (x < xCoreL)                 inside = Math.hypot(x - xCoreL, y - cy) <= r;
+        else                                  inside = Math.hypot(x - xCoreR, y - cy) <= r;
+        if (!inside) continue;
         const rowOff = (y - log.y);
-        const halfTh = log.thickness / 2 - 0.5;
-        const yOff = Math.abs(rowOff - halfTh);
-        if (distFromEnd < 2 && yOff > halfTh - (2 - distFromEnd)) continue;
         const shade = (rowOff / log.thickness);
         let c = lerpRgb(base, dark, shade * 0.85);
         if (rng() < 0.18) c = dark;

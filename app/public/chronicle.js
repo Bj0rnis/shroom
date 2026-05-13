@@ -78,6 +78,33 @@ function roman(n) {
   return String(n);
 }
 
+// Nastaliq glyphs (Arabic script range, including presentation forms) at
+// the same fontSize as IM Fell English visually render bigger because
+// Nastaliq has tall ascenders + deep descenders. Wrap them in a span
+// scaled to 0.75em so they sit within the line rhythm of the body.
+const URDU_RANGE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]+/g;
+function renderEntryText(text) {
+  if (!text) return null;
+  const parts = [];
+  let lastIdx = 0;
+  let match;
+  let key = 0;
+  while ((match = URDU_RANGE.exec(text)) !== null) {
+    if (match.index > lastIdx) parts.push(text.slice(lastIdx, match.index));
+    parts.push(
+      <span key={'u' + key++} style={{
+        fontFamily: '"Noto Nastaliq Urdu", serif',
+        fontSize: '0.75em',
+        lineHeight: 1,
+        verticalAlign: 'baseline',
+      }}>{match[0]}</span>
+    );
+    lastIdx = match.index + match[0].length;
+  }
+  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
+  return parts;
+}
+
 function Chronicle({ entries }) {
   const ink     = '#3a2a1c';
   const inkSoft = 'rgba(58, 42, 28, 0.7)';
@@ -127,7 +154,7 @@ function Chronicle({ entries }) {
               day {roman(e.day)}{e.reason && e.reason !== 'periodic' ? ` · ${e.reason}` : ''}
             </div>
             <div style={{ fontFamily: _chSerif, fontStyle: 'italic', fontSize: 16, lineHeight: 1.55, color: ink, textWrap: 'pretty' }}>
-              {e.text}
+              {renderEntryText(e.text)}
             </div>
           </div>
         ))}

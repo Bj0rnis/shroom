@@ -1,0 +1,15 @@
+{
+  "name": "home-server-shroom",
+  "version": "0.1.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "MOCK=true node server.js"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0"
+  }
+}

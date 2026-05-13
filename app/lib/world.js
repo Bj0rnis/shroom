@@ -5,7 +5,10 @@ const { randomGenome } = require('./genome');
 
 const W = 320;
 const H = 180;
-const GRASS_Y = Math.floor(H * 0.55); // grass line ~55% down
+// Grass line at row 63 — soil-dominant 35/65 band proportion, locked by
+// the design kit's anchor mocks. Air rows 0..62, grass row 63, soil rows
+// 64..179. (Not `Math.floor(H * 0.35)` — that lands at 62 in IEEE 754.)
+const GRASS_Y = 63;
 
 // Cell kinds
 const AIR   = 0;

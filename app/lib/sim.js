@@ -774,6 +774,33 @@ function triggerToofan(world, flavor) {
   world.meta.weatherUntilTick  = world.meta.tick + Math.floor(TICKS_PER_HOUR * 6);
   world.meta.toofanPressure    = 0;
 
+  // Era scar — a persistent visual mark on the substrate. Fades over
+  // ~3 real weeks via age in the renderer (see paintEraScar).
+  // x1/x2 cover the widest dying-colony spread, fallback to the log span.
+  let x1 = W, x2 = 0;
+  for (const col of dying) {
+    if (!col || !col.deathBbox) {
+      // dying colony might not have bbox cached; use any cell of theirs
+      // before we cleared them — but we already cleared. Fallback to log.
+    }
+  }
+  // Best signal we have post-clear is the log span.
+  if (world.meta.logs && world.meta.logs.length) {
+    const lg = world.meta.logs[0];
+    x1 = lg.x0;
+    x2 = lg.x0 + lg.w - 1;
+    // For wind, widen the scar across both ends since debris scatters.
+    if (f === 'wind') { x1 = Math.max(0, x1 - 30); x2 = Math.min(W - 1, x2 + 30); }
+  }
+  world.meta.eraScars = world.meta.eraScars || [];
+  world.meta.eraScars.push({
+    kind: f, x1, x2,
+    foundedTick: world.meta.tick,
+    eraEnded: world.meta.volume - 1,
+  });
+  // Cap scar history at 4 — older ones are off-screen narrative.
+  if (world.meta.eraScars.length > 4) world.meta.eraScars.shift();
+
   logEvent(world, 'toofan',
     `${f}: ${dying.length} colonies lost, ${survivors.length} survived — era ${world.meta.volume} begins`);
   fire('onToofan', world, {

@@ -67,6 +67,7 @@ function App() {
       }}>
         {/* ── LEFT: status, canvas, controls, mini-stats ─────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+          <ShroomsHeader />
           <StatusStrip snapshot={snapshot} />
           <ShroomCanvas snapshot={snapshot} />
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>

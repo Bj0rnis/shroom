@@ -164,7 +164,9 @@ function drawScene(ctx, snap) {
 }
 
 function drawSky(ctx, sky) {
-  const grd = ctx.createLinearGradient(0, 0, 0, CANVAS_H * 0.55);
+  // Sky gradient spans the sky band (top 35% of canvas) — matches GRASS_Y.
+  // Soil below is painted per-pixel in paintWorldPixels.
+  const grd = ctx.createLinearGradient(0, 0, 0, CANVAS_H * 0.35);
   grd.addColorStop(0, sky.top);
   grd.addColorStop(1, sky.bot);
   ctx.fillStyle = grd;
@@ -197,7 +199,8 @@ function paintWorldPixels(img, kind, occupied, moisture, sky) {
 
       if (k === SOIL) {
         // dark warm earth, depth gradient
-        const depth = (y - SHROOM_H * 0.55) / (SHROOM_H * 0.45);
+        // Soil band is rows 64..179 (65% of canvas). Anchor matches GRASS_Y.
+        const depth = (y - SHROOM_H * 0.35) / (SHROOM_H * 0.65);
         const v = 0.18 - depth * 0.05;
         r = clamp255(95 * v * 5);
         g = clamp255(72 * v * 5);

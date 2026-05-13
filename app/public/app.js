@@ -56,7 +56,7 @@ function App() {
   }
 
   const m = world.meta;
-  const c = world.counts;
+  // (counts now derived inside StatusStrip from the live snapshot.)
 
   return (
     <Surface theme={t} style={{ minHeight: '100dvh', padding: 24 }}>
@@ -68,10 +68,7 @@ function App() {
       }}>
         {/* ── LEFT: status, canvas, controls, mini-stats ─────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-          <div style={{ fontFamily: t.type.mono, fontSize: 12, color: t.muted, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span>Volume {m.volume} · Day {Math.floor((m.tick - (m.lastToofanTick || 0)) / 500)} since the last toofan · {m.season} · {snapshot.meta.weather}</span>
-            <span>{c.coloniesAlive} alive · {c.hyphaeCells} hyphae · {snapshot.spores.length} spores · {snapshot.fruits.length} fruits · pressure {(m.toofanPressure * 100).toFixed(0)}%</span>
-          </div>
+          <StatusStrip snapshot={snapshot} />
           <ShroomCanvas snapshot={snapshot} />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button theme={t} onClick={() => debug('sow')}            disabled={busy} size="sm">sow random</Button>
@@ -91,12 +88,12 @@ function App() {
         {/* ── RIGHT: chronicle (top, expanding) + hall strip (bottom) ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, height: '100%' }}>
           <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-            <Chronicle theme={t} entries={journal?.entries} />
+            <Chronicle entries={journal?.entries} />
           </div>
-          <HallStrip theme={t} entries={hall?.entries} onSelect={setHallSel} />
+          <HallStrip entries={hall?.entries} onSelect={setHallSel} />
         </div>
       </div>
-      <HallDetail theme={t} entry={hallSel} onClose={() => setHallSel(null)} />
+      <HallDetail entry={hallSel} onClose={() => setHallSel(null)} />
     </Surface>
   );
 }

@@ -112,8 +112,12 @@ function paintBaseTerrain(world) {
 
 function generateLog(world) {
   const { kind, nutrient, moisture } = world.grid;
-  const logWidth  = 100 + Math.floor(Math.random() * 40);  // 100–140 cells
-  const logHeight = 22  + Math.floor(Math.random() * 6);   // 22–28 cells thick
+  // Sized so the initial log feels like a fallen oak's worth of wood,
+  // matching fellTree's output (oak maxHeight 50 → width ~80, thickness
+  // ~16-22). Earlier 100-140 × 22-28 was ~2x bigger than any tree could
+  // produce — read as comically massive against the world's tree scale.
+  const logWidth  = 72 + Math.floor(Math.random() * 24);   // 72–96 cells
+  const logHeight = 16 + Math.floor(Math.random() * 6);    // 16–22 cells thick
   const x0 = Math.floor((W - logWidth) / 2 + (Math.random() * 30 - 15));
   // Log sits ON the grass, no embedding. Bottom row of log = grass row above.
   const yTop = GRASS_Y - logHeight;

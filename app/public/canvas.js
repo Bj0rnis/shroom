@@ -1,14 +1,24 @@
-// home-server Shroom — canvas renderer.
-// Three-band cross-section view. Sky cycles with Stockholm clock. Hyphae
-// glow. Mushrooms drawn from per-colony genome (cap hue, shape, size, stem).
+// home-server Shroom — canvas wiring.
+// Pure pixel-buffer atoms live in canvas-atoms.js (window.ShroomAtoms).
+// This file:
+//   · decodes the server snapshot
+//   · maps it to a cfg the atoms understand (worldToCfg)
+//   · renders to the 320×180 buffer, then upscales crisp
+//   · paints smoothed overlays (sun bloom, hyphae glow, mushroom glow,
+//     spores, fog, leaves, glass edge, vignette)
+//   · exposes <ShroomCanvas /> for app.js
+//
+// Slice 2: visible world is parametric and matches the locked-vision
+// kit; smoothed overlays are present but tuning + dynamic positioning
+// + glow-budget clamp land in slice 3.
 
 const SHROOM_W = 320;
 const SHROOM_H = 180;
-const SCALE   = 4;                      // canvas is 1280x720
+const SCALE    = 4;
 const CANVAS_W = SHROOM_W * SCALE;
 const CANVAS_H = SHROOM_H * SCALE;
 
-// Cell kinds (must match world.js)
+// Cell kinds (mirror lib/world.js).
 const AIR   = 0;
 const SOIL  = 1;
 const GRASS = 2;
@@ -16,7 +26,14 @@ const LOG   = 3;
 const FRUIT = 4;
 const TREE  = 5;
 
-// ── Decode ──────────────────────────────────────────────
+// Sim time anchors (mirror lib/time.js — kept renderer-side so we can
+// translate "ticks since" → "real days" for log age etc.).
+const CANONICAL_TICK_MS = 3000;
+const TICKS_PER_DAY     = (24 * 60 * 60 * 1000) / CANONICAL_TICK_MS; // 28800
+const TICKS_PER_WEEK    = 7 * TICKS_PER_DAY;
+const TICKS_PER_MONTH   = 30 * TICKS_PER_DAY;
+
+// ── decode ────────────────────────────────────────────────────────────
 
 function b64ToBytes(b64) {
   const bin = atob(b64);
@@ -25,378 +42,427 @@ function b64ToBytes(b64) {
   return out;
 }
 
-// ── Sky ─────────────────────────────────────────────────
+// ── state translator ─────────────────────────────────────────────────
+// snap (from /api/world/snapshot) → cfg the atoms expect.
+//
+// The mapping is the actual contract between sim state and renderer. If
+// the snapshot shape changes, fix it here, not in the atoms.
+function worldToCfg(snap, now) {
+  const A = window.ShroomAtoms;
+  if (!snap || !A) return null;
 
-// Returns {top, bottom, stars} for the sky given a Date in Stockholm time.
-function skyForTime(now) {
-  const fmt = new Intl.DateTimeFormat('en-SE', {
-    hour: 'numeric', minute: 'numeric',
-    timeZone: 'Europe/Stockholm', hour12: false,
-  });
-  const parts = fmt.formatToParts(now);
-  const h = +(parts.find(p => p.type === 'hour')?.value || 12);
-  const m = +(parts.find(p => p.type === 'minute')?.value || 0);
-  const t = h + m / 60; // 0..24
+  const season = snap.meta.season || 'spring';
+  const sky    = A.skyPreset(now, season);
+  const tick   = snap.meta.tick || 0;
 
-  // Phase blends — chosen for the feel of the seasons in Sweden, not realism.
-  // night (deep) | dawn | day | dusk | night
-  const phases = [
-    { t: 0,    top: '#0a0c1a', bot: '#1a1d30', stars: 1 },
-    { t: 4.5,  top: '#1c1d33', bot: '#3b3850', stars: 0.6 },
-    { t: 6.0,  top: '#7e6088', bot: '#dba37e', stars: 0 },
-    { t: 7.5,  top: '#9bb8d6', bot: '#cfe1ec', stars: 0 },
-    { t: 12,   top: '#a8c8e8', bot: '#cfe2ee', stars: 0 },
-    { t: 17,   top: '#88a4c6', bot: '#d3b292', stars: 0 },
-    { t: 19.5, top: '#574870', bot: '#cf7d56', stars: 0 },
-    { t: 21.5, top: '#1d2244', bot: '#3a3654', stars: 0.4 },
-    { t: 23.5, top: '#0a0c1a', bot: '#1a1d30', stars: 1 },
-    { t: 24,   top: '#0a0c1a', bot: '#1a1d30', stars: 1 },
-  ];
-  let a = phases[0], b = phases[1];
-  for (let i = 0; i < phases.length - 1; i++) {
-    if (t >= phases[i].t && t <= phases[i + 1].t) { a = phases[i]; b = phases[i + 1]; break; }
+  // ── colonies → hyphae cfg (option B: bbox-bounded painterly walker) ──
+  const colonies = [];
+  let aliveCount = 0;
+  for (const idStr of Object.keys(snap.colonies)) {
+    const c = snap.colonies[idStr];
+    if (!c.alive || !c.bbox) continue;
+    aliveCount++;
+    const bb     = c.bbox;
+    const bbW    = bb.maxX - bb.minX + 1;
+    const bbH    = bb.maxY - bb.minY + 1;
+    const bbArea = bbW * bbH;
+    // cx = footprint center; cy = bottom row (where the colony hugs the
+    // substrate). Hyphae walks up from cy.
+    const cx = Math.round((bb.minX + bb.maxX) / 2);
+    const cy = bb.maxY;
+    // density derives from cell-density inside the bbox, capped to a useful
+    // range. Fresh colonies are sparse; old, packed ones are dense mats.
+    const density = Math.min(1, Math.max(0.12, (c.cellCount || 1) / Math.max(1, bbArea)));
+    colonies.push({
+      cx, cy,
+      thickness: Math.max(3, bbH),
+      hue:    c.capHue,                      // already 0..360
+      sat:    32 + Math.round(density * 12), // denser → slightly punchier
+      tips:   10 + Math.round(density * 18),
+      maxLen: 8  + Math.round(bbW * 0.3),
+      spread: Math.max(8, bbW),
+      seed:   (idStr * 17 + tick) | 0,
+      stain:  density > 0.35,
+      density,
+      _id:    +idStr,                        // used by overlays
+    });
   }
-  const u = (t - a.t) / Math.max(0.01, b.t - a.t);
+
+  // ── fruits → mushrooms ──────────────────────────────────────────────
+  // Per-genome cap shape/hue + size/stem mapped from genes:
+  //   cap_size 0.5..2 → capR 3..8
+  //   stem_length 0.5..2 → stemH 4..14
+  const mushrooms = [];
+  for (const f of snap.fruits || []) {
+    const c = snap.colonies[f.colonyId];
+    if (!c) continue;
+    const capR  = Math.round(2 + (c.capSize    || 1) * 2.5);
+    const stemH = Math.round(3 + (c.stemLength || 1) * 5);
+    mushrooms.push({
+      x: f.x, baseY: f.y,
+      stemH, capR,
+      hue: c.capHue,
+      shape: Math.min(3, Math.max(0, c.capShape | 0)),
+      curve: ((f.x * 31 + f.y * 13) % 3) - 1,   // -1, 0, or 1
+      mature: f.mature !== false,
+      _colonyId: f.colonyId,
+    });
+  }
+
+  // ── trees → tree cfg ────────────────────────────────────────────────
+  const trees = [];
+  for (const t of (snap.meta.trees || [])) {
+    if (t.alive === false || (t.felledTick && (tick - t.felledTick) > 0)) continue;
+    trees.push({
+      x: t.x,
+      h: Math.max(4, t.height || 1),
+      species: t.species || 'oak',
+      trunkW: 2,
+      crownW: t.crownRadius || 8,
+    });
+  }
+
+  // ── logs ────────────────────────────────────────────────────────────
+  // Each log: x1/x2/y/thickness/species/age/mossy. Age derives from how
+  // long since the log was created; > 4 weeks goes mossy automatically.
+  const logs = [];
+  for (const lg of (snap.logs || [])) {
+    const ageTicks = Math.max(0, tick - (lg.foundedTick || 0));
+    const ageFrac  = Math.min(1, ageTicks / (TICKS_PER_MONTH * 3)); // ~3 months → fully aged
+    const mossy    = lg.mossy || ageTicks > TICKS_PER_WEEK * 4;
+    logs.push({
+      x1: lg.x0, x2: lg.x0 + lg.w - 1,
+      y:  lg.y0, thickness: lg.h,
+      species: lg.species,
+      age:     ageFrac,
+      mossy,
+    });
+  }
+
+  // ── stones — sim doesn't track them yet; seed a deterministic set ───
+  // (Per-world stones from the seed so they don't shimmer between ticks.)
+  const stones = [];
+  const stoneRng = A.mkRng(snap.meta.seed || 7);
+  const stoneN   = 4 + Math.floor(stoneRng() * 4);
+  for (let i = 0; i < stoneN; i++) {
+    stones.push({
+      x: Math.floor(stoneRng() * SHROOM_W),
+      y: 70 + Math.floor(stoneRng() * 90),
+      r: 2 + Math.floor(stoneRng() * 3),
+      mossy: stoneRng() < 0.4,
+      mossSide: stoneRng() < 0.5 ? -1 : 1,
+    });
+  }
+
+  // ── critters — sim doesn't model them; cosmetic drift per tick ─────
+  const critters = [];
+  const critterRng = A.mkRng((snap.meta.seed || 7) ^ Math.floor(tick / 6));
+  const critterKinds = ['worm', 'beetle', 'springtail', 'ant', 'pillbug'];
+  const critterCount = 3 + Math.floor(critterRng() * 3);
+  for (let i = 0; i < critterCount; i++) {
+    critters.push({
+      kind: critterKinds[Math.floor(critterRng() * critterKinds.length)],
+      x: Math.floor(critterRng() * SHROOM_W),
+      y: 80 + Math.floor(critterRng() * 90),
+      angle: critterRng() * Math.PI * 2,
+      segs: 8 + Math.floor(critterRng() * 3),
+    });
+  }
+
+  // ── sun/moon body ───────────────────────────────────────────────────
+  // Slice 2 uses fixed positions per phase. Slice 3 makes it trajectory.
+  let body = null;
+  if (sky.hour >= 6 && sky.hour < 19.5) {
+    // Sun visible roughly from dawn to dusk. Arc from (40, 50) → (280, 20) → (280, 50).
+    const t = (sky.hour - 6) / 13.5;          // 0..1 across the daylight window
+    const ang = t * Math.PI;
+    const sx = 40 + (280 - 40) * t;
+    const sy = 50 - Math.sin(ang) * 36;       // dome
+    body = { kind: 'sun', x: Math.round(sx), y: Math.round(sy), r: 11, hue: sky.sunHue };
+  } else {
+    // Moon visible at night. Same arc but inverted x.
+    const tNight = sky.hour >= 19.5
+      ? (sky.hour - 19.5) / 10.5
+      : (sky.hour + 4.5)  / 10.5;
+    const t = Math.min(1, Math.max(0, tNight));
+    const ang = t * Math.PI;
+    const mx = 40 + (280 - 40) * t;
+    const my = 35 - Math.sin(ang) * 24;
+    body = { kind: 'moon', x: Math.round(mx), y: Math.round(my), r: 7 };
+  }
+
   return {
-    top:   lerpHex(a.top, b.top, u),
-    bot:   lerpHex(a.bot, b.bot, u),
-    stars: a.stars + (b.stars - a.stars) * u,
+    sky, body,
+    stars: sky.stars,
+    season, tick,
+    cloudCover: cloudCoverForSeason(season),
+    cloudSeed: snap.meta.seed || 7,
+    logs, trees, colonies, mushrooms,
+    stones, critters,
+    stains: [],          // dead-colony stains — slice 4 (needs sim hook)
+    eraScar: (snap.eraScars && snap.eraScars[0]) || null,
+    dew:        sky.hour < 7.5,
+    personaWisp: false,  // wired in slice 3
+    autumnFog:  season === 'autumn' && sky.hour < 9,
+    fallingLeaves: season === 'autumn',
+    aliveCount,
   };
 }
 
-function lerpHex(h1, h2, u) {
-  const c1 = parseHex(h1), c2 = parseHex(h2);
-  const r = Math.round(c1[0] + (c2[0] - c1[0]) * u);
-  const g = Math.round(c1[1] + (c2[1] - c1[1]) * u);
-  const b = Math.round(c1[2] + (c2[2] - c1[2]) * u);
-  return `rgb(${r},${g},${b})`;
-}
-function parseHex(h) {
-  const v = parseInt(h.slice(1), 16);
-  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+function cloudCoverForSeason(season) {
+  if (season === 'spring') return 0.18;
+  if (season === 'summer') return 0.10;
+  if (season === 'autumn') return 0.45;
+  if (season === 'winter') return 0.60;
+  return 0.25;
 }
 
-// Stable star field — re-seeded once per session.
-const STARS = [];
-(function seedStars() {
-  let seed = 12345;
-  function rng() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
-  for (let i = 0; i < 80; i++) {
-    STARS.push({
-      x: rng() * CANVAS_W,
-      y: rng() * (CANVAS_H * 0.45),
-      r: rng() * 1.2 + 0.3,
-      twinkle: rng(),
-    });
+// ── render ────────────────────────────────────────────────────────────
+
+function drawScene(ctx, snap) {
+  const A = window.ShroomAtoms;
+  if (!A) return;
+  const cfg = worldToCfg(snap, new Date());
+  if (!cfg) return;
+
+  // 1. Build the 320×180 pixel buffer.
+  const pb = new A.PB(SHROOM_W, SHROOM_H);
+  A.paintSky(pb, cfg);
+  A.paintSunMoon(pb, cfg);
+  A.paintStars(pb, cfg);
+  A.paintClouds(pb, cfg);
+  A.paintFarLayer(pb, cfg);
+  A.paintSoil(pb, cfg);
+  A.paintEraScar(pb, cfg.eraScar);
+  for (const s of cfg.stones) A.paintStone(pb, s);
+  for (const t of cfg.trees)  A.paintTree(pb, t, cfg);
+  for (const lg of cfg.logs)  A.paintLog(pb, lg);
+  A.paintHyphae(pb, cfg, cfg.colonies);
+  A.paintDecayStain(pb, cfg.stains);
+  A.paintGrass(pb, cfg);
+  A.paintCritters(pb, cfg.critters);
+  for (const m of cfg.mushrooms) A.paintMushroom(pb, m);
+
+  // Dawn dew on log + grass.
+  if (cfg.dew) {
+    const rng = A.mkRng(99);
+    for (const lg of cfg.logs) {
+      for (let x = lg.x1 + 1; x < lg.x2; x++) {
+        if (rng() < 0.14) pb.blend(x, lg.y, 220, 230, 240, 180);
+      }
+    }
+    for (let x = 0; x < SHROOM_W; x++) {
+      if (rng() < 0.07) pb.blend(x, A.GRASS_Y - 2, 220, 230, 240, 180);
+    }
   }
-})();
 
-// ── Renderer ────────────────────────────────────────────
+  // 2. Put pixel buffer into the canvas, crisp upscale.
+  const off = document.createElement('canvas');
+  off.width = SHROOM_W; off.height = SHROOM_H;
+  off.getContext('2d').putImageData(new ImageData(pb.data, SHROOM_W, SHROOM_H), 0, 0);
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, 0, 0, CANVAS_W, CANVAS_H);
+
+  // 3. Smoothed overlays (post-upscale). Slice 3 refines these.
+  paintOverlays(ctx, cfg);
+}
+
+function paintOverlays(ctx, cfg) {
+  const A = window.ShroomAtoms;
+  const sx = CANVAS_W / SHROOM_W;
+  const sy = CANVAS_H / SHROOM_H;
+
+  // ── sun/moon bloom (additive radial). ────────────────────────────
+  if (cfg.body) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalCompositeOperation = 'lighter';
+    const b = cfg.body;
+    const bx = b.x * sx, by = b.y * sy;
+    if (b.kind === 'sun') {
+      const r = b.r * sx * 6;
+      const rgb = A.hsl(b.hue || 24, 80, 70);
+      const g = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+      g.addColorStop(0,    `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.55)`);
+      g.addColorStop(0.25, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.18)`);
+      g.addColorStop(1,    `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+    } else {
+      const r = b.r * sx * 5;
+      const g = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+      g.addColorStop(0,   'rgba(196, 212, 232, 0.32)');
+      g.addColorStop(0.4, 'rgba(196, 212, 232, 0.08)');
+      g.addColorStop(1,   'rgba(196, 212, 232, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── hyphae tip glow — HERO LIGHT (per-colony, additive). ─────────
+  // Slice 3 adds the budget clamp; this is the un-clamped version.
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalCompositeOperation = 'lighter';
+  for (const col of cfg.colonies) {
+    const rgb = A.hsl(col.hue, 60, 72);
+    const glowAlpha = 0.32 + col.density * 0.28;
+    const rng = A.mkRng((col.seed || 1) * 5);
+    const tipCount = 6 + Math.round(col.density * 8);
+    for (let i = 0; i < tipCount; i++) {
+      const tx = (col.cx + (rng() - 0.5) * (col.spread || 22) * 0.9) * sx;
+      const ty = (col.cy - 4 - rng() * 8) * sy;
+      const tr = (14 + rng() * 16) * (0.8 + col.density * 0.6);
+      const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, tr);
+      g.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${glowAlpha})`);
+      g.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2); ctx.fill();
+    }
+    if (col.density > 0.4) {
+      const cx0 = col.cx * sx, cy0 = col.cy * sy;
+      const rr  = (col.spread || 22) * sx * 1.6;
+      const g2 = ctx.createRadialGradient(cx0, cy0 - 8, 0, cx0, cy0 - 8, rr);
+      const ambient = 0.08 + col.density * 0.18;
+      g2.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${ambient})`);
+      g2.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(cx0, cy0 - 8, rr, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ── mushroom cap glow — dusk/night only, cool-blue ~3× warm. ─────
+  const isDim = cfg.sky.hour < 7 || cfg.sky.hour > 19;
+  if (isDim) {
+    for (const m of cfg.mushrooms) {
+      if (!m.mature) continue;
+      const inCool = m.hue >= 180 && m.hue <= 240;
+      const baseAlpha = inCool ? 0.30 : 0.10;
+      const rgb = A.hsl(m.hue, 70, 70);
+      const cx0 = m.x * sx;
+      const cy0 = (m.baseY - m.stemH) * sy;
+      const r   = (m.capR + 4) * sx * (inCool ? 1.4 : 1.1);
+      const g   = ctx.createRadialGradient(cx0, cy0, 0, cx0, cy0, r);
+      g.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${baseAlpha})`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx0, cy0, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // ── spores (smoothed motes drifting in upper sky). ───────────────
+  ctx.save();
+  const rng = A.mkRng(173);
+  for (let i = 0; i < 14; i++) {
+    const baseSx = 90 + rng() * 60;
+    const baseSy = 30 + rng() * 24;
+    const sxx = baseSx * sx;
+    const syy = baseSy * sy;
+    const r = (1.2 + rng() * 1.6) * sx;
+    ctx.fillStyle = `rgba(255, 233, 168, ${0.4 + rng() * 0.3})`;
+    ctx.beginPath(); ctx.arc(sxx, syy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 233, 168, 0.12)';
+    ctx.beginPath(); ctx.arc(sxx, syy, r * 3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ── autumn fog (low band). ───────────────────────────────────────
+  if (cfg.autumnFog) {
+    ctx.save();
+    const fogTop = (A.GRASS_Y - 6) * sy;
+    const fogBot = (A.GRASS_Y + 14) * sy;
+    const grd = ctx.createLinearGradient(0, fogTop, 0, fogBot);
+    grd.addColorStop(0,   'rgba(180, 150, 130, 0)');
+    grd.addColorStop(0.4, 'rgba(180, 150, 130, 0.32)');
+    grd.addColorStop(1,   'rgba(180, 150, 130, 0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, fogTop, CANVAS_W, fogBot - fogTop);
+    ctx.restore();
+  }
+
+  // ── falling leaves (autumn). ─────────────────────────────────────
+  if (cfg.fallingLeaves) {
+    ctx.save();
+    const lrng = A.mkRng(311);
+    const leaves = [A.hsl(22, 75, 42), A.hsl(42, 70, 48), A.hsl(12, 65, 36)];
+    for (let i = 0; i < 12; i++) {
+      const lx = lrng() * CANVAS_W;
+      const ly = lrng() * (A.GRASS_Y * sy);
+      const c  = leaves[(lrng() * 3) | 0];
+      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.85)`;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, 2.2 * sx, 1.1 * sx, lrng() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── glass edge + diagonal highlight. ─────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = 'rgba(168, 196, 176, 0.16)';
+  ctx.lineWidth = sx;
+  ctx.strokeRect(sx * 0.5, sy * 0.5, CANVAS_W - sx, CANVAS_H - sy);
+  const hgrad = ctx.createLinearGradient(0, 0, CANVAS_W * 0.7, CANVAS_H * 0.4);
+  hgrad.addColorStop(0,   'rgba(255, 255, 255, 0.05)');
+  hgrad.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = hgrad;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.restore();
+
+  // ── deep-soil cool haze + vignette. ──────────────────────────────
+  ctx.save();
+  const hazeTop = (A.GRASS_Y + 4) * sy;
+  const haze = ctx.createLinearGradient(0, hazeTop, 0, CANVAS_H);
+  haze.addColorStop(0,   'rgba(6, 5, 10, 0)');
+  haze.addColorStop(0.5, 'rgba(6, 5, 10, 0.28)');
+  haze.addColorStop(1,   'rgba(6, 5, 10, 0.6)');
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, hazeTop, CANVAS_W, CANVAS_H - hazeTop);
+  const vg = ctx.createRadialGradient(
+    CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.45,
+    CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.95);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.restore();
+}
+
+// ── React component ──────────────────────────────────────────────────
+// Exact same signature as the old canvas.js: <ShroomCanvas snapshot={...} />.
 
 function ShroomCanvas({ snapshot }) {
-  const canvasRef = React.useRef();
-
+  const ref = React.useRef(null);
   React.useEffect(() => {
-    if (!snapshot) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: false });
-    drawScene(ctx, snapshot);
+    if (!ref.current || !snapshot) return;
+    const ctx = ref.current.getContext('2d');
+    let raf = 0;
+    const tick = () => {
+      drawScene(ctx, snapshot);
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
   }, [snapshot]);
-
   return (
     <canvas
-      ref={canvasRef}
+      ref={ref}
       width={CANVAS_W}
       height={CANVAS_H}
       style={{
-        width: '100%', height: 'auto', display: 'block',
+        width: '100%',
+        maxWidth: 960,
+        aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
         imageRendering: 'pixelated',
+        display: 'block',
         borderRadius: 8,
-        background: '#000',
+        background: '#0a0908',
       }}
     />
   );
 }
 
-function drawScene(ctx, snap) {
-  const sky = skyForTime(new Date());
-  drawSky(ctx, sky);
-  drawStars(ctx, sky.stars);
-
-  const kind     = b64ToBytes(snap.kind);
-  const occupied = b64ToBytes(snap.occupied);
-  const moisture = b64ToBytes(snap.moisture);
-
-  // Render the world via offscreen 320x180 imageData, then upscale.
-  const off = document.createElement('canvas');
-  off.width = SHROOM_W; off.height = SHROOM_H;
-  const offCtx = off.getContext('2d');
-  const img = offCtx.createImageData(SHROOM_W, SHROOM_H);
-  paintWorldPixels(img, kind, occupied, moisture, sky);
-  offCtx.putImageData(img, 0, 0);
-
-  // Glow layer — separate offscreen with hyphae bloom.
-  const glow = buildGlowCanvas(occupied, moisture);
-
-  // Crisp upscale of world pixels
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(off, 0, 0, CANVAS_W, CANVAS_H);
-
-  // Soft glow on top (additive light)
-  ctx.imageSmoothingEnabled = true;
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.filter = 'blur(6px)';
-  ctx.drawImage(glow, 0, 0, CANVAS_W, CANVAS_H);
-  ctx.filter = 'none';
-  ctx.globalCompositeOperation = 'source-over';
-
-  // Spores — drifting motes
-  drawSpores(ctx, snap.spores);
-
-  // Mushrooms — drawn last so they sit on top
-  drawMushrooms(ctx, snap.fruits, snap.colonies);
-
-  // Weather flourish during a toofan
-  if (snap.meta.weather && snap.meta.weather !== 'clear') {
-    drawWeatherFlourish(ctx, snap.meta.weather);
-  }
-}
-
-function drawSky(ctx, sky) {
-  // Sky gradient spans the sky band (top 35% of canvas) — matches GRASS_Y.
-  // Soil below is painted per-pixel in paintWorldPixels.
-  const grd = ctx.createLinearGradient(0, 0, 0, CANVAS_H * 0.35);
-  grd.addColorStop(0, sky.top);
-  grd.addColorStop(1, sky.bot);
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-}
-
-function drawStars(ctx, alpha) {
-  if (alpha <= 0.02) return;
-  ctx.save();
-  ctx.fillStyle = `rgba(245, 240, 230, ${alpha})`;
-  for (const s of STARS) {
-    const a = alpha * (0.6 + 0.4 * Math.sin(Date.now() * 0.001 + s.twinkle * 6));
-    ctx.globalAlpha = Math.max(0, Math.min(1, a));
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-// Soil / log / grass painted into the offscreen low-res buffer.
-function paintWorldPixels(img, kind, occupied, moisture, sky) {
-  const data = img.data;
-  for (let y = 0; y < SHROOM_H; y++) {
-    for (let x = 0; x < SHROOM_W; x++) {
-      const i = y * SHROOM_W + x;
-      const o = i * 4;
-      const k = kind[i];
-      let r = 0, g = 0, b = 0, a = 0; // a=0 means "let sky show through"
-
-      if (k === SOIL) {
-        // dark warm earth, depth gradient
-        // Soil band is rows 64..179 (65% of canvas). Anchor matches GRASS_Y.
-        const depth = (y - SHROOM_H * 0.35) / (SHROOM_H * 0.65);
-        const v = 0.18 - depth * 0.05;
-        r = clamp255(95 * v * 5);
-        g = clamp255(72 * v * 5);
-        b = clamp255(58 * v * 5);
-        a = 255;
-      } else if (k === GRASS) {
-        r = 64; g = 110; b = 56; a = 255;
-      } else if (k === LOG) {
-        // base log brown, modulated by moisture
-        const m = moisture[i] / 255 * (255 / 100); // approximate
-        const wet = Math.min(1, moisture[i] / 80);
-        r = Math.round(116 - wet * 30);
-        g = Math.round(82  - wet * 18);
-        b = Math.round(54  + wet * 12);
-        a = 255;
-      } else if (k === FRUIT) {
-        // marker only — actual mushroom drawn later. Make this transparent.
-        a = 0;
-      } else if (k === TREE) {
-        // Tree — warm brown trunk + canopy. v3 polish will differentiate
-        // stem vs crown and tint by species; for MVP a single solid shade
-        // is enough to read the lifecycle.
-        r = 88; g = 60; b = 36; a = 255;
-      } else {
-        // AIR — keep sky; occupied air (rare) gets faint hypha tint
-        a = 0;
-      }
-
-      // Hyphae overlay — additive warm tint where occupied
-      if (occupied[i]) {
-        r = Math.round((r || 0) * 0.65 + 240 * 0.35);
-        g = Math.round((g || 0) * 0.65 + 215 * 0.35);
-        b = Math.round((b || 0) * 0.65 + 140 * 0.35);
-        a = 255;
-      }
-
-      data[o]     = r;
-      data[o + 1] = g;
-      data[o + 2] = b;
-      data[o + 3] = a;
-    }
-  }
-}
-
-function buildGlowCanvas(occupied, moisture) {
-  const canvas = document.createElement('canvas');
-  canvas.width = SHROOM_W; canvas.height = SHROOM_H;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(SHROOM_W, SHROOM_H);
-  const data = img.data;
-  for (let i = 0; i < occupied.length; i++) {
-    const o = i * 4;
-    if (!occupied[i]) { data[o + 3] = 0; continue; }
-    // Tip detection: if any 4-neighbor is unoccupied, treat this as a tip
-    const x = i % SHROOM_W;
-    const isTip =
-      (x > 0            && !occupied[i - 1])      ||
-      (x < SHROOM_W - 1  && !occupied[i + 1])      ||
-      (i >= SHROOM_W     && !occupied[i - SHROOM_W])||
-      (i < occupied.length - SHROOM_W && !occupied[i + SHROOM_W]);
-    const intensity = isTip ? 220 : 80;
-    data[o]     = 255;
-    data[o + 1] = 220;
-    data[o + 2] = 130;
-    data[o + 3] = intensity;
-  }
-  ctx.putImageData(img, 0, 0);
-  return canvas;
-}
-
-function drawSpores(ctx, spores) {
-  if (!spores || !spores.length) return;
-  ctx.save();
-  for (const s of spores) {
-    const sx = s.x * SCALE, sy = s.y * SCALE;
-    const lifeFade = 1 - Math.min(1, s.age / 200);
-    ctx.globalAlpha = 0.25 + lifeFade * 0.45;
-    ctx.fillStyle = '#ffe9a8';
-    ctx.beginPath();
-    ctx.arc(sx, sy, 1.5 + lifeFade * 1.5, 0, Math.PI * 2);
-    ctx.fill();
-    // soft halo
-    ctx.globalAlpha = 0.1 * lifeFade;
-    ctx.beginPath();
-    ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawMushrooms(ctx, fruits, colonies) {
-  if (!fruits || !fruits.length) return;
-  ctx.save();
-  for (const f of fruits) {
-    const col = colonies[f.colonyId];
-    if (!col) continue;
-    const x = f.x * SCALE + SCALE / 2;
-    const yBase = f.y * SCALE + SCALE; // base sits on log surface
-    const matureT = Math.min(1, f.age / 80);
-    const stem = (col.stemLength || 1) * 14 * (0.4 + matureT * 0.6);
-    const capR = (col.capSize  || 1)   * 7  * (0.4 + matureT * 0.6);
-    const capY = yBase - stem;
-    const hue  = ((col.capHue || 30) % 360 + 360) % 360;
-
-    // stem
-    ctx.fillStyle = '#ddd0b3';
-    ctx.fillRect(x - 1.6, capY, 3.2, stem);
-
-    // cap
-    ctx.fillStyle = `hsl(${hue} 60% 55%)`;
-    ctx.strokeStyle = `hsl(${hue} 35% 35%)`;
-    ctx.lineWidth = 1;
-    drawCap(ctx, x, capY, capR, col.capShape || 0);
-
-    // gentle outer glow on the cap when mature
-    if (matureT >= 1) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.18;
-      ctx.fillStyle = `hsl(${hue} 80% 70%)`;
-      ctx.beginPath();
-      ctx.arc(x, capY, capR * 1.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-  ctx.restore();
-}
-
-function drawCap(ctx, x, y, r, shape) {
-  ctx.beginPath();
-  switch (shape) {
-    case 1: // conical
-      ctx.moveTo(x - r, y);
-      ctx.lineTo(x, y - r * 1.6);
-      ctx.lineTo(x + r, y);
-      ctx.closePath();
-      break;
-    case 2: // flat
-      ctx.ellipse(x, y - 1, r * 1.15, r * 0.45, 0, 0, Math.PI * 2);
-      break;
-    case 3: // frilly
-      ctx.moveTo(x - r, y);
-      for (let i = -r; i <= r; i += r / 3) {
-        ctx.lineTo(x + i, y - r * (0.7 + Math.sin(i * 1.3) * 0.2));
-      }
-      ctx.lineTo(x + r, y);
-      ctx.closePath();
-      break;
-    case 0: // round
-    default:
-      ctx.arc(x, y, r, Math.PI, 0);
-      ctx.lineTo(x + r, y);
-      ctx.lineTo(x - r, y);
-      ctx.closePath();
-  }
-  ctx.fill();
-  ctx.stroke();
-}
-
-function drawWeatherFlourish(ctx, kind) {
-  ctx.save();
-  ctx.globalAlpha = 0.35;
-  switch (kind) {
-    case 'flood':
-      ctx.fillStyle = 'rgba(70,130,180,0.5)';
-      for (let i = 0; i < 120; i++) {
-        const x = Math.random() * CANVAS_W;
-        const y = Math.random() * CANVAS_H;
-        ctx.fillRect(x, y, 1.5, 12);
-      }
-      break;
-    case 'fire':
-      ctx.fillStyle = 'rgba(220,80,30,0.4)';
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      break;
-    case 'frost':
-      ctx.fillStyle = 'rgba(180,210,240,0.3)';
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      break;
-    case 'wind':
-      ctx.strokeStyle = 'rgba(220,220,220,0.4)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 40; i++) {
-        ctx.beginPath();
-        const y = Math.random() * CANVAS_H;
-        ctx.moveTo(0, y);
-        ctx.lineTo(CANVAS_W, y + Math.random() * 30 - 15);
-        ctx.stroke();
-      }
-      break;
-  }
-  ctx.restore();
-}
-
-function clamp255(v) { return Math.max(0, Math.min(255, Math.round(v))); }
-
-// Expose
 window.ShroomCanvas = ShroomCanvas;

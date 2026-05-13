@@ -128,6 +128,19 @@ function generateLog(world) {
   world.meta.logZones  = { knot, wet, dry };
   world.meta.logBounds = { x0, y0: yTop, w: logWidth, h: logHeight };
 
+  // Renderer needs per-log bounds + species + age so it can paint species-specific
+  // bark, moss patches, and aging tints. logs[] is the canonical list; logBounds
+  // stays for back-compat (used by hyphae sowing).
+  world.meta.logs = world.meta.logs || [];
+  world.meta.logs.push({
+    id: 1,
+    x0, y0: yTop, w: logWidth, h: logHeight,
+    species: 'oak',           // initial log is always oak for now
+    foundedTick: 0,
+    mossy: false,
+  });
+  world.meta.nextLogId = 2;
+
   // Horizontal capsule: rectangle core + semicircular caps on each end.
   // Reads as a proper side-view log silhouette.
   const r  = logHeight / 2;

@@ -707,26 +707,106 @@
     }
   }
 
-  // era scar (slice 2: only fire is implemented; flood/frost/wind in slice 4).
+  // Era scars — persistent visual marks left by each toofan kind.
+  // scar: { kind: 'fire'|'flood'|'frost'|'wind', x1, x2, age (0..1, 1=fresh) }
+  // age comes from the translator; alpha scales linearly so scars fade
+  // over ~3 real weeks before disappearing.
   function paintEraScar(pb, scar) {
     if (!scar) return;
-    const rng = mkRng(scar.x * 19 || 7);
+    const seed = ((scar.x1 || 0) * 19 + (scar.kind ? scar.kind.charCodeAt(0) : 7)) | 0;
+    const rng = mkRng(seed);
+    const fade = scar.age != null ? scar.age : 1;       // 0 → invisible, 1 → fresh
+    if (fade <= 0.02) return;
+    const baseAlphaScale = Math.max(0.1, fade);
+
     if (scar.kind === 'fire') {
+      // Charcoal stripe 3px thick just below the grass line, with rare
+      // ember-orange flecks (warm memory).
       const y0 = GRASS_Y + 1;
+      const aMain = Math.round(230 * baseAlphaScale);
+      const aEmb  = Math.round(200 * baseAlphaScale);
       for (let y = y0; y < y0 + 3; y++) {
         for (let x = scar.x1; x <= scar.x2; x++) {
           if (rng() < 0.15) continue;
           const c = hsl(20, 18, 8);
-          pb.blend(x, y, c[0], c[1], c[2], 230);
+          pb.blend(x, y, c[0], c[1], c[2], aMain);
           if (rng() < 0.04) {
             const e = hsl(18, 70, 30);
-            pb.blend(x, y, e[0], e[1], e[2], 200);
+            pb.blend(x, y, e[0], e[1], e[2], aEmb);
           }
         }
       }
+    } else if (scar.kind === 'flood') {
+      // High-water silt line — a horizontal pale band 2-3px tall, sitting
+      // a few cells above the grass row where the flood level peaked.
+      const yWater = GRASS_Y - 8;
+      const siltMain = hsl(36, 18, 32);
+      const siltHl   = hsl(36, 30, 48);
+      const aMain = Math.round(220 * baseAlphaScale);
+      const aHl   = Math.round(180 * baseAlphaScale);
+      for (let x = scar.x1; x <= scar.x2; x++) {
+        if (rng() < 0.18) continue;
+        pb.blend(x, yWater,     siltMain[0], siltMain[1], siltMain[2], aMain);
+        if (rng() < 0.35) pb.blend(x, yWater + 1, siltMain[0], siltMain[1], siltMain[2], aMain);
+        if (rng() < 0.25) pb.blend(x, yWater - 1, siltHl[0],   siltHl[1],   siltHl[2],   aHl);
+      }
+      // Stranded debris flecks on the soil below the line.
+      for (let i = 0; i < (scar.x2 - scar.x1) * 0.2; i++) {
+        const dx = scar.x1 + (rng() * (scar.x2 - scar.x1)) | 0;
+        const dy = GRASS_Y + 2 + (rng() * 6) | 0;
+        const c  = hsl(40, 22, 28);
+        pb.blend(dx, dy, c[0], c[1], c[2], Math.round(200 * baseAlphaScale));
+      }
+    } else if (scar.kind === 'frost') {
+      // Thin pale crack lines criss-crossing the soil + chilled-tone band
+      // along the grass row. Crystals never melt — they sublimate. Slowly.
+      const crackHue = hsl(200, 10, 50);
+      const chillBand = hsl(210, 14, 36);
+      const aMain   = Math.round(190 * baseAlphaScale);
+      const aChill  = Math.round(130 * baseAlphaScale);
+      // Chill band on grass row.
+      for (let x = scar.x1; x <= scar.x2; x++) {
+        if (rng() < 0.4) continue;
+        pb.blend(x, GRASS_Y,     chillBand[0], chillBand[1], chillBand[2], aChill);
+        pb.blend(x, GRASS_Y - 1, chillBand[0], chillBand[1], chillBand[2], aChill);
+      }
+      // Crack lines — short broken segments going from grass-line down.
+      const crackCount = Math.max(2, Math.round((scar.x2 - scar.x1) / 18));
+      for (let i = 0; i < crackCount; i++) {
+        let cx = scar.x1 + (rng() * (scar.x2 - scar.x1)) | 0;
+        let cy = GRASS_Y + 1;
+        const dir = rng() < 0.5 ? -0.4 : 0.4;
+        for (let s = 0; s < 6 + (rng() * 6 | 0); s++) {
+          pb.blend(cx | 0, cy | 0, crackHue[0], crackHue[1], crackHue[2], aMain);
+          cx += dir + (rng() - 0.5) * 0.6;
+          cy += 0.8 + rng() * 0.4;
+          if (cy > H - 2) break;
+        }
+      }
+    } else if (scar.kind === 'wind') {
+      // Stripped patch — darker, debris-strewn soil top band. Implies stuff
+      // got blown around; nothing pristine here.
+      const stripMain  = hsl(30, 12, 14);
+      const stripDeep  = hsl(28, 16, 8);
+      const debris     = hsl(38, 18, 30);
+      const aMain  = Math.round(220 * baseAlphaScale);
+      const aDeep  = Math.round(200 * baseAlphaScale);
+      const aDebrs = Math.round(220 * baseAlphaScale);
+      for (let y = GRASS_Y + 1; y < GRASS_Y + 6; y++) {
+        for (let x = scar.x1; x <= scar.x2; x++) {
+          if (rng() < 0.25) continue;
+          const c = rng() < 0.7 ? stripMain : stripDeep;
+          pb.blend(x, y, c[0], c[1], c[2], rng() < 0.7 ? aMain : aDeep);
+        }
+      }
+      // Scattered twigs / leaf bits.
+      for (let i = 0; i < (scar.x2 - scar.x1) * 0.18; i++) {
+        const dx = scar.x1 + (rng() * (scar.x2 - scar.x1)) | 0;
+        const dy = GRASS_Y + 1 + (rng() * 4) | 0;
+        pb.blend(dx,     dy, debris[0], debris[1], debris[2], aDebrs);
+        if (rng() < 0.4) pb.blend(dx + 1, dy, debris[0], debris[1], debris[2], aDebrs);
+      }
     }
-    // TODO slice 4: flood (silt line at scar.y), frost (crack lines on logs),
-    // wind (stripped patch — darker soil + scattered debris).
   }
 
   // ── time → sky preset ────────────────────────────────────────────────

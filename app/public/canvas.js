@@ -213,8 +213,13 @@ function worldToCfg(snap, now) {
     cloudSeed: snap.meta.seed || 7,
     logs, trees, colonies, mushrooms,
     stones, critters,
-    stains: [],          // dead-colony stains — slice 4 (needs sim hook)
-    eraScar: (snap.eraScars && snap.eraScars[0]) || null,
+    stains: [],          // dead-colony stains — needs a sim hook later
+    // Scars age over ~3 real weeks (~600k ticks); renderer fades alpha.
+    eraScars: (snap.eraScars || []).map(s => {
+      const elapsed = Math.max(0, tick - (s.foundedTick || 0));
+      const lifeTicks = TICKS_PER_WEEK * 3;
+      return { ...s, age: Math.max(0, 1 - elapsed / lifeTicks) };
+    }),
     dew:        sky.hour < 7.5,
     personaWisp,
     autumnFog:  season === 'autumn' && sky.hour < 9,
@@ -247,7 +252,7 @@ function drawScene(ctx, snap) {
   A.paintClouds(pb, cfg);
   A.paintFarLayer(pb, cfg);
   A.paintSoil(pb, cfg);
-  A.paintEraScar(pb, cfg.eraScar);
+  for (const scar of cfg.eraScars) A.paintEraScar(pb, scar);
   for (const s of cfg.stones) A.paintStone(pb, s);
   for (const t of cfg.trees)  A.paintTree(pb, t, cfg);
   for (const lg of cfg.logs)  A.paintLog(pb, lg);

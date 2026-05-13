@@ -9,7 +9,6 @@ function App() {
   const [hall,     setHall]     = useState(null);
   const [hallSel,  setHallSel]  = useState(null);
   const [err,      setErr]      = useState(null);
-  const [busy,     setBusy]     = useState(false);
 
   async function refreshFast() {
     try {
@@ -37,13 +36,13 @@ function App() {
     return () => { clearInterval(fast); clearInterval(slow); };
   }, []);
 
-  async function debug(action) {
-    setBusy(true);
-    try {
-      await fetch(`/api/debug/${action}`, { method: 'POST' });
-      await Promise.all([refreshFast(), refreshSlow()]);
-    } finally { setBusy(false); }
+  // Dev dashboard refresh — called by the overlay after any /api/dev/*
+  // or /api/debug/* call so the canvas/chronicle/hall stay in sync.
+  async function refreshAfterDev() {
+    await Promise.all([refreshFast(), refreshSlow()]);
   }
+
+  const [devOpen, setDevOpen] = useState(false);
 
   if (!world || !snapshot) {
     return (
@@ -70,18 +69,11 @@ function App() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
           <StatusStrip snapshot={snapshot} />
           <ShroomCanvas snapshot={snapshot} />
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button theme={t} onClick={() => debug('sow')}            disabled={busy} size="sm">sow random</Button>
-            <Button theme={t} onClick={() => debug('toofan')}         disabled={busy} size="sm">trigger toofan</Button>
-            <Button theme={t} onClick={() => debug('nigehban-wake')}  disabled={busy} size="sm">wake nigehban</Button>
-            <Button theme={t} onClick={() => debug('inscribe')}       disabled={busy} size="sm" variant="ghost">force inscribe</Button>
-            <Button theme={t} onClick={() => debug('save')}           disabled={busy} size="sm" variant="ghost">save</Button>
-            <Button theme={t} onClick={() => debug('reset')}          disabled={busy} size="sm" variant="danger">reset</Button>
-          </div>
-          <div style={{ fontFamily: t.type.mono, fontSize: 10, color: t.muted, textAlign: 'right' }}>
-            tick {m.tick} · last save tick {m.lastSavedTick ?? 0} ·
-            {' '}nigehban: {journal?.nigehban.callCount ?? 0} calls · {journal?.entries?.length ?? 0} entries · {journal?.nigehban.model ?? '-'}
-            {journal?.nigehban.lastError ? ` · ⚠ ${journal.nigehban.lastError}` : ''}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 10, color: '#5a5240' }}>
+              tick {m.tick} · {journal?.entries?.length ?? 0} entries{journal?.nigehban.lastError ? ` · ⚠ ${journal.nigehban.lastError}` : ''}
+            </span>
+            <DevDashboardTrigger onOpen={() => setDevOpen(true)} />
           </div>
         </div>
 
@@ -94,6 +86,7 @@ function App() {
         </div>
       </div>
       <HallDetail entry={hallSel} onClose={() => setHallSel(null)} />
+      <DevDashboard open={devOpen} onClose={() => setDevOpen(false)} onAction={refreshAfterDev} />
     </Surface>
   );
 }

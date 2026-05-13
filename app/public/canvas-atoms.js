@@ -262,70 +262,173 @@
   }
 
   // log: { x1, x2, y, thickness, species, age (0..1), mossy }
+  //
+  // Paint order:
+  //   1. capsule fill with cylindrical shading + light noise (per-row)
+  //   2. horizontal wood-grain striations along the length
+  //   3. concentric end-grain rings at each rounded cap
+  //   4. knots — visible 3x3 dark center + 1px lighter ring
+  //   5. top-row highlight (sun glint)
+  //   6. moss patch + dew sheen (existing)
   function paintLog(pb, log) {
     const rng = mkRng(log.x1 * 31 + log.y * 13 + 7);
     const species = log.species || 'oak';
     const base = {
-      oak:    hsl(24, 30, 28),
+      oak:    hsl(24, 30, 30),
       birch:  hsl(36, 12, 64),
       pine:   hsl(20, 35, 22),
       willow: hsl(40, 25, 38),
-    }[species] || hsl(24, 30, 28);
+    }[species] || hsl(24, 30, 30);
     const dark = {
-      oak:    hsl(20, 38, 16),
+      oak:    hsl(20, 38, 14),
       birch:  hsl(28, 30, 22),
       pine:   hsl(16, 45, 10),
       willow: hsl(36, 30, 22),
-    }[species] || hsl(20, 38, 16);
-    // Proper capsule clipping — matches lib/world.js generateLog so the
-    // rendered silhouette is exactly the cell-grid log shape (rectangle
-    // core + semicircular caps). The kit's minor corner clip was visible
-    // on thin (6-8) logs but invisible on our 22-28 thick logs, making
-    // them read as bricks. Hypot-based caps fix this at any thickness.
+    }[species] || hsl(20, 38, 14);
+    const light = {
+      oak:    hsl(28, 32, 44),
+      birch:  hsl(40, 14, 80),
+      pine:   hsl(24, 38, 32),
+      willow: hsl(42, 28, 52),
+    }[species] || hsl(28, 32, 44);
+
     const r = log.thickness / 2;
     const cy = log.y + r - 0.5;
     const xCoreL = log.x1 + r;
     const xCoreR = log.x2 - r;
+
+    function isInside(x, y) {
+      if (x >= xCoreL && x <= xCoreR) return Math.abs(y - cy) <= r;
+      if (x < xCoreL) return Math.hypot(x - xCoreL, y - cy) <= r;
+      return Math.hypot(x - xCoreR, y - cy) <= r;
+    }
+
+    // 1. Capsule fill — cylindrical shading from top (light) → bottom (dark)
+    //    with light per-pixel noise that BLENDS rather than overwrites.
     for (let y = log.y; y < log.y + log.thickness; y++) {
       for (let x = log.x1; x <= log.x2; x++) {
-        let inside;
-        if (x >= xCoreL && x <= xCoreR)      inside = Math.abs(y - cy) <= r;
-        else if (x < xCoreL)                 inside = Math.hypot(x - xCoreL, y - cy) <= r;
-        else                                  inside = Math.hypot(x - xCoreR, y - cy) <= r;
-        if (!inside) continue;
+        if (!isInside(x, y)) continue;
         const rowOff = (y - log.y);
-        const shade = (rowOff / log.thickness);
-        let c = lerpRgb(base, dark, shade * 0.85);
-        if (rng() < 0.18) c = dark;
-        if (species === 'birch' && (x + y) % 7 === 0 && rng() < 0.5) c = dark;
-        if (species === 'pine'  && x % 3 === 0 && rng() < 0.5) c = dark;
-        if (log.age > 0.4) c = lerpRgb(c, hsl(70, 20, 16), (log.age - 0.4) * 0.6);
+        const t = rowOff / log.thickness;            // 0 top, 1 bottom
+        // 3-stop curve: light top, base middle, dark bottom (cylinder lit
+        // top-left, deep shadow under-side).
+        let c;
+        if (t < 0.30) c = lerpRgb(light, base, t / 0.30);
+        else          c = lerpRgb(base,  dark, (t - 0.30) / 0.70);
         pb.set(x, y, c[0], c[1], c[2]);
+        // Subtle dark grain noise — blended, not replaced.
+        if (rng() < 0.10) pb.blend(x, y, dark[0], dark[1], dark[2], 100);
+        // Species accents (subtler than before — they were overpowering).
+        if (species === 'birch' && (x + y * 3) % 11 === 0 && rng() < 0.4) {
+          pb.blend(x, y, dark[0], dark[1], dark[2], 200);
+        }
+        if (species === 'pine'  && x % 3 === 0 && rng() < 0.5) {
+          pb.blend(x, y, dark[0], dark[1], dark[2], 220);
+        }
+        // Aging tint.
+        if (log.age > 0.4) {
+          const aged = hsl(70, 20, 16);
+          pb.blend(x, y, aged[0], aged[1], aged[2], Math.round((log.age - 0.4) * 150));
+        }
       }
     }
-    const knots = 1 + Math.round((log.x2 - log.x1) / 30);
-    for (let i = 0; i < knots; i++) {
-      const kx = log.x1 + 3 + ((rng() * (log.x2 - log.x1 - 6)) | 0);
-      const ky = log.y + 1 + ((rng() * (log.thickness - 2)) | 0);
-      pb.set(kx, ky, dark[0], dark[1], dark[2]);
-      pb.blend(kx + 1, ky, dark[0], dark[1], dark[2], 180);
+
+    // 2. Horizontal wood-grain — 3-5 long thin streaks along the length,
+    //    one pixel tall each, slightly darker than base, broken into
+    //    segments so they don't read as scratches.
+    const grainCount = 3 + Math.floor(rng() * 3);
+    for (let g = 0; g < grainCount; g++) {
+      const gy = log.y + 2 + Math.floor(rng() * (log.thickness - 4));
+      const grainCol = lerpRgb(base, dark, 0.35);
+      for (let x = log.x1 + 2; x <= log.x2 - 2; x++) {
+        if (!isInside(x, gy)) continue;
+        if (rng() < 0.35) continue;  // break the streak into dashes
+        pb.blend(x, gy, grainCol[0], grainCol[1], grainCol[2], 180);
+      }
     }
+
+    // 3. End-grain rings — 2-3 concentric arcs at each rounded cap,
+    //    centered at the cap center (xCoreL/xCoreR, cy). Reads as the
+    //    cross-section of the log where it was sawn through.
+    function endGrain(cx) {
+      const rings = 3;
+      for (let k = 0; k < rings; k++) {
+        const ringR = r * (0.35 + k * 0.18);
+        const ringColor = lerpRgb(base, dark, 0.5 + k * 0.12);
+        // Sample ~30 points around the arc within the cap.
+        for (let aDeg = -90; aDeg <= 90; aDeg += 6) {
+          const a = (aDeg * Math.PI) / 180;
+          // Cap arcs face outward — left cap arcs face left (cosine < 0).
+          const sign = cx === xCoreL ? -1 : 1;
+          const px = cx + sign * Math.cos(a) * ringR;
+          const py = cy + Math.sin(a) * ringR;
+          if (!isInside(px, py)) continue;
+          pb.blend(px | 0, py | 0, ringColor[0], ringColor[1], ringColor[2], 170);
+        }
+      }
+      // Tiny dark heartwood dot at the cap center.
+      const heart = lerpRgb(dark, [0, 0, 0], 0.35);
+      pb.set(cx | 0, cy | 0, heart[0], heart[1], heart[2]);
+    }
+    endGrain(xCoreL);
+    endGrain(xCoreR);
+
+    // 4. Knots — 3-5 per log, drawn as a 3x3 dark cluster with a 1-pixel
+    //    halo of mid-tone bark, big enough to actually read.
+    const knotCount = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < knotCount; i++) {
+      const kx = log.x1 + r + 2 + Math.floor(rng() * (log.x2 - log.x1 - 2 * r - 4));
+      const ky = log.y + 2 + Math.floor(rng() * (log.thickness - 4));
+      // Halo
+      const halo = lerpRgb(base, light, 0.4);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!isInside(kx + dx, ky + dy)) continue;
+        if (dx === 0 && dy === 0) continue;
+        pb.blend(kx + dx, ky + dy, halo[0], halo[1], halo[2], 130);
+      }
+      // Dark core (3x3 cross)
+      pb.set(kx,     ky,     dark[0], dark[1], dark[2]);
+      if (isInside(kx + 1, ky))     pb.set(kx + 1, ky,     dark[0], dark[1], dark[2]);
+      if (isInside(kx - 1, ky))     pb.set(kx - 1, ky,     dark[0], dark[1], dark[2]);
+      if (isInside(kx,     ky + 1)) pb.set(kx,     ky + 1, dark[0], dark[1], dark[2]);
+      if (isInside(kx,     ky - 1)) pb.set(kx,     ky - 1, dark[0], dark[1], dark[2]);
+      // Heart in centre.
+      pb.set(kx, ky, lerpRgb(dark, [0, 0, 0], 0.5)[0],
+                     lerpRgb(dark, [0, 0, 0], 0.5)[1],
+                     lerpRgb(dark, [0, 0, 0], 0.5)[2]);
+    }
+
+    // 5. Top-row sun glint — sets the cylinder's "lit" feel.
+    for (let x = log.x1 + 2; x <= log.x2 - 2; x++) {
+      // Find topmost inside-row at this column.
+      for (let y = log.y; y < log.y + log.thickness; y++) {
+        if (!isInside(x, y)) continue;
+        if (rng() < 0.45) {
+          pb.blend(x, y, 255, 240, 210, 70);   // very subtle
+        }
+        break;
+      }
+    }
+
+    // 6. Moss patch on top + dew sheen (existing behaviour).
     if (log.mossy) {
       const mx1 = log.x1 + 4 + ((rng() * (log.x2 - log.x1 - 8)) | 0);
       const mw = 6 + (rng() * 10) | 0;
       for (let i = 0; i < mw; i++) {
         const x = mx1 + i;
         const moss = hsl(82, 40, 30 + (rng() * 8));
-        pb.set(x, log.y - 1, moss[0], moss[1], moss[2]);
+        if (isInside(x, log.y - 1)) pb.set(x, log.y - 1, moss[0], moss[1], moss[2]);
         if (rng() < 0.45) {
           const moss2 = hsl(82, 32, 24);
-          pb.set(x, log.y, moss2[0], moss2[1], moss2[2]);
+          if (isInside(x, log.y)) pb.set(x, log.y, moss2[0], moss2[1], moss2[2]);
         }
       }
     }
     if (log.age < 0.3) {
       for (let x = log.x1 + 1; x <= log.x2 - 1; x++) {
-        if ((x + log.y) % 4 === 0) pb.blend(x, log.y, 255, 240, 210, 50);
+        if ((x + log.y) % 4 === 0 && isInside(x, log.y)) {
+          pb.blend(x, log.y, 255, 240, 210, 50);
+        }
       }
     }
   }

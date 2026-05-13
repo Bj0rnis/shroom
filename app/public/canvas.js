@@ -81,7 +81,11 @@ function worldToCfg(snap, now) {
       tips:   10 + Math.round(density * 18),
       maxLen: 8  + Math.round(bbW * 0.3),
       spread: Math.max(8, bbW),
-      seed:   (idStr * 17 + tick) | 0,
+      // Seed stays constant per colony so the filament pattern is stable
+      // across ticks. (Earlier this baked `tick` in — the hyphae visibly
+      // drifted every 3s like grass in wind. The colony isn't relocating;
+      // it grows, and growth shows up via bbox + density, not seed.)
+      seed:   (idStr * 17) | 0,
       stain:  density > 0.35,
       density,
       _id:    +idStr,                        // used by overlays
@@ -213,6 +217,7 @@ function worldToCfg(snap, now) {
     cloudSeed: snap.meta.seed || 7,
     logs, trees, colonies, mushrooms,
     stones, critters,
+    spores: snap.spores || [],
     stains: [],          // dead-colony stains — needs a sim hook later
     // Scars age over ~3 real weeks (~600k ticks); renderer fades alpha.
     eraScars: (snap.eraScars || []).map(s => {
@@ -332,30 +337,34 @@ function paintOverlays(ctx, cfg) {
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.globalCompositeOperation = 'lighter';
+  // Per-tip glow + ambient bloom. Tuned organic, not magma:
+  // tips ~0.10-0.18 alpha (was 0.32-0.60), smaller radius, fewer tips.
+  // Ambient bloom only kicks in for proper mat density (> 0.55).
   for (const col of cfg.colonies) {
-    const rgb = A.hsl(col.hue, 60, 72);
-    const glowAlpha = (0.32 + col.density * 0.28) * budgetScale;
+    const rgb = A.hsl(col.hue, 50, 64);
+    const glowAlpha = (0.10 + col.density * 0.08) * budgetScale;
     const rng = A.mkRng((col.seed || 1) * 5);
-    const tipCount = 6 + Math.round(col.density * 8);
+    const tipCount = 3 + Math.round(col.density * 5);   // was 6-14, now 3-8
     for (let i = 0; i < tipCount; i++) {
-      const tx = (col.cx + (rng() - 0.5) * (col.spread || 22) * 0.9) * sx;
-      const ty = (col.cy - 4 - rng() * 8) * sy;
-      const tr = (14 + rng() * 16) * (0.8 + col.density * 0.6);
+      const tx = (col.cx + (rng() - 0.5) * (col.spread || 22) * 0.8) * sx;
+      const ty = (col.cy - 3 - rng() * 6) * sy;
+      const tr = (8 + rng() * 8) * (0.7 + col.density * 0.4); // smaller radius
       const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, tr);
       g.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${glowAlpha})`);
       g.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2); ctx.fill();
     }
-    if (col.density > 0.4) {
+    // Ambient bloom — only on mature mat colonies, very subtle.
+    if (col.density > 0.55) {
       const cx0 = col.cx * sx, cy0 = col.cy * sy;
-      const rr  = (col.spread || 22) * sx * 1.6;
-      const g2 = ctx.createRadialGradient(cx0, cy0 - 8, 0, cx0, cy0 - 8, rr);
-      const ambient = (0.08 + col.density * 0.18) * budgetScale;
+      const rr  = (col.spread || 22) * sx * 1.1;
+      const g2 = ctx.createRadialGradient(cx0, cy0 - 6, 0, cx0, cy0 - 6, rr);
+      const ambient = (col.density - 0.55) * 0.16 * budgetScale; // 0..0.07
       g2.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${ambient})`);
       g2.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
       ctx.fillStyle = g2;
-      ctx.beginPath(); ctx.arc(cx0, cy0 - 8, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx0, cy0 - 6, rr, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -384,21 +393,25 @@ function paintOverlays(ctx, cfg) {
   }
   ctx.restore();
 
-  // ── spores (smoothed motes drifting in upper sky). ───────────────
-  ctx.save();
-  const rng = A.mkRng(173);
-  for (let i = 0; i < 14; i++) {
-    const baseSx = 90 + rng() * 60;
-    const baseSy = 30 + rng() * 24;
-    const sxx = baseSx * sx;
-    const syy = baseSy * sy;
-    const r = (1.2 + rng() * 1.6) * sx;
-    ctx.fillStyle = `rgba(255, 233, 168, ${0.4 + rng() * 0.3})`;
-    ctx.beginPath(); ctx.arc(sxx, syy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255, 233, 168, 0.12)';
-    ctx.beginPath(); ctx.arc(sxx, syy, r * 3, 0, Math.PI * 2); ctx.fill();
+  // ── real sim spores (smoothed motes at actual positions). ────────
+  // The kit mock had 14 decorative motes hardcoded in upper sky; those
+  // were placeholder visuals and read as glowing magma when stacked
+  // against the hyphae bloom. Real spores from snap.spores are smaller,
+  // dimmer, and only appear when colonies actually release them.
+  if (cfg.spores && cfg.spores.length) {
+    ctx.save();
+    for (const sp of cfg.spores) {
+      const sxx = sp.x * sx;
+      const syy = sp.y * sy;
+      const ageFade = Math.max(0, 1 - (sp.age || 0) / 200);  // fade as spore drifts
+      const r = 1.2 * sx;
+      ctx.fillStyle = `rgba(232, 220, 180, ${0.32 * ageFade})`;
+      ctx.beginPath(); ctx.arc(sxx, syy, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(232, 220, 180, ${0.08 * ageFade})`;
+      ctx.beginPath(); ctx.arc(sxx, syy, r * 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // ── autumn fog (low band). ───────────────────────────────────────
   if (cfg.autumnFog) {

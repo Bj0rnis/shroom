@@ -120,6 +120,7 @@ app.get('/api/journal', (req, res) => {
       lastInvocationTick: nigehban.state.lastInvocationTick,
       lastError:          nigehban.state.lastError,
       model:              nigehban.MODEL,
+      usage:              nigehban.usage(),
     },
   });
 });

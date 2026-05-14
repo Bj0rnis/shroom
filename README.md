@@ -15,23 +15,23 @@ of the previous attempt (Evochora) is in [EVOCHORA_NOTES.md](EVOCHORA_NOTES.md).
 - **Frontend** — HTML5 canvas, no build step. React + Babel-in-browser.
   Pulls `design/kit/` from the repo root for chrome (canvas itself is custom
   rendering and does not use kit).
-- **LLM** — Nigehban calls `stacks/ai/` Ollama at `http://ollama:11434` with
-  `llama3.2:3b`. Graceful failure: sim keeps ticking when Ollama is down,
-  he just stays silent.
+- **LLM** — Nigehban calls the Anthropic API directly with `claude-haiku-4-5`.
+  Graceful failure: sim keeps ticking when the call errors, he just stays silent.
 
 ## Configuration
 
-All env vars are set in [docker-compose.yml](docker-compose.yml). Override
-locally with `.env`:
+`ANTHROPIC_API_KEY` lives in `.env` (next to `docker-compose.yml`). Other env
+vars are set in [docker-compose.yml](docker-compose.yml):
 
 | Variable | Default (compose) | Notes |
 |---|---|---|
-| `OLLAMA_URL` | `http://ollama:11434` | Path to Ollama. Use `http://localhost:11434` for local dev. |
-| `NIGEHBAN_MODEL` | `llama3.2:3b` | Any pulled Ollama model. |
+| `ANTHROPIC_API_KEY` | _(required)_ | From `.env`. |
+| `NIGEHBAN_MODEL` | `claude-haiku-4-5` | Any Claude model ID. |
 | `TICK_INTERVAL_MS` | `3000` | Real ms per sim tick. |
 | `NIGEHBAN_INTERVAL_TICKS` | `600` | Min ticks between his time-based wakes (~30 min real at 3s/tick). |
+| `NIGEHBAN_TIMEOUT_MS` | `30000` | LLM request timeout. |
 | `MOCK` | unset | Set `true` for local dev (no docker socket needed). |
-| `NIGEHBAN_DEBUG` | unset | Set `1` to log raw Ollama responses. |
+| `NIGEHBAN_DEBUG` | unset | Set `1` to log raw model responses. |
 
 ## Persistence
 
@@ -57,13 +57,14 @@ npm install
 MOCK=true npm run dev   # → http://localhost:3000
 ```
 
-For Nigehban locally, either pull the right model:
+For Nigehban locally, set the API key in your shell (or a local `.env`):
 ```bash
-ollama pull llama3.2:3b
+export ANTHROPIC_API_KEY=sk-ant-…
+MOCK=true npm run dev
 ```
-…or override with whatever you have installed:
+Override the model if you want to try a different tier:
 ```bash
-NIGEHBAN_MODEL=qwen2.5-coder:14b MOCK=true npm run dev
+NIGEHBAN_MODEL=claude-sonnet-4-6 ANTHROPIC_API_KEY=… MOCK=true npm run dev
 ```
 
 ## Deploy

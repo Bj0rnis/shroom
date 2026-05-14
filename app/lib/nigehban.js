@@ -1,8 +1,8 @@
 // Almari Shroom — Nigehban orchestration.
-// Watches the world, calls Ollama on triggers, applies the response.
-// Graceful failure: sim keeps ticking even when Ollama is down.
+// Watches the world, calls the cloud LLM on triggers, applies the response.
+// Graceful failure: sim keeps ticking even when the LLM call fails.
 
-const fetch = require('node-fetch');
+const Anthropic = require('@anthropic-ai/sdk');
 const fs    = require('fs');
 const path  = require('path');
 
@@ -12,11 +12,12 @@ const observability = require('./observability');
 const { sowAt, logEvent, W, H, AIR, SOIL, LOG, FRUIT } = require('./world');
 const { randomGenome, phenotypeWords } = require('./genome');
 
-const OLLAMA_URL  = process.env.OLLAMA_URL || 'http://localhost:11434';
-const MODEL       = process.env.NIGEHBAN_MODEL || 'llama3.2:3b';
+const MODEL       = process.env.NIGEHBAN_MODEL || 'claude-haiku-4-5';
 const TIMEOUT_MS  = parseInt(process.env.NIGEHBAN_TIMEOUT_MS || '30000', 10);
 // 600 ticks ≈ 30 real minutes — quiet enough that he watches, not runs the world.
 const MIN_INTERVAL_TICKS = parseInt(process.env.NIGEHBAN_INTERVAL_TICKS || '600', 10);
+
+const client = process.env.ANTHROPIC_API_KEY ? new Anthropic({ timeout: TIMEOUT_MS }) : null;
 
 const PROMPT_PATH = path.join(__dirname, 'nigehban-prompt.txt');
 const SYSTEM_PROMPT = fs.existsSync(PROMPT_PATH)
@@ -56,7 +57,7 @@ async function tryWake(world) {
     const journal = persistence.loadJournal();
     const hall    = persistence.loadHall();
     const snapshot = buildSnapshot(world, journal, hall, world.events, reason);
-    const text = await callOllama(snapshot);
+    const text = await callLLM(snapshot);
     state.lastInvocationTick = world.meta.tick;
     state.callCount++;
     if (process.env.NIGEHBAN_DEBUG) console.log(`[nigehban] reason=${reason} raw=${text.slice(0, 400)}`);
@@ -89,26 +90,21 @@ async function tryWake(world) {
   }
 }
 
-async function callOllama(snapshot) {
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user',   content: JSON.stringify(snapshot, null, 2) },
-  ];
-  const r = await fetch(`${OLLAMA_URL}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      stream: false,
-      format: 'json',
-      options: { temperature: 0.85 },
-    }),
-    timeout: TIMEOUT_MS,
+async function callLLM(snapshot) {
+  if (!client) throw new Error('ANTHROPIC_API_KEY not set');
+  const resp = await client.messages.create({
+    model: MODEL,
+    max_tokens: 1024,
+    temperature: 0.85,
+    system: [
+      { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+    ],
+    messages: [
+      { role: 'user', content: JSON.stringify(snapshot, null, 2) },
+    ],
   });
-  if (!r.ok) throw new Error(`Ollama HTTP ${r.status}`);
-  const data = await r.json();
-  return data.message?.content || '';
+  const block = (resp.content || []).find(b => b.type === 'text');
+  return block ? block.text : '';
 }
 
 function parseResponse(text) {
@@ -303,5 +299,5 @@ module.exports = {
   onSeasonChange, onToofanWarning, onToofan, onFirstFruit, onColonyDeath, onWorldEmpty,
   resetVolumeTools, resetSeasonTools,
   state,
-  OLLAMA_URL, MODEL,
+  MODEL,
 };

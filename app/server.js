@@ -169,6 +169,85 @@ app.get('/api/world/snapshot', (req, res) => {
   res.json(buildGridSnapshot(world));
 });
 
+// ── Prometheus /metrics ────────────────────────────────
+// Live world-state snapshot in Prometheus text format. Scraped by the
+// monitoring stack (see stacks/monitoring/prometheus/prometheus.yml).
+// Gauges describe present state; counters from world.meta.lifetime
+// describe cumulative events since world creation (persisted in world.json).
+app.get('/metrics', (req, res) => {
+  const colonies = Object.values(world.colonies);
+  const alive    = colonies.filter(c => c.alive);
+  const lifetime = world.meta.lifetime || {};
+  const deathsBy  = lifetime.deathsByCause || {};
+  const toofansBy = lifetime.toofansByFlavor || {};
+
+  // Single pass over the grid for LOG stats.
+  const kindArr = world.grid.kind;
+  const nutrient = world.grid.nutrient;
+  let logCells = 0, logNutSum = 0;
+  for (let i = 0; i < kindArr.length; i++) {
+    if (kindArr[i] === 3) { logCells++; logNutSum += nutrient[i]; }
+  }
+  const logAvgNut = logCells ? logNutSum / logCells : 0;
+
+  let fruitsActive = 0, fruitsMature = 0;
+  for (const f of world.fruits) {
+    if (f.spent) continue;
+    fruitsActive++;
+    if (f.mature) fruitsMature++;
+  }
+
+  const lines = [];
+  function emitHelp(name, help, type) {
+    lines.push(`# HELP ${name} ${help}`);
+    lines.push(`# TYPE ${name} ${type}`);
+  }
+  function gauge(name, help, value) {
+    emitHelp(name, help, 'gauge');
+    lines.push(`${name} ${value}`);
+  }
+  function gaugeLabeled(name, help, rows) {
+    emitHelp(name, help, 'gauge');
+    for (const [labels, value] of rows) lines.push(`${name}{${labels}} ${value}`);
+  }
+  function counter(name, help, value) {
+    emitHelp(name, help, 'counter');
+    lines.push(`${name} ${value}`);
+  }
+  function counterLabeled(name, help, rows) {
+    emitHelp(name, help, 'counter');
+    for (const [labels, value] of rows) lines.push(`${name}{${labels}} ${value}`);
+  }
+
+  gauge('shroom_colonies_alive',  'Currently alive colonies', alive.length);
+  gauge('shroom_hyphae_cells',    'Live cells across all alive colonies', alive.reduce((s, c) => s + c.cellCount, 0));
+  gauge('shroom_fruits_active',   'Non-spent fruits', fruitsActive);
+  gauge('shroom_fruits_mature',   'Mature non-spent fruits', fruitsMature);
+  gauge('shroom_spores_in_air',   'Active spores drifting', world.spores.length);
+  gauge('shroom_sim_day',         'Sim days since world creation', Math.floor(world.meta.tick / TICKS_PER_DAY));
+  gauge('shroom_volume',          'Current era (volume number)', world.meta.volume);
+  gauge('shroom_toofan_pressure', 'Toofan pressure 0..1', world.meta.toofanPressure || 0);
+  gauge('shroom_log_avg_nutrient','Average nutrient in LOG cells', logAvgNut);
+  gauge('shroom_log_cells',       'Total LOG cells in world', logCells);
+
+  const currentSeason = world.meta.season || 'spring';
+  gaugeLabeled('shroom_season', '1 if season is active else 0',
+    ['spring', 'summer', 'autumn', 'winter'].map(s => [`season="${s}"`, s === currentSeason ? 1 : 0])
+  );
+
+  counter('shroom_births_total', 'Total successful sows since world creation', lifetime.births || 0);
+  counter('shroom_fruits_total', 'Total fruits ever spawned', lifetime.fruitsTotal || 0);
+  counterLabeled('shroom_deaths_total', 'Total colony deaths by cause',
+    Object.entries(deathsBy).map(([cause, value]) => [`cause="${cause}"`, value])
+  );
+  counterLabeled('shroom_toofans_total', 'Total toofan storms by flavor',
+    Object.entries(toofansBy).map(([flavor, value]) => [`flavor="${flavor}"`, value])
+  );
+
+  res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+  res.send(lines.join('\n') + '\n');
+});
+
 app.get('/api/world/grid', (req, res) => {
   // ASCII debug view — sub-sampled 2× for readability
   const rows = [];

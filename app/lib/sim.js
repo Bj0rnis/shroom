@@ -58,15 +58,23 @@ const OLD_AGE_DIE_RISK_MAX   = 0.0003;           // per-cell at full old-age
 
 // ── Fruiting / spores ────────────────────────────────────
 const FRUIT_BASE_RATE        = 0.0025;
-const FRUIT_MATURE_TICKS     = 80;
+const FRUIT_MATURE_TICKS     = 80;          // ~4 real min from emergence to spore release
+const FRUIT_CAP_DECAY_TICKS  = TICKS_PER_DAY * 2;  // cap stays visible 2 sim days post-emergence
 // Minimum horizontal source-res cell-distance between simultaneously-active
 // caps from the same colony. The locked-vision mocks let caps cluster too
 // tightly; the renderer's smoothed cap-glow piles up and reads as a
 // gradient blob instead of individual mushrooms. 5 cells ~= 20px at 4×.
 const FRUIT_MIN_X_SPACING    = 5;
+// Per-substrate fruiting multipliers. Log is king — that's where wood-decay
+// fungi mostly fruit. Grass-line caps are visible second; soil fruiting is
+// rare (colony deep in soil sending a body up through the grass).
+const FRUIT_SUBSTRATE_MULT_LOG   = 1.0;
+const FRUIT_SUBSTRATE_MULT_GRASS = 0.4;
+const FRUIT_SUBSTRATE_MULT_SOIL  = 0.2;
+const FRUIT_MAX_RISE_ROWS        = 20;       // how far up we'll walk to find AIR
 const SPORE_DRIFT_GRAVITY    = 0.02;
-const SPORE_AGE_LIMIT        = 200;
-const SPORE_HARD_CAP         = 250;
+const SPORE_AGE_LIMIT        = 60;
+const SPORE_HARD_CAP         = 60;
 
 // ── Toofan ───────────────────────────────────────────────
 // Rare and selective. ≥1 real year between toofans. Daily roll past the gate
@@ -124,6 +132,7 @@ function tick(world) {
   maybeSpawnSapling(world);
   growHyphae(world);
   decayHyphae(world);
+  cascadeIsolationDeath(world);
   handleFruiting(world);
   driftSpores(world);
   germinateSpores(world);
@@ -427,11 +436,23 @@ function occupiedInBox(snapshot, j) {
   return count;
 }
 
+// Real mycelium is a transport network: tips at the frontier absorb nutrients
+// and pass them back through the chain to fuel growth and fruiting. The TIP
+// is the most exposed cell — it should die first when conditions sour, and
+// the colony then shrinks back from the frontier toward its anchor. Cells in
+// the middle of an established mat are protected by being well-connected;
+// they should NOT randomly die and leave isolated pixels behind. We scale
+// the accumulated dieRisk by same-colony-neighbour count to enforce that.
+//
+// Companion: cascadeIsolationDeath() handles the rare case where the trunk
+// gets cut anyway (blight, toofan, unlucky roll) — the stranded sub-chain
+// then dies fast on its own.
 function decayHyphae(world) {
   const { nutrient, colony, age, kind } = world.grid;
   const tick = world.meta.tick;
   const isWinter = world.meta.season === 'winter';
-  for (let i = 0; i < colony.length; i++) {
+  const len = colony.length;
+  for (let i = 0; i < len; i++) {
     const cid = colony[i];
     if (cid === 0) continue;
     const col = world.colonies[cid];
@@ -466,6 +487,20 @@ function decayHyphae(world) {
     if (col.blightedUntil && tick < col.blightedUntil) add('blight', BLIGHT_DIE_RISK);
     if (col.sparedUntil   && tick < col.sparedUntil)   dieRisk *= 0.2;
 
+    // Connectivity scaling — tips full risk, interior cells barely die.
+    const x = i % W;
+    let sameN = 0;
+    if (x > 0       && colony[i - 1] === cid) sameN++;
+    if (x < W - 1   && colony[i + 1] === cid) sameN++;
+    if (i >= W      && colony[i - W]  === cid) sameN++;
+    if (i < len - W && colony[i + W]  === cid) sameN++;
+    const connectivityMult =
+      sameN <= 1 ? 1.00 :
+      sameN === 2 ? 0.30 :
+      sameN === 3 ? 0.15 :
+                    0.08;
+    dieRisk *= connectivityMult;
+
     if (dieRisk > 0 && Math.random() < dieRisk) {
       colony[i] = 0;
       age[i] = 0;
@@ -490,13 +525,94 @@ function decayHyphae(world) {
   }
 }
 
+// ── Isolation cascade ───────────────────────────────────
+// Safety net for the rare case where decayHyphae's connectivity protection
+// doesn't prevent stranding (toofan, blight, or an unlucky roll severs a
+// chain). Per the biological model: when the trunk is cut, the side without
+// continuous network back to the colony's main mass cannot transport
+// nutrients and dies within hours.
+//
+// Implementation: per colony with >4 cells, union-find connected components
+// over same-colony 4-neighbour adjacency. Largest component is the trunk —
+// survives normally. Cells in smaller components die at 50% per tick, so
+// stranded sub-chains are gone within ~5–7 ticks instead of lingering as
+// orphan pixels. Uses one Int32Array parent allocation per tick (cheap).
+function cascadeIsolationDeath(world) {
+  const { colony, age } = world.grid;
+  const len = colony.length;
+
+  // Build parent array (DSU). Self-loop = root. -1 = empty.
+  const parent = new Int32Array(len);
+  for (let i = 0; i < len; i++) parent[i] = colony[i] === 0 ? -1 : i;
+
+  function find(x) {
+    let r = x;
+    while (parent[r] !== r) r = parent[r];
+    // path compression
+    while (parent[x] !== r) { const nx = parent[x]; parent[x] = r; x = nx; }
+    return r;
+  }
+  function union(a, b) {
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  }
+
+  // Union 4-neighbours of same colony
+  for (let i = 0; i < len; i++) {
+    const cid = colony[i];
+    if (cid === 0) continue;
+    const x = i % W;
+    if (x < W - 1 && colony[i + 1] === cid) union(i, i + 1);
+    if (i < len - W && colony[i + W] === cid) union(i, i + W);
+  }
+
+  // Tally component sizes; track largest root per colony
+  const sizeByRoot = new Map();
+  for (let i = 0; i < len; i++) {
+    if (colony[i] === 0) continue;
+    const r = find(i);
+    sizeByRoot.set(r, (sizeByRoot.get(r) || 0) + 1);
+  }
+
+  const trunkByColony = new Map();    // cid → root of largest component
+  const trunkSize     = new Map();    // cid → size of largest component
+  for (const [root, size] of sizeByRoot) {
+    const cid = colony[root];
+    if (cid === 0) continue;
+    const cur = trunkSize.get(cid) || 0;
+    if (size > cur) {
+      trunkSize.set(cid, size);
+      trunkByColony.set(cid, root);
+    }
+  }
+
+  // Kill 50% of cells in non-trunk components, for colonies large enough
+  // that we care about topology (small colonies are noise either way).
+  for (let i = 0; i < len; i++) {
+    const cid = colony[i];
+    if (cid === 0) continue;
+    const col = world.colonies[cid];
+    if (!col || col.cellCount <= 4) continue;
+    const trunk = trunkByColony.get(cid);
+    if (find(i) === trunk) continue;
+    if (Math.random() < 0.50) {
+      colony[i] = 0;
+      age[i]    = 0;
+      col.deathCounts = col.deathCounts || {};
+      col.deathCounts['stranded'] = (col.deathCounts['stranded'] || 0) + 1;
+    }
+  }
+}
+
 // ── Fruiting ────────────────────────────────────────────
 
 function handleFruiting(world) {
   const { kind, colony } = world.grid;
   const seasonMult = SEASON_FRUIT_MULT[world.meta.season];
 
-  // age existing fruits
+  // age existing fruits — maturity (spore release) is now decoupled from
+  // cap decay (visual removal). A mature cap stays visible for ~2 sim days
+  // before its FRUIT cell is cleared.
   for (const f of world.fruits) {
     if (f.spent) continue;
     f.age++;
@@ -509,8 +625,10 @@ function handleFruiting(world) {
       }
       logEvent(world, 'fruit', `colony ${f.colonyId} fruited at (${f.x},${f.y})`);
       releaseSpores(world, f);
+      // NOTE: cap stays visible after maturity; FRUIT cell persists.
+    }
+    if (f.mature && f.age >= FRUIT_CAP_DECAY_TICKS) {
       f.spent = true;
-      // remove FRUIT cell — collapse
       const fi = f.y * W + f.x;
       if (kind[fi] === FRUIT) kind[fi] = AIR;
     }
@@ -531,26 +649,44 @@ function handleFruiting(world) {
     arr.push(f.x);
   }
 
-  // Walk all hypha-on-log cells whose 'above' cell is AIR.
-  // Random sampling missed these — they're <0.5% of the grid. Direct scan is cheap.
-  for (let i = 0; i < kind.length; i++) {
+  // Walk all hypha cells. For each one, if its substrate (LOG/GRASS/SOIL)
+  // allows fruiting, walk upward to find the first AIR cell — that's where
+  // the mushroom emerges. Log surface caps spawn at the log; grass/soil
+  // caps emerge through the lawn at row 62.
+  const len = kind.length;
+  for (let i = 0; i < len; i++) {
     const cid = colony[i];
     if (cid === 0) continue;
-    if (kind[i] !== LOG) continue;
-    const above = i - W;
-    if (above < 0 || kind[above] !== AIR) continue;
+    const k = kind[i];
+    let substrateMult;
+    if      (k === LOG)   substrateMult = FRUIT_SUBSTRATE_MULT_LOG;
+    else if (k === GRASS) substrateMult = FRUIT_SUBSTRATE_MULT_GRASS;
+    else if (k === SOIL)  substrateMult = FRUIT_SUBSTRATE_MULT_SOIL;
+    else continue;
+
+    // Walk upward to find the first AIR cell. Bounded so we don't scan the
+    // whole sky from a deep-soil cell.
+    let above = i - W;
+    let rise = 1;
+    while (above >= 0 && rise <= FRUIT_MAX_RISE_ROWS) {
+      if (kind[above] === AIR) break;
+      above -= W;
+      rise++;
+    }
+    if (above < 0 || rise > FRUIT_MAX_RISE_ROWS || kind[above] !== AIR) continue;
+
     const col = world.colonies[cid];
     if (!col || !col.alive || col.cellCount < 30) continue;
     const fruitThreshold = col.genome[3];
-    const prob = FRUIT_BASE_RATE * seasonMult * (0.3 + fruitThreshold * 1.4);
+    const prob = FRUIT_BASE_RATE * seasonMult * substrateMult * (0.3 + fruitThreshold * 1.4);
     if (Math.random() > prob) continue;
 
     const fx = above % W;
     const xs = activeX.get(cid);
     if (xs) {
       let tooClose = false;
-      for (let k = 0; k < xs.length; k++) {
-        if (Math.abs(xs[k] - fx) < FRUIT_MIN_X_SPACING) { tooClose = true; break; }
+      for (let k2 = 0; k2 < xs.length; k2++) {
+        if (Math.abs(xs[k2] - fx) < FRUIT_MIN_X_SPACING) { tooClose = true; break; }
       }
       if (tooClose) continue;
     }
@@ -560,6 +696,7 @@ function handleFruiting(world) {
       x: fx, y: Math.floor(above / W),
       colonyId: cid, age: 0, mature: false, spent: false,
     });
+    if (world.meta.lifetime) world.meta.lifetime.fruitsTotal++;
     let arr = activeX.get(cid);
     if (!arr) { arr = []; activeX.set(cid, arr); }
     arr.push(fx);
@@ -576,8 +713,8 @@ function releaseSpores(world, fruit) {
     world.spores.push({
       x: fruit.x + (Math.random() * 4 - 2),
       y: fruit.y - 2,
-      vx: (Math.random() * 2 - 1) * 0.3,
-      vy: -Math.random() * 0.4,
+      vx: (Math.random() * 2 - 1) * 1.5,
+      vy: -(Math.random() * 2.0 + 0.5),
       age: 0,
       genome: mutate(col.genome),
     });
@@ -617,8 +754,9 @@ function germinateSpores(world) {
       if (k === AIR) remaining.push(sp);
       continue;
     }
-    // small germination prob, season-modulated
-    const prob = 0.25 * seasonMult;
+    // small germination prob, season-modulated. Lowered from 0.25 so a
+    // single cap doesn't guarantee a fresh colony — most spores fail.
+    const prob = 0.02 * seasonMult;
     if (Math.random() > prob) { remaining.push(sp); continue; }
     const id = sowAt(world, ix, iy, sp.genome);
     if (id) logEvent(world, 'germinate', `colony ${id} sprouted near (${ix},${iy})`);
@@ -722,6 +860,10 @@ function triggerToofan(world, flavor) {
     col.deathCause  = f;
     col.deathCounts = col.deathCounts || {};
     col.deathCounts[f] = (col.deathCounts[f] || 0) + 1;
+    if (world.meta.lifetime && world.meta.lifetime.deathsByCause) {
+      const bucket = world.meta.lifetime.deathsByCause;
+      bucket[f] = (bucket[f] || 0) + 1;
+    }
     fire('onColonyDeath', world, col);
   }
 
@@ -773,6 +915,9 @@ function triggerToofan(world, flavor) {
   world.meta.lastToofanFlavor  = f;
   world.meta.weatherUntilTick  = world.meta.tick + Math.floor(TICKS_PER_HOUR * 6);
   world.meta.toofanPressure    = 0;
+  if (world.meta.lifetime && world.meta.lifetime.toofansByFlavor) {
+    world.meta.lifetime.toofansByFlavor[f] = (world.meta.lifetime.toofansByFlavor[f] || 0) + 1;
+  }
 
   // Era scar — a persistent visual mark on the substrate. Fades over
   // ~3 real weeks via age in the renderer (see paintEraScar).
@@ -875,6 +1020,10 @@ function recountColonies(world) {
         if (count > topCount) { topCause = cause; topCount = count; }
       }
       c.deathCause = topCause;
+      if (world.meta.lifetime && world.meta.lifetime.deathsByCause) {
+        const bucket = world.meta.lifetime.deathsByCause;
+        bucket[topCause] = (bucket[topCause] || 0) + 1;
+      }
       const label = c.name ? `${c.name} (${phenotypeWords(c.genome)})` : phenotypeWords(c.genome);
       logEvent(world, 'death', `colony ${c.id} — ${label} — died (${topCause})`);
       fire('onColonyDeath', world, c);

@@ -18,6 +18,21 @@ const LOG   = 3;
 const FRUIT = 4;
 const TREE  = 5;
 
+// Lifetime metric counters — survive restarts via world.json persistence.
+// Exported so persistence.js can use it for migration of legacy worlds that
+// don't have meta.lifetime yet.
+function freshLifetime() {
+  return {
+    births: 0,
+    fruitsTotal: 0,
+    toofansByFlavor: { flood: 0, fire: 0, frost: 0, wind: 0 },
+    deathsByCause: {
+      starvation: 0, turnover: 0, 'old-age': 0, winter: 0, blight: 0,
+      stranded: 0, flood: 0, fire: 0, frost: 0, wind: 0, unknown: 0,
+    },
+  };
+}
+
 function createWorld(seed) {
   const cellCount = W * H;
   const world = {
@@ -31,6 +46,7 @@ function createWorld(seed) {
       weather: 'clear',
       toofanPressure: 0,
       lastSavedTick: 0,
+      lifetime: freshLifetime(),
     },
     shape: [W, H],
     grid: {
@@ -207,6 +223,7 @@ function sowAt(world, x, y, genome) {
   };
   world.grid.colony[i] = id;
   world.grid.age[i] = 0;
+  if (world.meta.lifetime) world.meta.lifetime.births++;
   return id;
 }
 
@@ -221,5 +238,5 @@ function neighborOffsets() {
 
 module.exports = {
   W, H, GRASS_Y, AIR, SOIL, GRASS, LOG, FRUIT, TREE,
-  createWorld, sowAt, logEvent, neighborOffsets,
+  createWorld, sowAt, logEvent, neighborOffsets, freshLifetime,
 };

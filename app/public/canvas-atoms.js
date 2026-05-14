@@ -578,24 +578,28 @@
     }
   }
 
-  // ── hyphae — cell-grid honest (option A) ────────────────────────────
+  // ── hyphae — filament tiers (option A) ─────────────────────────────
   // Walks the full colony Uint16Array; each filled cell paints exactly
-  // one pixel, hue from the colony's gene, brightness from whether the
-  // cell is a tip (any 4-neighbour is empty) or interior. No parametric
-  // bushes — what you see is exactly what the sim grew.
+  // one pixel, hue from the colony's gene, brightness from how connected
+  // the cell is to the rest of the colony. This makes the branching
+  // topology readable instead of a uniform glowing blob:
+  //   sameN 0–1 → tip   (bright growing frontier)
+  //   sameN 2   → chain (filament thread)
+  //   sameN 3   → branch (junction)
+  //   sameN 4   → mat   (dark interior substrate stain)
   //
   // Caches per-colony palettes so we don't reroll hsl() per pixel.
   function paintHyphaeFromGrid(pb, colonyU16, coloniesByCid) {
-    // Pre-resolve per-colony colors once.
     const palette = {};
     for (const cid of Object.keys(coloniesByCid)) {
       const c = coloniesByCid[cid];
       if (!c || !c.alive) continue;
       const hue = c.capHue || 0;
       palette[cid] = {
-        tip:      hsl(hue, 50, 76),    // bright tip
-        interior: hsl(hue, 30, 48),    // mid filament
-        aged:     hsl(hue, 20, 32),    // dim interior — used for crowded packing
+        tip:    hsl(hue, 55, 78),    // bright frontier
+        chain:  hsl(hue, 42, 60),    // filament thread
+        branch: hsl(hue, 32, 44),    // junction
+        mat:    hsl(hue, 18, 24),    // interior — dark substrate stain
       };
     }
     const len = colonyU16.length;
@@ -606,19 +610,16 @@
       if (!pal) continue;
       const x = i % W;
       const y = (i / W) | 0;
-      // Tip = any 4-neighbour empty (treat off-grid as empty).
-      const isTip =
-        (x === 0           || colonyU16[i - 1]     === 0) ||
-        (x === W - 1       || colonyU16[i + 1]     === 0) ||
-        (i < W             || colonyU16[i - W]     === 0) ||
-        (i >= len - W      || colonyU16[i + W]     === 0);
-      // Count fully-surrounded neighbours to spot crowded mats.
-      const sameNeighbours =
-        (x > 0           && colonyU16[i - 1]   === cid ? 1 : 0) +
-        (x < W - 1       && colonyU16[i + 1]   === cid ? 1 : 0) +
-        (i >= W          && colonyU16[i - W]   === cid ? 1 : 0) +
-        (i < len - W     && colonyU16[i + W]   === cid ? 1 : 0);
-      const c = isTip ? pal.tip : (sameNeighbours === 4 ? pal.aged : pal.interior);
+      const sameN =
+        (x > 0       && colonyU16[i - 1] === cid ? 1 : 0) +
+        (x < W - 1   && colonyU16[i + 1] === cid ? 1 : 0) +
+        (i >= W      && colonyU16[i - W]  === cid ? 1 : 0) +
+        (i < len - W && colonyU16[i + W]  === cid ? 1 : 0);
+      const c =
+        sameN <= 1 ? pal.tip :
+        sameN === 2 ? pal.chain :
+        sameN === 3 ? pal.branch :
+                      pal.mat;
       pb.set(x, y, c[0], c[1], c[2]);
     }
   }

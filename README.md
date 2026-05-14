@@ -28,10 +28,16 @@ vars are set in [docker-compose.yml](docker-compose.yml):
 | `ANTHROPIC_API_KEY` | _(required)_ | From `.env`. |
 | `NIGEHBAN_MODEL` | `claude-haiku-4-5` | Any Claude model ID. |
 | `TICK_INTERVAL_MS` | `3000` | Real ms per sim tick. |
-| `NIGEHBAN_INTERVAL_TICKS` | `600` | Min ticks between his time-based wakes (~30 min real at 3s/tick). |
+| `NIGEHBAN_INTERVAL_TICKS` | `600` | Periodic-wake interval (~30 min real at 3s/tick). |
+| `NIGEHBAN_MIN_GAP_TICKS` | `200` | Hard floor between ANY two calls — events included. ~10 min real. |
+| `NIGEHBAN_DAILY_CAP` | `48` | Max calls per rolling 24h. ~$0.10/day ceiling at Haiku 4.5. |
 | `NIGEHBAN_TIMEOUT_MS` | `30000` | LLM request timeout. |
 | `MOCK` | unset | Set `true` for local dev (no docker socket needed). |
 | `NIGEHBAN_DEBUG` | unset | Set `1` to log raw model responses. |
+
+Usage stats live at `GET /api/journal` under `.nigehban.usage` — `callsLast24h`,
+`callsLastHour`, `dailyCap`, `skippedCount`, `lastSkipReason` (`min-gap` or
+`daily-cap`). The counters reset on container restart.
 
 ## Persistence
 

@@ -14,8 +14,14 @@ const { randomGenome, phenotypeWords } = require('./genome');
 
 const MODEL       = process.env.NIGEHBAN_MODEL || 'claude-haiku-4-5';
 const TIMEOUT_MS  = parseInt(process.env.NIGEHBAN_TIMEOUT_MS || '30000', 10);
-// 600 ticks ≈ 30 real minutes — quiet enough that he watches, not runs the world.
-const MIN_INTERVAL_TICKS = parseInt(process.env.NIGEHBAN_INTERVAL_TICKS || '600', 10);
+// 600 ticks ≈ 30 real minutes — periodic wakes (no events pending).
+const PERIODIC_INTERVAL_TICKS = parseInt(process.env.NIGEHBAN_INTERVAL_TICKS || '600', 10);
+// 200 ticks ≈ 10 real minutes — hard floor between ANY two calls (events included).
+// Prevents burst-flooding the API if event triggers cluster (toofan + first-fruit + colony-death).
+const MIN_GAP_TICKS = parseInt(process.env.NIGEHBAN_MIN_GAP_TICKS || '200', 10);
+// Sliding 24h window. At MIN_GAP_TICKS=200/3s=10min, theoretical ceiling is 144/day;
+// 48 keeps daily cost under ~$0.10 at Haiku 4.5 rates with typical ~1k-token snapshots.
+const DAILY_CAP = parseInt(process.env.NIGEHBAN_DAILY_CAP || '48', 10);
 
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic({ timeout: TIMEOUT_MS }) : null;
 
@@ -32,7 +38,22 @@ const state = {
   lastResponseAt: null,
   lastEntry: null,
   callCount: 0,
+  callTimestamps: [],         // unix ms of past calls — 24h sliding window
+  skippedCount: 0,
+  lastSkipReason: null,
 };
+
+function pruneCallWindow(nowMs) {
+  const cutoff = nowMs - 24 * 3600 * 1000;
+  while (state.callTimestamps.length > 0 && state.callTimestamps[0] < cutoff) {
+    state.callTimestamps.shift();
+  }
+}
+
+function callsInLastMs(windowMs) {
+  const cutoff = Date.now() - windowMs;
+  return state.callTimestamps.filter(t => t >= cutoff).length;
+}
 
 function notify(reason) {
   if (!state.pendingReason) state.pendingReason = reason;
@@ -40,9 +61,19 @@ function notify(reason) {
 
 function shouldWake(world) {
   if (state.busy) return false;
-  if (state.pendingReason) return true;
-  if (world.meta.tick - state.lastInvocationTick >= MIN_INTERVAL_TICKS) return true;
-  return false;
+  const sinceLastCall = world.meta.tick - state.lastInvocationTick;
+  if (sinceLastCall < MIN_GAP_TICKS) {
+    if (state.pendingReason) state.lastSkipReason = 'min-gap';
+    return false;
+  }
+  pruneCallWindow(Date.now());
+  if (state.callTimestamps.length >= DAILY_CAP) {
+    state.lastSkipReason = 'daily-cap';
+    state.skippedCount++;
+    return false;
+  }
+  if (state.pendingReason) return true;                          // event-driven
+  return sinceLastCall >= PERIODIC_INTERVAL_TICKS;               // periodic
 }
 
 async function tryWake(world) {
@@ -60,6 +91,7 @@ async function tryWake(world) {
     const text = await callLLM(snapshot);
     state.lastInvocationTick = world.meta.tick;
     state.callCount++;
+    state.callTimestamps.push(Date.now());
     if (process.env.NIGEHBAN_DEBUG) console.log(`[nigehban] reason=${reason} raw=${text.slice(0, 400)}`);
     parsed = parseResponse(text);
     if (!parsed) {
@@ -293,11 +325,24 @@ function resetSeasonTools(world) {
 
 function clampInt(v, lo, hi) { v = parseInt(v, 10); if (!Number.isFinite(v)) v = lo; return Math.max(lo, Math.min(hi, v)); }
 
+function usage() {
+  pruneCallWindow(Date.now());
+  return {
+    callsLast24h: state.callTimestamps.length,
+    callsLastHour: callsInLastMs(3600 * 1000),
+    dailyCap: DAILY_CAP,
+    skippedCount: state.skippedCount,
+    lastSkipReason: state.lastSkipReason,
+    minGapTicks: MIN_GAP_TICKS,
+    periodicIntervalTicks: PERIODIC_INTERVAL_TICKS,
+  };
+}
+
 module.exports = {
   tryWake, notify, shouldWake,
   applyResponse, // exposed for test/debug
   onSeasonChange, onToofanWarning, onToofan, onFirstFruit, onColonyDeath, onWorldEmpty,
   resetVolumeTools, resetSeasonTools,
-  state,
+  state, usage,
   MODEL,
 };

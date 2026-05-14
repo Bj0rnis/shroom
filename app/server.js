@@ -71,7 +71,7 @@ function startTickLoop(intervalMs) {
     ticking = true;
     try {
       tick(world);
-      if (!nigehbanDisabled) nigehban.tryWake(world);  // sim never waits for Ollama
+      if (!nigehbanDisabled) nigehban.tryWake(world);  // sim never waits for the LLM
       if (world.meta.tick - lastMetricsTick >= METRICS_EVERY_TICKS) {
         observability.recordMetrics(world);
         observability.recordColonies(world);
@@ -119,7 +119,6 @@ app.get('/api/journal', (req, res) => {
       callCount:          nigehban.state.callCount,
       lastInvocationTick: nigehban.state.lastInvocationTick,
       lastError:          nigehban.state.lastError,
-      ollamaUrl:          nigehban.OLLAMA_URL,
       model:              nigehban.MODEL,
     },
   });

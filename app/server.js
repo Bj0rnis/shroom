@@ -104,7 +104,6 @@ const app = express();
 // to ~30 KB. Important over Tailscale.
 app.use(compression());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/kit', express.static(path.join(__dirname, '..', '..', '..', 'design', 'kit')));
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {

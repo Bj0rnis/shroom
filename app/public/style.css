@@ -15,7 +15,7 @@ html, body, #root {
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: oklch(0.165 0.008 250);
+  background: #0a0908;
 }
 
 ::-webkit-scrollbar       { width: 6px; height: 6px; }
@@ -29,6 +29,13 @@ button, input, select, textarea {
 
 button { -webkit-appearance: none; appearance: none; }
 
-#root { transition: background 200ms; }
+#root { }
 
 canvas { display: block; }
+
+.shroom-canvas-wrap canvas {
+  width: 640px;
+  height: 360px;
+  image-rendering: pixelated;
+  display: block;
+}

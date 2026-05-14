@@ -19,17 +19,18 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <script type="text/babel" src="kit/tokens.jsx"></script>
-  <script type="text/babel" src="kit/icons.jsx"></script>
-  <script type="text/babel" src="kit/motifs.jsx"></script>
-  <script type="text/babel" src="kit/primitives.jsx"></script>
-  <script type="text/babel" src="kit/overlays.jsx"></script>
-  <script type="text/babel" src="kit/shell.jsx"></script>
-
   <!-- Pure pixel-buffer atoms (no JSX, no React) — loaded before canvas.js
        so window.ShroomAtoms is ready when the React component mounts. -->
   <script src="canvas-atoms.js"></script>
   <script type="text/babel" src="canvas.js"></script>
+
+  <!-- Pixel-art kit for shroom chrome (hero, surfaces, panels).
+       Self-registers on window.PIX and window.SHROOM. Must load before
+       any component that uses them. -->
+  <script type="text/babel" src="pix/pix-core.jsx"></script>
+  <script type="text/babel" src="pix/pix-panels.jsx"></script>
+  <script type="text/babel" src="pix/pix-hero.jsx"></script>
+
   <script type="text/babel" src="status.js"></script>
   <script type="text/babel" src="chronicle.js"></script>
   <script type="text/babel" src="hall.js"></script>

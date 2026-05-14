@@ -1,17 +1,21 @@
-// Almari Shroom — Hall of fame.
-// Ported memorial style from claude.ai design's locked-vision kit:
-// desaturated mushroom sprites with a faint silver halo, IM Fell italic
-// nameplates, quiet warm-ink panel. Pixel-art rendered into a 22×26
-// source buffer and 3× upscaled, so it lives in the same visual family
-// as the main canvas.
+// Almari Shroom — Hall of Fame (icon trigger + modal).
+// Replaces the inline strip/column with a small dark pixel button that
+// opens a modal listing every inscribed colony. The memorial mushroom
+// rendering stays — it's the soul of the hall. The surrounding chrome
+// is now dark pixel-art, matching Chronicle and the rest of the page.
 
-const _hPlex    = '"IBM Plex Sans", system-ui, sans-serif';
-const _hMono    = '"IBM Plex Mono", monospace';
 const _hSerif   = '"IM Fell English", serif';
 const _hSerifSC = '"IM Fell DW Pica SC", serif';
+const _hMono    = '"IBM Plex Mono", monospace';
 
-// hsl() returns [r,g,b]. Borrowed from atoms because hall.js may load
-// before canvas-atoms.js in flight; safe duplicate.
+const _H_TITLE = '#e8dfc8';
+const _H_BODY  = '#c8c1ad';
+const _H_FAINT = '#7a7060';
+const _H_DIM   = '#3a342a';
+const _H_EMBER = '#c89058';
+
+// hsl → [r,g,b]. Borrowed from canvas-atoms; safe duplicate so hall.js
+// can paint mushrooms even if it loads earlier.
 function _hsl(h, s, l) {
   s /= 100; l /= 100;
   const k = n => (n + h / 30) % 12;
@@ -20,9 +24,32 @@ function _hsl(h, s, l) {
   return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
 }
 
+// Pixel memorial mark — 7×8, used as the trigger icon. A small
+// mushroom on a ground line, with a faint halo.
+function HallMark() {
+  const PIX = window.PIX;
+  if (!PIX) return null;
+  return (
+    <PIX.PixelStage w={7} h={8} scale={2}
+      deps={[]}
+      draw={(pb) => {
+        // Halo
+        pb.rect(0, 1, 7, 4, '#1a160f');
+        // Cap
+        pb.rect(1, 1, 5, 1, _H_FAINT);
+        pb.rect(0, 2, 7, 2, _H_FAINT);
+        // Stem
+        pb.rect(3, 4, 1, 2, _H_BODY);
+        // Ground
+        pb.rect(0, 7, 7, 1, _H_DIM);
+      }}
+      style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 6, imageRendering: 'pixelated' }}
+    />
+  );
+}
+
 // Memorial mushroom — drawn at source resolution (22×26) then nearest-
-// neighbour upscaled. Hue desaturated; outline darker than the world
-// version. Faint silver halo behind so it reads as memorial.
+// neighbour upscaled. Used inside the modal entries and the detail view.
 function HallMushroom({ entry, size = 84 }) {
   const ref = React.useRef(null);
   React.useEffect(() => {
@@ -31,15 +58,13 @@ function HallMushroom({ entry, size = 84 }) {
     const ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
 
-    // Halo behind.
     const grd = ctx.createRadialGradient(c.width / 2, c.height * 0.45, 4,
                                           c.width / 2, c.height * 0.45, c.height * 0.55);
-    grd.addColorStop(0, 'rgba(220, 220, 220, 0.18)');
-    grd.addColorStop(1, 'rgba(220, 220, 220, 0)');
+    grd.addColorStop(0, 'rgba(232, 220, 180, 0.22)');
+    grd.addColorStop(1, 'rgba(232, 220, 180, 0)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, c.width, c.height);
 
-    // Source-res draw.
     const sw = 22, sh = 26;
     const off = document.createElement('canvas');
     off.width = sw; off.height = sh;
@@ -52,17 +77,14 @@ function HallMushroom({ entry, size = 84 }) {
     const baseY = sh - 3;
     const stemTop = baseY - stemH;
 
-    // Faint ground line.
-    octx.fillStyle = 'rgba(40, 32, 22, 0.5)';
+    octx.fillStyle = 'rgba(40, 24, 12, 0.5)';
     octx.fillRect(0, sh - 2, sw, 2);
 
-    // Stem — pale, slight shadow on right.
     octx.fillStyle = `rgb(${_hsl(38, 14, 72).join(',')})`;
     octx.fillRect(sw / 2 - 1, stemTop, 2, stemH);
     octx.fillStyle = `rgb(${_hsl(36, 18, 56).join(',')})`;
     octx.fillRect(sw / 2 + 1, stemTop, 1, stemH);
 
-    // Cap — desaturated by 24pt vs world cap saturation.
     const mid     = _hsl(hue, 38, 50);
     const light   = _hsl(hue, 38, 60);
     const shadow  = _hsl(hue, 42, 30);
@@ -137,61 +159,107 @@ function HallMushroom({ entry, size = 84 }) {
     style={{ display: 'block', imageRendering: 'pixelated' }} />;
 }
 
-function HallStrip({ entries, onSelect }) {
-  if (!entries || entries.length === 0) {
-    return (
-      <div style={{ background: '#0e0d0a', padding: '16px 20px', borderRadius: 4, border: '1px solid #1f1c17' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
-          <span style={{ fontFamily: _hSerifSC, fontSize: 14, color: '#d4cdb8', letterSpacing: '0.06em' }}>
-            Hall of fame
-          </span>
-          <span style={{ fontFamily: _hMono, fontSize: 9, color: '#5a5240', letterSpacing: '0.12em' }}>
-            · empty
-          </span>
-        </div>
-        <div style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 13, color: '#7a7060' }}>
-          no colony has yet been inscribed.
-        </div>
-      </div>
-    );
-  }
+// Slim dark trigger button — sits where the old HallColumn lived. Shows
+// the count and the small pixel mark; click opens the modal.
+function HallTrigger({ entries, onOpen }) {
+  const count = entries ? entries.length : 0;
   return (
-    <div style={{ background: '#0e0d0a', padding: '16px 20px', borderRadius: 4, border: '1px solid #1f1c17' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>
-        <span style={{ fontFamily: _hSerifSC, fontSize: 14, color: '#d4cdb8', letterSpacing: '0.06em' }}>
+    <DarkPanel seed={13} style={{ color: _H_BODY, flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={onOpen}
+        title="Hall of fame"
+        style={{
+          position: 'relative', width: '100%',
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 14px',
+          background: 'transparent', border: 0, cursor: 'pointer',
+          color: 'inherit', textAlign: 'left',
+        }}
+      >
+        <HallMark />
+        <span style={{ fontFamily: _hSerifSC, fontSize: 13, color: _H_TITLE, letterSpacing: '0.06em' }}>
           Hall of fame
         </span>
-        <span style={{ fontFamily: _hMono, fontSize: 9, color: '#5a5240', letterSpacing: '0.12em' }}>
-          · {entries.length} inscribed
+        <span style={{ fontFamily: _hMono, fontSize: 9, color: _H_FAINT, letterSpacing: '0.12em' }}>
+          · {count} inscribed
         </span>
-        <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #2a261f, transparent)' }} />
-        <span style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 11, color: '#7a7060' }}>
-          quiet · slower · sacred
-        </span>
-      </div>
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }}>
-        {entries.map((e, i) => (
-          <button key={i}
-            onClick={() => onSelect && onSelect(e)}
-            title={`${e.name} · vol ${e.volume}`}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: 8, borderRadius: 2,
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.04)',
-              minWidth: 96, cursor: 'pointer',
-              transition: 'background 120ms, border-color 120ms',
-            }}
-            onMouseEnter={ev => { ev.currentTarget.style.background = 'rgba(255,255,255,0.05)'; ev.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; }}
-            onMouseLeave={ev => { ev.currentTarget.style.background = 'rgba(255,255,255,0.02)'; ev.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; }}
-          >
-            <HallMushroom entry={e} size={84} />
-            <div style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 13, color: '#d4cdb8' }}>{e.name}</div>
-            <div style={{ fontFamily: _hMono, fontSize: 9, color: '#5a5240', letterSpacing: '0.08em' }}>
-              vol {e.volume}
+        <span style={{ flex: 1 }} />
+        <span style={{ fontFamily: _hMono, fontSize: 10, color: _H_FAINT }}>open →</span>
+      </button>
+    </DarkPanel>
+  );
+}
+
+// Modal listing all inscribed colonies. Clicking an entry surfaces the
+// existing HallDetail (handled by the parent).
+function HallModal({ open, entries, onClose, onSelect }) {
+  if (!open) return null;
+  const list = entries || [];
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 40,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: 'min(720px, 92vw)', height: 'min(560px, 86vh)',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <DarkPanel seed={15} style={{ width: '100%', height: '100%', overflow: 'hidden', color: _H_BODY }}>
+          <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{
+              padding: '14px 20px', display: 'flex', alignItems: 'baseline', gap: 12,
+              borderBottom: `1px solid ${_H_DIM}`,
+            }}>
+              <HallMark />
+              <span style={{ fontFamily: _hSerifSC, fontSize: 18, color: _H_TITLE, letterSpacing: '0.04em' }}>
+                Hall of fame
+              </span>
+              <span style={{ fontFamily: _hMono, fontSize: 10, color: _H_FAINT, letterSpacing: '0.12em' }}>
+                · {list.length} inscribed
+              </span>
+              <span style={{ flex: 1 }} />
+              <button onClick={onClose} style={{
+                background: 'transparent', border: 0, color: _H_FAINT, cursor: 'pointer',
+                fontFamily: _hMono, fontSize: 11, letterSpacing: '0.08em', padding: '4px 8px',
+              }}>close ✕</button>
             </div>
-          </button>
-        ))}
+            {list.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: _hSerif, fontStyle: 'italic', fontSize: 15, color: _H_FAINT }}>
+                no colony has yet been inscribed.
+              </div>
+            ) : (
+              <div style={{
+                flex: 1, overflowY: 'auto', padding: '14px 16px',
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10,
+              }}>
+                {list.map((e, i) => (
+                  <button key={i}
+                    onClick={() => onSelect && onSelect(e)}
+                    title={`${e.name} · vol ${e.volume}`}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                      padding: 10, borderRadius: 2,
+                      background: 'rgba(232, 223, 200, 0.04)',
+                      border: `1px solid ${_H_DIM}`,
+                      cursor: 'pointer',
+                      transition: 'background 120ms, border-color 120ms',
+                    }}
+                    onMouseEnter={ev => { ev.currentTarget.style.background = 'rgba(232, 223, 200, 0.08)'; ev.currentTarget.style.borderColor = _H_FAINT; }}
+                    onMouseLeave={ev => { ev.currentTarget.style.background = 'rgba(232, 223, 200, 0.04)'; ev.currentTarget.style.borderColor = _H_DIM; }}
+                  >
+                    <HallMushroom entry={e} size={72} />
+                    <div style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 13, color: _H_TITLE, textAlign: 'center' }}>{e.name}</div>
+                    <div style={{ fontFamily: _hMono, fontSize: 9, color: _H_FAINT, letterSpacing: '0.08em' }}>
+                      vol {e.volume}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </DarkPanel>
       </div>
     </div>
   );
@@ -201,38 +269,40 @@ function HallDetail({ entry, onClose }) {
   if (!entry) return null;
   return (
     <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60,
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: '#0e0d0a', color: '#d4cdb8',
-        maxWidth: 460, width: '90%', padding: 28,
-        borderRadius: 4, border: '1px solid #1f1c17',
-        display: 'flex', flexDirection: 'column', gap: 14,
+        width: 'min(480px, 92vw)',
       }}>
-        <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end' }}>
-          <HallMushroom entry={entry} size={120} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 24, color: '#e8dfc8' }}>{entry.name}</div>
-            <div style={{ fontFamily: _hMono, fontSize: 10, color: '#7a7060', letterSpacing: '0.16em', textTransform: 'uppercase', marginTop: 6 }}>
-              volume {entry.volume} · {entry.phenotype}
+        <DarkPanel seed={17} style={{ width: '100%', overflow: 'hidden', color: _H_BODY }}>
+          <div style={{ position: 'relative', padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end' }}>
+              <HallMushroom entry={entry} size={120} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 22, color: _H_TITLE }}>{entry.name}</div>
+                <div style={{ fontFamily: _hMono, fontSize: 10, color: _H_FAINT, letterSpacing: '0.16em', textTransform: 'uppercase', marginTop: 4 }}>
+                  volume {entry.volume}{entry.phenotype ? ` · ${entry.phenotype}` : ''}
+                </div>
+              </div>
             </div>
+            {entry.reason && (
+              <div style={{ fontFamily: _hMono, fontSize: 11, color: _H_FAINT, letterSpacing: '0.05em' }}>
+                cause: {entry.reason}
+              </div>
+            )}
+            {entry.epitaph && (
+              <div style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 14, lineHeight: 1.55, color: _H_TITLE }}>
+                "{entry.epitaph}"
+              </div>
+            )}
           </div>
-        </div>
-        {entry.reason && (
-          <div style={{ fontFamily: _hMono, fontSize: 11, color: '#7a7060', letterSpacing: '0.05em' }}>
-            cause: {entry.reason}
-          </div>
-        )}
-        {entry.epitaph && (
-          <div style={{ fontFamily: _hSerif, fontStyle: 'italic', fontSize: 15, lineHeight: 1.55, color: '#d4cdb8' }}>
-            "{entry.epitaph}"
-          </div>
-        )}
+        </DarkPanel>
       </div>
     </div>
   );
 }
 
-window.HallStrip = HallStrip;
-window.HallDetail = HallDetail;
+window.HallTrigger = HallTrigger;
+window.HallModal   = HallModal;
+window.HallDetail  = HallDetail;

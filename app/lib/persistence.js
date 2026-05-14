@@ -4,6 +4,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { freshLifetime } = require('./world');
 
 const DATA_DIR     = process.env.SHROOM_DATA_DIR || path.join(__dirname, '..', 'data');
 const CURRENT_DIR  = path.join(DATA_DIR, 'current');
@@ -48,6 +49,10 @@ function serializeWorld(world) {
 
 function hydrateWorld(raw) {
   const cellCount = raw.shape[0] * raw.shape[1];
+  // Migration: legacy worlds (pre-Phase-2) don't have meta.lifetime. Initialise
+  // counters to zero. Pre-existing history isn't back-filled — the running
+  // totals start counting forward from this point.
+  if (raw.meta && !raw.meta.lifetime) raw.meta.lifetime = freshLifetime();
   return {
     meta: raw.meta,
     shape: raw.shape,

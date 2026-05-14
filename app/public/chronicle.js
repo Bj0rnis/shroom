@@ -64,11 +64,12 @@ function ParchmentBg() {
     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />;
 }
 
-// Roman lowercase day numbers (1 → "i", 12 → "xii", etc). Goes funny past
-// 50 entries but the user will never see that many — the worst case is
-// fine. (Decorative; not parsed back.)
+// Roman lowercase day numbers (1 → "i", 12 → "xii", etc). Day 0 shows
+// as "0" so dawn entries on a fresh world don't render as bare "day".
+// Goes funny past 50 entries but the user will never see that many —
+// the worst case is fine. (Decorative; not parsed back.)
 const _ROMAN = [
-  '', 'i','ii','iii','iv','v','vi','vii','viii','ix','x',
+  '0', 'i','ii','iii','iv','v','vi','vii','viii','ix','x',
   'xi','xii','xiii','xiv','xv','xvi','xvii','xviii','xix','xx',
   'xxi','xxii','xxiii','xxiv','xxv','xxvi','xxvii','xxviii','xxix','xxx',
 ];
@@ -76,6 +77,15 @@ function roman(n) {
   if (n < _ROMAN.length) return _ROMAN[n];
   // crude beyond table — just decimal in a parchment frame.
   return String(n);
+}
+
+// Sim-clock constants for hour-of-day labels. Mirror lib/time.js.
+const _CHRON_TICK_MS       = 3000;
+const _CHRON_TICKS_PER_HR  = (60 * 60 * 1000) / _CHRON_TICK_MS;  // 1200
+const _CHRON_TICKS_PER_DAY = 24 * _CHRON_TICKS_PER_HR;            // 28800
+function hourOfSimDay(tick) {
+  if (typeof tick !== 'number') return null;
+  return Math.floor((tick % _CHRON_TICKS_PER_DAY) / _CHRON_TICKS_PER_HR);
 }
 
 // Nastaliq glyphs (Arabic script range, including presentation forms) at
@@ -151,7 +161,9 @@ function Chronicle({ entries }) {
         {ordered.map((e, i) => (
           <div key={i} style={{ marginBottom: 22 }}>
             <div style={{ fontFamily: _chSerifSC, fontSize: 11, color: inkSoft, letterSpacing: '0.16em', marginBottom: 4 }}>
-              day {roman(e.day)}{e.reason && e.reason !== 'periodic' ? ` · ${e.reason}` : ''}
+              day {roman(e.day)}
+              {(() => { const h = hourOfSimDay(e.tick); return h != null ? ` · ${h}h` : ''; })()}
+              {e.reason && e.reason !== 'periodic' ? ` · ${e.reason}` : ''}
             </div>
             <div style={{ fontFamily: _chSerif, fontStyle: 'italic', fontSize: 16, lineHeight: 1.55, color: ink, textWrap: 'pretty' }}>
               {renderEntryText(e.text)}

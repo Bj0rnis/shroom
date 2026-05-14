@@ -301,9 +301,10 @@ function drawScene(ctx, snap) {
 }
 
 // Build an offscreen 320×180 glow buffer from the cell grid. Tip cells
-// (any 4-neighbour empty) emit at full alpha in the colony's hue;
-// interior cells emit dimly. Returned as a canvas that drawScene blurs
-// + composites with `lighter` for the soft hero-light bloom.
+// emit brightly, chain/branch cells emit modestly, fully-interior mat
+// barely emits — same connectivity tiers as paintHyphaeFromGrid so the
+// glow traces the network topology instead of bloating the whole mass.
+// Returned as a canvas that drawScene blurs + composites with `lighter`.
 function buildHyphaeGlowCanvas(colonyU16, coloniesByCid, A) {
   const off = document.createElement('canvas');
   off.width = SHROOM_W; off.height = SHROOM_H;
@@ -322,16 +323,21 @@ function buildHyphaeGlowCanvas(colonyU16, coloniesByCid, A) {
     const rgb = palette[cid];
     if (!rgb) continue;
     const x = i % SHROOM_W;
-    const isTip =
-      (x === 0           || colonyU16[i - 1]        === 0) ||
-      (x === SHROOM_W - 1 || colonyU16[i + 1]       === 0) ||
-      (i < SHROOM_W      || colonyU16[i - SHROOM_W] === 0) ||
-      (i >= len - SHROOM_W || colonyU16[i + SHROOM_W] === 0);
+    const sameN =
+      (x > 0              && colonyU16[i - 1]        === cid ? 1 : 0) +
+      (x < SHROOM_W - 1   && colonyU16[i + 1]        === cid ? 1 : 0) +
+      (i >= SHROOM_W      && colonyU16[i - SHROOM_W] === cid ? 1 : 0) +
+      (i < len - SHROOM_W && colonyU16[i + SHROOM_W] === cid ? 1 : 0);
+    const alpha =
+      sameN <= 1 ? 200 :   // tip — bright
+      sameN === 2 ? 90  :  // chain
+      sameN === 3 ? 50  :  // branch
+                    15;    // interior mat — barely glows
     const o = i * 4;
     data[o]     = rgb[0];
     data[o + 1] = rgb[1];
     data[o + 2] = rgb[2];
-    data[o + 3] = isTip ? 180 : 40;
+    data[o + 3] = alpha;
   }
   off.getContext('2d').putImageData(img, 0, 0);
   return off;
@@ -384,7 +390,7 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid) {
   ctx.globalCompositeOperation = 'lighter';
   if (colonyU16 && coloniesByCid) {
     const glowCanvas = buildHyphaeGlowCanvas(colonyU16, coloniesByCid, A);
-    ctx.filter = 'blur(6px)';
+    ctx.filter = 'blur(3px)';
     ctx.globalAlpha = 0.65 * budgetScale;
     ctx.drawImage(glowCanvas, 0, 0, CANVAS_W, CANVAS_H);
     ctx.filter = 'none';

@@ -19,6 +19,7 @@ services:
     networks:
       - traefik-public
       - ai
+      - monitoring
     labels:
       - traefik.enable=true
       - traefik.http.routers.shroom.rule=Host(`shroom.home-server`)
@@ -31,4 +32,6 @@ networks:
   traefik-public:
     external: true
   ai:
+    external: true
+  monitoring:
     external: true

@@ -8,7 +8,7 @@ const GENES = [
   { name: 'vertical_bias',         min: 0,   max: 1,     continuous: true },
   { name: 'fruit_threshold',       min: 0,   max: 1,     continuous: true },
   { name: 'decay_resistance',      min: 0,   max: 1,     continuous: true },
-  { name: 'spore_count',           min: 5,   max: 40,    continuous: true },
+  { name: 'spore_count',           min: 2,   max: 8,     continuous: true },
   { name: 'cap_hue',               min: 0,   max: 360,   continuous: true },
   { name: 'cap_shape',             min: 0,   max: 3,     continuous: false }, // 0=round 1=conical 2=flat 3=frilly
   { name: 'cap_size',              min: 0.5, max: 2.0,   continuous: true },

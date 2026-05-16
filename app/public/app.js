@@ -109,38 +109,31 @@ function App() {
   }
 
   return (
-    <div style={{ height: '100dvh', overflow: 'hidden', padding: 16 }}>
+    <div style={{ height: '100dvh', overflow: 'hidden', display: 'flex', position: 'relative' }}>
       <PageWallpaper />
 
-      {/* Two-column rectangle. Each column owns its own hero/footer slice so
-          the whole page reads as one rectangle split vertically. */}
+      {/* ── Canvas — grows to fill all space left of the panel ───────
+          ShroomCanvas centers itself and maintains 16:9 within this
+          flex item. At 1440px wide: canvas gets ~1116px → 627px tall. */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <ShroomCanvas snapshot={snapshot} />
+      </div>
+
+      {/* ── Right panel — fixed-width column beside the canvas ────────
+          Cards stack vertically; Chronicle takes remaining space. */}
       <div style={{
-        height: 'calc(100dvh - 32px)',
-        maxWidth: 1500, margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: '1fr 380px',
-        gap: 12,
+        width: 300, flexShrink: 0,
+        display: 'flex', flexDirection: 'column', gap: 8,
+        padding: '12px 12px 12px 0',
         minHeight: 0,
       }}>
-        {/* ── LEFT — Canvas / StatusLeft ───────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-          <DarkPanel seed={4} style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 }}>
-            <div className="shroom-canvas-wrap" style={{ position: 'relative' }}>
-              <ShroomCanvas snapshot={snapshot} />
-            </div>
-          </DarkPanel>
-          <StatusLeft snapshot={snapshot} />
+        <StatusLeft snapshot={snapshot} />
+        <div style={{ flex: 1, minHeight: 80, overflow: 'hidden' }}>
+          <Chronicle entries={journal?.entries} />
         </div>
-
-        {/* ── RIGHT — Chronicle / Top 3 / Hall trigger / StatusRight */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-          <div style={{ flex: 1, minHeight: 80 }}>
-            <Chronicle entries={journal?.entries} />
-          </div>
-          <TopColony snapshot={snapshot} onOpenDev={() => setDevOpen(true)} />
-          <HallTrigger entries={hall?.entries} onOpen={() => setHallOpen(true)} />
-          <StatusRight snapshot={snapshot} />
-        </div>
+        <TopColony snapshot={snapshot} onOpenDev={() => setDevOpen(true)} />
+        <HallTrigger entries={hall?.entries} onOpen={() => setHallOpen(true)} />
+        <StatusRight snapshot={snapshot} />
       </div>
 
       <HallModal

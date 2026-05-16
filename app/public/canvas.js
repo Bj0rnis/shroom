@@ -547,23 +547,33 @@ function ShroomCanvas({ snapshot }) {
     tick();
     return () => cancelAnimationFrame(raf);
   }, [snapshot]);
+
+  // Wrapper maintains the 16:9 aspect ratio inside whatever container it's
+  // placed in. The canvas itself just fills the wrapper pixel-for-pixel.
+  // maxWidth: native size — never upscale past the pixel buffer resolution.
+  // maxHeight: 100% — when the container is more portrait than 16:9, the
+  //   wrapper shrinks from the height side and the width follows via aspect-ratio.
   return (
-    <canvas
-      ref={ref}
-      width={CANVAS_W}
-      height={CANVAS_H}
-      style={{
-        maxWidth: '100%',
-        maxHeight: '100%',
-        width: 'auto',
-        height: 'auto',
-        aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
-        imageRendering: 'pixelated',
-        display: 'block',
-        borderRadius: 8,
-        background: '#0a0908',
-      }}
-    />
+    <div style={{
+      width: '100%',
+      maxWidth: CANVAS_W,
+      aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
+      maxHeight: '100%',
+      flexShrink: 0,
+    }}>
+      <canvas
+        ref={ref}
+        width={CANVAS_W}
+        height={CANVAS_H}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          imageRendering: 'pixelated',
+          background: '#0a0908',
+        }}
+      />
+    </div>
   );
 }
 

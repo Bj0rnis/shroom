@@ -109,38 +109,31 @@ function App() {
   }
 
   return (
-    <div style={{ height: '100dvh', overflow: 'hidden', padding: 16 }}>
+    <div style={{ height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       <PageWallpaper />
 
-      {/* Two-column rectangle. Each column owns its own hero/footer slice so
-          the whole page reads as one rectangle split vertically. */}
-      <div style={{
-        height: 'calc(100dvh - 32px)',
-        maxWidth: 1500, margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: '1fr 380px',
-        gap: 12,
-        minHeight: 0,
-      }}>
-        {/* ── LEFT — Canvas / StatusLeft ───────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-          <DarkPanel seed={4} style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 }}>
-            <div className="shroom-canvas-wrap" style={{ position: 'relative' }}>
-              <ShroomCanvas snapshot={snapshot} />
-            </div>
-          </DarkPanel>
-          <StatusLeft snapshot={snapshot} />
-        </div>
+      {/* ── Canvas — fills the full viewport, centered ───────────────
+          The ShroomCanvas wrapper maintains 16:9 and caps at 1280px.
+          On wide screens the canvas renders at or near native resolution.
+          Dark wallpaper shows through on any uncovered edges. */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <ShroomCanvas snapshot={snapshot} />
+      </div>
 
-        {/* ── RIGHT — Chronicle / Top 3 / Hall trigger / StatusRight */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-          <div style={{ flex: 1, minHeight: 80 }}>
-            <Chronicle entries={journal?.entries} />
-          </div>
-          <TopColony snapshot={snapshot} onOpenDev={() => setDevOpen(true)} />
-          <HallTrigger entries={hall?.entries} onOpen={() => setHallOpen(true)} />
-          <StatusRight snapshot={snapshot} />
+      {/* ── Right panel — floating overlay ───────────────────────────
+          Cards sit on the right with their own dark backgrounds so they
+          read over the canvas at any viewport width. */}
+      <div style={{
+        position: 'absolute', top: 16, right: 16, bottom: 16, width: 360,
+        display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0,
+      }}>
+        <StatusLeft snapshot={snapshot} />
+        <div style={{ flex: 1, minHeight: 80, overflow: 'hidden' }}>
+          <Chronicle entries={journal?.entries} />
         </div>
+        <TopColony snapshot={snapshot} onOpenDev={() => setDevOpen(true)} />
+        <HallTrigger entries={hall?.entries} onOpen={() => setHallOpen(true)} />
+        <StatusRight snapshot={snapshot} />
       </div>
 
       <HallModal

@@ -400,17 +400,17 @@ function growHyphae(world) {
       totalW += w;
     }
 
-    // Extension decision — two-tier branching by freeCount.
-    //   freeCount ≥ 3 = a real tip, extends reliably.
-    //   freeCount = 2 = junction, low prob → occasional fork.
-    //   freeCount = 1 = chain interior, almost never extends.
+    // Extension decision — three-tier branching by freeCount.
+    //   freeCount ≥ 3 = a real tip — extends reliably, can bifurcate.
+    //   freeCount = 2 = junction — branches at meaningful rate (lateral shoots).
+    //   freeCount = 1 = chain interior — occasional deep side-branch.
     // Gated on col.reserves: each new cell costs EXTEND_COST. A colony that
     // isn't absorbing enough nutrient can't grow.
     if (freeCount > 0 && (col.reserves || 0) >= EXTEND_COST) {
       let baseExtend;
       if (freeCount >= 3)       baseExtend = 0.30  * growthRate * seasonMult;
-      else if (freeCount === 2) baseExtend = 0.04  * growthRate * seasonMult;
-      else                       baseExtend = 0.005 * growthRate * seasonMult;
+      else if (freeCount === 2) baseExtend = 0.14  * growthRate * seasonMult;  // was 0.04
+      else                       baseExtend = 0.02  * growthRate * seasonMult;  // was 0.005
       if (Math.random() <= baseExtend) {
         let r = Math.random() * totalW;
         let chosen = candidates[0].j;
@@ -421,6 +421,24 @@ function growHyphae(world) {
         colony[chosen] = cid;
         age[chosen] = 0;
         col.reserves -= EXTEND_COST;
+
+        // Bifurcation — tips can split into two directions at once, producing
+        // Y-shaped branching instead of a single worm. 22% chance when ≥2
+        // candidates remain and the colony can afford the second cell.
+        if (freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
+          if (Math.random() < 0.22) {
+            const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
+            if (others.length > 0) {
+              const ow = others.reduce((s, c) => s + c.w, 0);
+              let r2 = Math.random() * ow;
+              let chosen2 = others[0].j;
+              for (const c of others) { r2 -= c.w; if (r2 <= 0) { chosen2 = c.j; break; } }
+              colony[chosen2] = cid;
+              age[chosen2] = 0;
+              col.reserves -= EXTEND_COST;
+            }
+          }
+        }
       }
     }
 

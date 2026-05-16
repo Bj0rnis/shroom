@@ -1,12 +1,13 @@
-// Shroom — StatusStrip
-// Pixel-dark panel (DarkPanel) with IBM Plex typography. Season indicator is
-// a 4×4 pixel-art color chip; pressure has a small pixel bar meter.
+// Shroom — kit · shell
+// StatusLeft, StatusRight: the two bottom status strips for the home page.
+// Depends on: tokens, atmosphere, primitives (window.SHROOM_TOKENS, window.PIX,
+//             window.DarkPanel, window.Stat).
 
-const _uiPlex    = '"IBM Plex Sans", system-ui, sans-serif';
-const _uiMono    = '"IBM Plex Mono", monospace';
-const _uiSerif   = '"IM Fell English", serif';
-const _uiSerifSC = '"IM Fell DW Pica SC", serif';
+(function () {
 
+const { MONO, SERIF, SERIF_BODY, SANS } = window.SHROOM_TOKENS;
+
+// ── Helpers ───────────────────────────────────────────────────────────────
 function eraName(volume) {
   return `era ${volume || 1}`;
 }
@@ -17,7 +18,6 @@ function dayText(meta) {
   return `day ${String(days).padStart(3, '0')}`;
 }
 
-// Stats derived from snapshot — shared by StatusLeft and StatusRight.
 function _statusVitals(snapshot) {
   let hyphae = 0, alive = 0;
   for (const col of Object.values(snapshot.colonies || {})) {
@@ -32,24 +32,25 @@ function _statusVitals(snapshot) {
   };
 }
 
+// ── StatusLeft — vol / era / day strip ───────────────────────────────────
 function StatusLeft({ snapshot }) {
   if (!snapshot) return null;
   const m = snapshot.meta;
   return (
-    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: _uiPlex }}>
+    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: SANS }}>
       <div style={{
         position: 'relative',
         padding: '10px 16px',
         display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap',
       }}>
-        <span style={{ fontFamily: _uiSerifSC, fontSize: 18, color: '#e8dfc8', letterSpacing: '0.04em' }}>
+        <span style={{ fontFamily: SERIF, fontSize: 18, color: '#e8dfc8', letterSpacing: '0.04em' }}>
           vol&nbsp;{String(m.volume || 1).padStart(2, '0')}
         </span>
         <span style={{ width: 1, height: 12, background: '#3a342a', alignSelf: 'center' }} />
-        <span style={{ fontFamily: _uiSerif, fontStyle: 'italic', fontSize: 14, color: '#c8c1ad' }}>
+        <span style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 14, color: '#c8c1ad' }}>
           {eraName(m.volume)}
         </span>
-        <span style={{ fontFamily: _uiMono, fontSize: 10, color: '#7a7060', letterSpacing: '0.08em' }}>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: '#7a7060', letterSpacing: '0.08em' }}>
           {dayText(m)}
         </span>
       </div>
@@ -57,6 +58,7 @@ function StatusLeft({ snapshot }) {
   );
 }
 
+// ── StatusRight — season / vitals / pressure bar ─────────────────────────
 function StatusRight({ snapshot }) {
   if (!snapshot) return null;
   const m = snapshot.meta;
@@ -69,16 +71,17 @@ function StatusRight({ snapshot }) {
   }[m.season] || [212, 205, 184];
   const weatherTxt = m.weather && m.weather !== 'clear' ? m.weather : 'clear';
   const PIX = window.PIX;
+  const Stat = window.Stat;
   const pct = Math.min(1, c.pressure / 100);
   const mSrc = 30;
 
   return (
-    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: _uiPlex }}>
+    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: SANS }}>
       <div style={{
         position: 'relative',
         padding: '10px 14px',
         display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        fontFamily: _uiMono, fontSize: 10, color: '#7a7060',
+        fontFamily: MONO, fontSize: 10, color: '#7a7060',
       }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {PIX && (
@@ -116,14 +119,7 @@ function StatusRight({ snapshot }) {
   );
 }
 
-function Stat({ label, v, warn }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-      <span style={{ color: '#5a5240', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</span>
-      <span style={{ color: warn ? '#c89058' : '#c8c1ad', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{v}</span>
-    </span>
-  );
-}
-
 window.StatusLeft  = StatusLeft;
 window.StatusRight = StatusRight;
+
+})();

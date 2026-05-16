@@ -114,6 +114,10 @@ app.get('/engine', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'engine.html'));
 });
 
+app.get('/preview', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'preview.html'));
+});
+
 app.get('/api/engine-spec', (req, res) => {
   res.json({
     constants: CONSTANTS,

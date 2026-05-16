@@ -23,6 +23,7 @@ vars are set in [docker-compose.yml](docker-compose.yml):
 | Variable | Default (compose) | Notes |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | _(required)_ | From `.env`. |
+| `SHROOM_HOST` | `shroom.local` | Traefik `Host()` routing rule — set to your domain. |
 | `NIGEHBAN_MODEL` | `claude-haiku-4-5` | Any Claude model ID. |
 | `TICK_INTERVAL_MS` | `3000` | Real ms per sim tick. |
 | `NIGEHBAN_INTERVAL_TICKS` | `600` | Periodic-wake interval (~30 min real at 3s/tick). |

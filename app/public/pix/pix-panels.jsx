@@ -1,4 +1,4 @@
-// home-server Shroom — DarkPanel: pixel-art dark surface that fills its container.
+// Shroom — DarkPanel: pixel-art dark surface that fills its container.
 // Backed by PIX.panel() (paintDark + 1px ink border + corner notches) via
 // ResizeObserver-driven PixelStage. Same pattern as Chronicle's ParchmentBg.
 //

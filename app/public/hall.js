@@ -1,4 +1,4 @@
-// home-server Shroom — Hall of Fame (icon trigger + modal).
+// Shroom — Hall of Fame (icon trigger + modal).
 // Replaces the inline strip/column with a small dark pixel button that
 // opens a modal listing every inscribed colony. The memorial mushroom
 // rendering stays — it's the soul of the hall. The surrounding chrome

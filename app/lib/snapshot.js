@@ -1,4 +1,4 @@
-// home-server Shroom — Nigehban's snapshot.
+// Shroom — Nigehban's snapshot.
 // Compact JSON the LLM reads. Phenotype words, not raw genomes.
 // Target ~500 tokens.
 

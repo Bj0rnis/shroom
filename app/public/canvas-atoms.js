@@ -1,4 +1,4 @@
-// home-server Shroom — pure pixel-buffer atoms.
+// Shroom — pure pixel-buffer atoms.
 // Ported from claude.ai design's locked-vision kit (world-renderer.jsx).
 // Lives in public/ so the browser fetches it, but exports CommonJS too so
 // node smoketests can require it without a DOM. NO browser APIs in this

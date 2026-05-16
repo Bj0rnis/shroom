@@ -1,4 +1,4 @@
-// home-server Shroom — Chronicle (Nigehban's journal).
+// Shroom — Chronicle (Nigehban's journal).
 // Dark pixel-art panel matching the rest of the chrome. Ink-on-dark
 // instead of ink-on-paper, with three small juicy touches:
 //   1. A blinking pixel cursor at the end of the most-recent entry,

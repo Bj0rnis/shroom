@@ -1,4 +1,4 @@
-// home-server Shroom — StatusStrip
+// Shroom — StatusStrip
 // Pixel-dark panel (DarkPanel) with IBM Plex typography. Season indicator is
 // a 4×4 pixel-art color chip; pressure has a small pixel bar meter.
 

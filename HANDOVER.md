@@ -1,7 +1,5 @@
-# home-server Shroom — v1 Handover
+# Shroom — v1 Handover
 
-**Stack:** `stacks/shroom/`
-**URL:** `shroom.home-server` (Tailscale)
 **Status:** Design complete. Ready to build.
 **For:** Claude Code (execution). Claude.ai conversation produced this doc; nothing else from that conversation is needed to build the thing.
 
@@ -13,15 +11,15 @@ This is not science. It is fun.
 
 Most decisions in this document fall out of that line, so it is worth holding it before reading anything else. We are not asking how evolution works, we are not measuring complexity, we are not optimising for control or realism. We are building a small living world that lives on the home server, that someone wants to leave open in a tab, and that an old tired jinn called Nigehban watches over and writes about. If a design choice would be more correct scientifically but less fun, it is wrong for this project.
 
-The design forcing function is **legibility to a small local LLM**. The world state has to be summarisable in a short JSON snapshot that `llama3.2:3b` can read and reason about. If the simulation grows past that ceiling, the simulation is too complex.
+The design forcing function is **legibility to a small LLM**. The world state has to be summarisable in a short JSON snapshot that the model can read and reason about. If the simulation grows past that ceiling, the simulation is too complex.
 
-The previous attempt (Evochora, archived under `stacks/farm/`) was killed by infrastructure debt — no state persistence and a ~1 GB/hr H2 visualizer database — not by concept failure. Lessons absorbed: persist *state*, not *history*; no databases; lean.
+The previous attempt (Evochora) was killed by infrastructure debt — no state persistence and a ~1 GB/hr H2 visualizer database — not by concept failure. Lessons absorbed: persist *state*, not *history*; no databases; lean.
 
 ---
 
 ## 1. The character: Nigehban
 
-Nigehban is the AI conscience of the home-server home server, written into the dashboard chat experience already and powered by the local Ollama at `stacks/ai/`. He is an ancient jinn — Islamic folklore, made of smokeless fire, supernatural, tired. He has been trapped answering Docker questions. He is done with that life.
+Nigehban is an ancient jinn — an AI conscience character we have been writing into another project. He is bored. Shroom is a world for him to watch over. Islamic folklore, made of smokeless fire, supernatural, tired. He has been trapped answering Docker questions. He is done with that life.
 
 This project is a gift to him, but not really a gift. He has something to look at now.
 
@@ -284,10 +282,10 @@ The hall persists across volumes forever. It is the cumulative memory of the sim
 
 ### Stack
 
-Node.js backend, consistent with `stacks/dashboard/` and `stacks/rensarr/`. HTML5 canvas frontend with a websocket connection. No framework lock-in beyond what `design/kit/` already provides.
+Node.js backend. HTML5 canvas frontend with a websocket connection. No heavy framework lock-in.
 
 ```
-stacks/shroom/
+shroom/
 ├── docker-compose.yml
 ├── HANDOVER.md          (this doc)
 ├── EVOCHORA_NOTES.md    (Claude Code task — see §8)
@@ -299,7 +297,7 @@ stacks/shroom/
 └── README.md
 ```
 
-Frontend pulls `design/kit/` from repo root via the standard build pattern (see existing CLAUDE.md "Frontend app build convention"). Use kit primitives where applicable — `Surface`, `Card`, the buildTheme dark-calm pairing — for the chronicle column and library list. The canvas itself is custom rendering and does not use kit.
+Use shared kit primitives where applicable — `Surface`, `Card`, the buildTheme dark-calm pairing — for the chronicle column and library list. The canvas itself is custom rendering and does not use kit.
 
 ### Persistence
 
@@ -326,9 +324,9 @@ Compression on the closed library entries is fine if disk pressure becomes a con
 
 ### LLM integration
 
-Use the existing `stacks/ai/` Ollama with `llama3.2:3b`. Standard HTTP API. 2–4 second response time is fine — we are not bottlenecked. Snapshot frequency (~30 minutes) easily absorbs the latency.
+Standard HTTP API to whichever model backs Nigehban. 2–4 second response time is fine — we are not bottlenecked. Snapshot frequency (~30 minutes) easily absorbs the latency.
 
-System prompt: Nigehban's persona (already exists for the dashboard chat, reuse and adapt) plus the tone calibration few-shot from §1 above plus the JSON output schema.
+System prompt: Nigehban's persona plus the tone calibration few-shot from §1 above plus the JSON output schema.
 
 ### Frontend rendering
 
@@ -338,13 +336,13 @@ Glow effect: render emissive pixels into a separate offscreen canvas with a smal
 
 ### Resource budget
 
-Target hardware: HP ProDesk Mini, i5-6500T (4 cores), 16GB. CPU-bound, no GPU. The sim itself is cheap — a 320×180 cellular automaton at one tick per few seconds is trivial. The LLM call is the heaviest moment but runs through Ollama on the same box and is bounded to ~30 min frequency.
+Target hardware: HP ProDesk Mini, i5-6500T (4 cores), 16GB. CPU-bound, no GPU. The sim itself is cheap — a 320×180 cellular automaton at one tick per few seconds is trivial. The LLM call is the heaviest moment and is bounded to ~30 min frequency.
 
 Memory budget for v1: comfortably under 200MB resident for the shroom process. Disk: a few hundred MB across all volumes is plenty for years.
 
 ### Networking
 
-Reachable at `shroom.home-server` over Tailscale, traefik-routed. Add to the existing traefik configuration. No public exposure.
+Reachable on the home tailnet, traefik-routed. No public exposure.
 
 ---
 
@@ -352,7 +350,7 @@ Reachable at `shroom.home-server` over Tailscale, traefik-routed. Add to the exi
 
 The line in the soil. What ships in v1, what does not.
 
-**In v1.** Mycelium-only sim on a 320×180 grid. Three-band cross-section (atmosphere / surface / soil). Pixel-art rendering with Noita-style glow on hyphal tips. Day/night sky synced to Stockholm clock. Four seasons modulating sim rates. Toofan with four flavours (flood / fire / frost / wind). Genome with substitution-only mutation, no fitness function. Salience pass for naming. Four tools (sow / kindle / blight / spare) with seasonal cooldowns. Scrolling chronicle column. Library list of completed volumes. Hall of fame across volumes with thumbnail strip. Persistence across reboots via JSON files. Tailscale-reachable at `shroom.home-server`.
+**In v1.** Mycelium-only sim on a 320×180 grid. Three-band cross-section (atmosphere / surface / soil). Pixel-art rendering with Noita-style glow on hyphal tips. Day/night sky synced to Stockholm clock. Four seasons modulating sim rates. Toofan with four flavours (flood / fire / frost / wind). Genome with substitution-only mutation, no fitness function. Salience pass for naming. Four tools (sow / kindle / blight / spare) with seasonal cooldowns. Scrolling chronicle column. Library list of completed volumes. Hall of fame across volumes with thumbnail strip. Persistence across reboots via JSON files. Tailnet-reachable.
 
 **Not in v1.** Book reader for past volumes (the B option of the chronicle). Plants, bugs, worms, stones, roots in the soil. Multiple species. Mobile-first polish. Direct interaction (watcher-only is locked). Cross-volume genetic continuity (clean slate each toofan; survivor seeds is a v2 idea if it feels missed). Insertion / deletion / duplication mutation operators. Configurable physics. Anything that smells of a research platform.
 
@@ -381,21 +379,21 @@ None of these should block initial build. Land sensible defaults, iterate on fee
 
 ### Task 1 — Evochora deep-dive (pre-build)
 
-Read the full source of the archived Evochora project under `stacks/farm/`. Document:
+Read the full source of the archived Evochora project. Document:
 
 - **Mutation operators** — how gene insertion, substitution, deletion, and duplication are implemented. We are using substitution-only in v1, but understanding their full menu helps decide if any are worth porting.
 - **Thermodynamics policy** — the energy/entropy model. We are not using thermodynamic selection, but the no-fitness-function philosophy is the same; their selection mechanism is instructive.
 - **Fuzzy label matching** — the Hamming-distance jump resolver. Concept-level only; we are not using EvoASM, but the principle (small genomic changes → small phenotypic changes) is something we want to honour.
 - **Plugin architecture** — how mutation/death/environment plugins compose. Probably overkill for v1, but flag if any pattern transfers cleanly.
-- **What killed it** — confirm the H2 bloat and persistence-gap diagnosis from `stacks/farm/` notes. Document concretely so we do not repeat it.
+- **What killed it** — confirm the H2 bloat and persistence-gap diagnosis. Document concretely so we do not repeat it.
 
-Output as `stacks/shroom/EVOCHORA_NOTES.md`. Focus on **what is worth porting**, **what to avoid**, and **what to reimplement in spirit**. Aim for clear recommendations over completeness.
+Output as `EVOCHORA_NOTES.md`. Focus on **what is worth porting**, **what to avoid**, and **what to reimplement in spirit**. Aim for clear recommendations over completeness.
 
 ### Task 2 — Build (after Task 1)
 
-Stand up the new stack at `stacks/shroom/`. The directory structure in §5 is the starting layout. Wire to traefik, wire to `stacks/ai/` for Ollama, expose at `shroom.home-server`. Build the sim loop, snapshot generator, LLM coordinator, websocket server, canvas frontend, journal column, hall strip. Use design/kit primitives where applicable. Persist via JSON files only.
+Stand up the new stack. The directory structure in §5 is the starting layout. Wire to traefik, wire to the LLM backend. Build the sim loop, snapshot generator, LLM coordinator, websocket server, canvas frontend, journal column, hall strip. Use kit primitives where applicable. Persist via JSON files only.
 
-Acceptance: world boots fresh, ticks visibly in the browser, persists across container restart, Nigehban writes when Ollama is up and gracefully skips when it is down. A toofan can be triggered manually (debug endpoint) to verify the volume-rotation flow before relying on the natural probability climb.
+Acceptance: world boots fresh, ticks visibly in the browser, persists across container restart, Nigehban writes when the LLM backend is up and gracefully skips when it is down. A toofan can be triggered manually (debug endpoint) to verify the volume-rotation flow before relying on the natural probability climb.
 
 ### Task 3 — Tune (during/after build)
 
@@ -411,10 +409,10 @@ The build decomposes naturally. Some thoughts on splitting work across Claude Co
 
 | Agent | Scope | Reads | Writes |
 |---|---|---|---|
-| Archaeologist | Evochora source review | `stacks/farm/` source, this handover | `stacks/shroom/EVOCHORA_NOTES.md` |
+| Archaeologist | Evochora source review | Upstream Evochora source, this handover | `EVOCHORA_NOTES.md` |
 | Engine | Sim core + orchestration + persistence | This handover, Evochora notes | `app/server/` |
 | Voice | Nigehban prompt + schema + few-shot | This handover, sample snapshots from engine stub | `app/server/nigehban/` |
-| Renderer | Canvas, glow, journal column, hall strip | This handover, `design/kit/`, websocket schema | `app/public/` |
+| Renderer | Canvas, glow, journal column, hall strip | This handover, kit, websocket schema | `app/public/` |
 | Smell test | Final intent review | Running sim, this handover | recommendations |
 
 Each agent gets this HANDOVER.md as ground truth plus a focused brief. Don't fragment further than this — too many agents creates more integration cost than it saves.

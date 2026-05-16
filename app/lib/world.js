@@ -1,4 +1,4 @@
-// home-server Shroom — world state and log generation.
+// Shroom — world state and log generation.
 // Grid is stored as parallel typed arrays indexed by y * W + x.
 
 const { randomGenome } = require('./genome');

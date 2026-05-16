@@ -1,4 +1,4 @@
-// home-server Shroom — genome
+// Shroom — genome
 // 10-float gene vector per colony. Substitution-only mutation with
 // scale-proportional perturbation (Evochora archaeology verdict #1).
 

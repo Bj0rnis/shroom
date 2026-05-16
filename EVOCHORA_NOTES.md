@@ -1,10 +1,10 @@
 # Evochora archaeology
 
-> Pre-build notes for home-server Shroom v1. Source read: upstream `github.com/evochora/evochora` at `v0.4.0` (the same release the archived `stacks/farm/` Dockerfile pulled). The repo only kept the wrapper — Dockerfile, conf, exporter — so the actual source dive happened against a fresh clone of the upstream Java codebase.
+> Pre-build notes for Shroom v1. Source read: upstream `github.com/evochora/evochora` at `v0.4.0` (the same release the previous wrapper pulled). The wrapper only kept Dockerfile, conf, and exporter — so the actual source dive happened against a fresh clone of the upstream Java codebase.
 
 ## TL;DR
 
-Evochora is a research-grade artificial-life platform: organisms are programs in a custom spatial assembly language (EvoASM) that live on an n-dimensional toroidal grid, replicate, mutate, and die under thermodynamic constraints. It is well-engineered, well-tested, and built around a non-negotiable design choice: **record every tick, store everything, allow full replay across terabytes of telemetry**. That choice is what killed it on home-server.
+Evochora is a research-grade artificial-life platform: organisms are programs in a custom spatial assembly language (EvoASM) that live on an n-dimensional toroidal grid, replicate, mutate, and die under thermodynamic constraints. It is well-engineered, well-tested, and built around a non-negotiable design choice: **record every tick, store everything, allow full replay across terabytes of telemetry**. That choice is what killed it on the home server.
 
 For our project that one decision is exactly the one we don't want. The good ideas worth borrowing — fuzzy label matching, plugin SPI, decay-on-death, scale-proportional value mutation — are conceptual, not architectural. We can reimplement them in JavaScript at one-thousandth the size.
 
@@ -140,11 +140,11 @@ Concretely:
 
 - Every tick produces `TickData` that flows through a queue → persistence service → indexer services → database.
 - The default storage is **H2 with Parquet** for the analyzer, plus **H2 topics** for inter-service messaging. `datapipeline/resources/database/h2/` contains five storage strategies; `topics/H2TopicResource.java`, `H2TopicWriterDelegate.java`, etc.
-- `evochora.conf` for home-server did the right thing: disabled `h2-console` and `h2-tcp-server`. But that only disables the *consoles* — the storage strategies still run. `pipeline.tuning.samplingInterval = 10` (sampled every 10 ticks instead of every tick) was a downsampling attempt. Not enough.
-- The home-server Prometheus exporter (`stacks/farm/exporter/main.py`) explicitly comments: `Parquet I/O is slow; parallel requests cause contention` — calls had to be sequentialised against the analyzer to avoid stalling.
-- The Docker wrapper (`stacks/farm/docker-compose.yml`) tried to box it: `cpus: 0.1`, `-Xmx2g`. The architecture doesn't fit boxed. It's designed for *cloud-scaling* (the same arch decisions doc mentions SQS/Kafka/S3 as drop-in replacements). home-server is one i5-6500T with 16 GB RAM.
+- `evochora.conf` for the home server did the right thing: disabled `h2-console` and `h2-tcp-server`. But that only disables the *consoles* — the storage strategies still run. `pipeline.tuning.samplingInterval = 10` (sampled every 10 ticks instead of every tick) was a downsampling attempt. Not enough.
+- The prior Prometheus exporter (`exporter/main.py`) explicitly comments: `Parquet I/O is slow; parallel requests cause contention` — calls had to be sequentialised against the analyzer to avoid stalling.
+- The Docker wrapper tried to box it: `cpus: 0.1`, `-Xmx2g`. The architecture doesn't fit boxed. It's designed for *cloud-scaling* (the same arch decisions doc mentions SQS/Kafka/S3 as drop-in replacements). The home server is one i5-6500T with 16 GB RAM.
 
-The H2 visualizer DB growing at ~1 GB/hr was the symptom we noticed first. It would have grown faster on bigger worlds. The persistence-gap (colony state reset on container restart) is a separate symptom — Evochora can resume from a checkpoint, but the home-server wrapper wasn't configured for it, and nobody was going to babysit checkpointing on a home server.
+The H2 visualizer DB growing at ~1 GB/hr was the symptom we noticed first. It would have grown faster on bigger worlds. The persistence-gap (colony state reset on container restart) is a separate symptom — Evochora can resume from a checkpoint, but the wrapper wasn't configured for it, and nobody was going to babysit checkpointing on a home server.
 
 ### Lessons for shroom
 
@@ -173,7 +173,7 @@ The H2 visualizer DB growing at ~1 GB/hr was the symptom we noticed first. It wo
 | SOA + queues + topics | Decoupled hot/cold path | **Avoid** | One Node process |
 | 8 GB default heap | Designed for memory-rich hosts | **Avoid** | <200 MB resident is the v1 target |
 
-**Net:** the conceptual debt to Evochora is real (substitution-only mutation, no-fitness selection, plugin hooks, decay-on-death — all four are improvements over a naive sim). The architectural debt is zero — none of Evochora's infrastructure should appear in `stacks/shroom/`. We owe its philosophy a mention; we owe its codebase nothing.
+**Net:** the conceptual debt to Evochora is real (substitution-only mutation, no-fitness selection, plugin hooks, decay-on-death — all four are improvements over a naive sim). The architectural debt is zero — none of Evochora's infrastructure should appear in shroom. We owe its philosophy a mention; we owe its codebase nothing.
 
 ---
 

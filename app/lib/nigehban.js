@@ -1,4 +1,4 @@
-// home-server Shroom — Nigehban orchestration.
+// Shroom — Nigehban orchestration.
 // Watches the world, calls the cloud LLM on triggers, applies the response.
 // Graceful failure: sim keeps ticking even when the LLM call fails.
 

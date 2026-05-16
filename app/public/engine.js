@@ -764,7 +764,7 @@ function EngineApp() {
         {/* Page header (no panel — sits on wallpaper) */}
         <div style={{ padding: '0 6px 14px', marginBottom: 10 }}>
           <div style={{ fontFamily: MONO, color: COL.ember, fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: 6 }}>
-            home-server · shroom · engine
+            shroom · engine
           </div>
           <div style={{ fontFamily: SERIF, color: COL.textHi, fontSize: 40, lineHeight: 1, marginBottom: 8 }}>
             how this shroom works

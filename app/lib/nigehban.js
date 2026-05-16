@@ -9,6 +9,7 @@ const path  = require('path');
 const { buildSnapshot, simDay } = require('./snapshot');
 const persistence = require('./persistence');
 const observability = require('./observability');
+const aiUsageReporter = require('./ai-usage-reporter');
 const { sowAt, logEvent, W, H, AIR, SOIL, LOG, FRUIT } = require('./world');
 const { randomGenome, phenotypeWords } = require('./genome');
 
@@ -88,7 +89,7 @@ async function tryWake(world) {
     const journal = persistence.loadJournal();
     const hall    = persistence.loadHall();
     const snapshot = buildSnapshot(world, journal, hall, world.events, reason);
-    const text = await callLLM(snapshot);
+    const text = await callLLM(snapshot, reason);
     state.lastInvocationTick = world.meta.tick;
     state.callCount++;
     state.callTimestamps.push(Date.now());
@@ -122,8 +123,9 @@ async function tryWake(world) {
   }
 }
 
-async function callLLM(snapshot) {
+async function callLLM(snapshot, reason) {
   if (!client) throw new Error('ANTHROPIC_API_KEY not set');
+  const tStart = Date.now();
   const resp = await client.messages.create({
     model: MODEL,
     max_tokens: 1024,
@@ -134,6 +136,17 @@ async function callLLM(snapshot) {
     messages: [
       { role: 'user', content: JSON.stringify(snapshot, null, 2) },
     ],
+  });
+  aiUsageReporter.report({
+    app: 'shroom',
+    provider: 'anthropic',
+    model: MODEL,
+    input_tokens:       resp.usage?.input_tokens || 0,
+    output_tokens:      resp.usage?.output_tokens || 0,
+    cache_read_tokens:  resp.usage?.cache_read_input_tokens || 0,
+    cache_write_tokens: resp.usage?.cache_creation_input_tokens || 0,
+    latency_ms: Date.now() - tStart,
+    context: reason || null,
   });
   const block = (resp.content || []).find(b => b.type === 'text');
   return block ? block.text : '';

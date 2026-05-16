@@ -1,4 +1,4 @@
-// Almari Shroom — simulation tick.
+// Shroom — simulation tick.
 // Order each tick: clock → grow → fruit → spores → germinate → decay → toofan-roll.
 
 const {

@@ -1,4 +1,4 @@
-// Almari Shroom — observability.
+// Shroom — observability.
 // Append-only NDJSON logs so we can analyze a day's run with jq/sqlite.
 // Never throws — sim must never fail because logging failed.
 

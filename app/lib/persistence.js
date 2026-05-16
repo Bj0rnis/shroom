@@ -1,4 +1,4 @@
-// Almari Shroom — JSON persistence.
+// Shroom — JSON persistence.
 // Lesson from Evochora: persist state, not history. One world.json snapshot,
 // rewritten atomically every N ticks. Journal is append-only short text.
 

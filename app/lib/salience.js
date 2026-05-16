@@ -1,4 +1,4 @@
-// Almari Shroom — naming-candidate salience.
+// Shroom — naming-candidate salience.
 // Score = age*size base + bonus points for memorable behaviour.
 // Surface top 3 unnamed colonies above threshold.
 

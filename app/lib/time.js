@@ -1,4 +1,4 @@
-// Almari Shroom — time anchors.
+// Shroom — time anchors.
 //
 // Time constants are anchored in TICKS, calibrated so that 1 sim day = 1 real
 // day at the canonical TICK_INTERVAL_MS of 3000. We talk to humans in real

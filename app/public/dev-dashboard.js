@@ -1,4 +1,4 @@
-// Almari Shroom — dev dashboard overlay.
+// Shroom — dev dashboard overlay.
 // Hidden by default; opens on ⌘. (Cmd+Period) or the gear icon, closes on
 // Esc or backdrop click.
 

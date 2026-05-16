@@ -15,7 +15,7 @@ services:
       # - SHROOM_DEV=true
       # - NIGEHBAN_DISABLED=true        # stop Nigehban while tuning the natural world
     volumes:
-      - /opt/almari/data/shroom:/app/data
+      - /opt/shroom/data/shroom:/app/data
     networks:
       - traefik-public
       - monitoring

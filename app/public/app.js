@@ -109,23 +109,23 @@ function App() {
   }
 
   return (
-    <div style={{ height: '100dvh', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ height: '100dvh', overflow: 'hidden', display: 'flex', position: 'relative' }}>
       <PageWallpaper />
 
-      {/* ── Canvas — fills the full viewport, centered ───────────────
-          The ShroomCanvas wrapper maintains 16:9 and caps at 1280px.
-          On wide screens the canvas renders at or near native resolution.
-          Dark wallpaper shows through on any uncovered edges. */}
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* ── Canvas — grows to fill all space left of the panel ───────
+          ShroomCanvas centers itself and maintains 16:9 within this
+          flex item. At 1440px wide: canvas gets ~1116px → 627px tall. */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         <ShroomCanvas snapshot={snapshot} />
       </div>
 
-      {/* ── Right panel — floating overlay ───────────────────────────
-          Cards sit on the right with their own dark backgrounds so they
-          read over the canvas at any viewport width. */}
+      {/* ── Right panel — fixed-width column beside the canvas ────────
+          Cards stack vertically; Chronicle takes remaining space. */}
       <div style={{
-        position: 'absolute', top: 16, right: 16, bottom: 16, width: 360,
-        display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0,
+        width: 300, flexShrink: 0,
+        display: 'flex', flexDirection: 'column', gap: 8,
+        padding: '12px 12px 12px 0',
+        minHeight: 0,
       }}>
         <StatusLeft snapshot={snapshot} />
         <div style={{ flex: 1, minHeight: 80, overflow: 'hidden' }}>

@@ -47,7 +47,7 @@ function b64ToBytes(b64) {
 //
 // The mapping is the actual contract between sim state and renderer. If
 // the snapshot shape changes, fix it here, not in the atoms.
-function worldToCfg(snap, now) {
+function worldToCfg(snap, now, t = 0) {
   const A = window.ShroomAtoms;
   if (!snap || !A) return null;
 
@@ -158,18 +158,29 @@ function worldToCfg(snap, now) {
     });
   }
 
-  // ── critters — sim doesn't model them; cosmetic drift per tick ─────
+  // ── critters — cosmetic; walk continuously using real time ─────────
+  // Seed is stable per world (not per tick) so positions don't jump;
+  // t drives the walk so they move smoothly at 60fps between sim ticks.
   const critters = [];
-  const critterRng = A.mkRng((snap.meta.seed || 7) ^ Math.floor(tick / 6));
+  const critterRng = A.mkRng((snap.meta.seed || 7) * 31 + 7);
   const critterKinds = ['worm', 'beetle', 'springtail', 'ant', 'pillbug'];
   const critterCount = 3 + Math.floor(critterRng() * 3);
+  const tSec = t / 1000;
   for (let i = 0; i < critterCount; i++) {
+    const kindIdx = Math.floor(critterRng() * critterKinds.length);
+    const baseX   = critterRng() * SHROOM_W;
+    const baseY   = 80 + critterRng() * 90;
+    const baseAng = critterRng() * Math.PI * 2;
+    const segs    = 8 + Math.floor(critterRng() * 3);
+    const speed   = 0.35 + (i % 3) * 0.2;   // px/s, varies per critter
+    const walkX   = ((baseX + Math.cos(baseAng) * speed * tSec) % SHROOM_W + SHROOM_W) % SHROOM_W;
+    const walkY   = baseY + Math.sin(tSec * 0.55 + i * 1.8) * 1.4;
     critters.push({
-      kind: critterKinds[Math.floor(critterRng() * critterKinds.length)],
-      x: Math.floor(critterRng() * SHROOM_W),
-      y: 80 + Math.floor(critterRng() * 90),
-      angle: critterRng() * Math.PI * 2,
-      segs: 8 + Math.floor(critterRng() * 3),
+      kind:  critterKinds[kindIdx],
+      x:     Math.round(walkX),
+      y:     Math.round(walkY),
+      angle: baseAng + tSec * 1.4,
+      segs,
     });
   }
 
@@ -243,10 +254,10 @@ function cloudCoverForSeason(season) {
 
 // ── render ────────────────────────────────────────────────────────────
 
-function drawScene(ctx, snap) {
+function drawScene(ctx, snap, t = 0) {
   const A = window.ShroomAtoms;
   if (!A) return;
-  const cfg = worldToCfg(snap, new Date());
+  const cfg = worldToCfg(snap, new Date(), t);
   if (!cfg) return;
 
   // Decode colony grid once for option-A cell painting.
@@ -297,7 +308,7 @@ function drawScene(ctx, snap) {
   // 3. Smoothed overlays (post-upscale). The hyphae glow now derives
   // from the cell grid too: build an offscreen hue-tinted glow buffer
   // (tip pixels emit bright, interior dim), blur, composite additive.
-  paintOverlays(ctx, cfg, colonyU16, snap.colonies);
+  paintOverlays(ctx, cfg, colonyU16, snap.colonies, t);
 }
 
 // Build an offscreen 320×180 glow buffer from the cell grid. Tip cells
@@ -343,7 +354,8 @@ function buildHyphaeGlowCanvas(colonyU16, coloniesByCid, A) {
   return off;
 }
 
-function paintOverlays(ctx, cfg, colonyU16, coloniesByCid) {
+function paintOverlays(ctx, cfg, colonyU16, coloniesByCid, t = 0) {
+  const tSec = t / 1000;
   const A = window.ShroomAtoms;
   const sx = CANVAS_W / SHROOM_W;
   const sy = CANVAS_H / SHROOM_H;
@@ -390,8 +402,10 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid) {
   ctx.globalCompositeOperation = 'lighter';
   if (colonyU16 && coloniesByCid) {
     const glowCanvas = buildHyphaeGlowCanvas(colonyU16, coloniesByCid, A);
+    // Slow breathing pulse — the network feels alive between sim ticks.
+    const breathe = 0.82 + 0.18 * Math.sin(tSec * 0.7);
     ctx.filter = 'blur(3px)';
-    ctx.globalAlpha = 0.65 * budgetScale;
+    ctx.globalAlpha = 0.65 * budgetScale * breathe;
     ctx.drawImage(glowCanvas, 0, 0, CANVAS_W, CANVAS_H);
     ctx.filter = 'none';
     ctx.globalAlpha = 1;
@@ -430,9 +444,12 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid) {
   if (cfg.spores && cfg.spores.length) {
     ctx.save();
     for (const sp of cfg.spores) {
-      const sxx = sp.x * sx;
-      const syy = sp.y * sy;
-      const ageFade = Math.max(0, 1 - (sp.age || 0) / 200);  // fade as spore drifts
+      // Gentle oscillating drift — each spore floats independently.
+      const driftX = Math.sin(tSec * 0.45 + sp.x * 0.28) * 1.8;
+      const driftY = Math.cos(tSec * 0.35 + sp.y * 0.22) * 0.9;
+      const sxx = (sp.x + driftX) * sx;
+      const syy = (sp.y + driftY) * sy;
+      const ageFade = Math.max(0, 1 - (sp.age || 0) / 200);
       const r = 1.2 * sx;
       ctx.fillStyle = `rgba(232, 220, 180, ${0.32 * ageFade})`;
       ctx.beginPath(); ctx.arc(sxx, syy, r, 0, Math.PI * 2); ctx.fill();
@@ -457,18 +474,32 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid) {
   }
 
   // ── falling leaves (autumn). ─────────────────────────────────────
+  // Each leaf falls at its own speed, sways, and rotates. They wrap back
+  // to the top so the layer is always populated without extra state.
   if (cfg.fallingLeaves) {
     ctx.save();
-    const lrng = A.mkRng(311);
-    const leaves = [A.hsl(22, 75, 42), A.hsl(42, 70, 48), A.hsl(12, 65, 36)];
+    const lrng  = A.mkRng(311);
+    const leafColors = [A.hsl(22, 75, 42), A.hsl(42, 70, 48), A.hsl(12, 65, 36)];
+    const grassPx = A.GRASS_Y * sy;
     for (let i = 0; i < 12; i++) {
-      const lx = lrng() * CANVAS_W;
-      const ly = lrng() * (A.GRASS_Y * sy);
-      const c  = leaves[(lrng() * 3) | 0];
-      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.85)`;
+      const baseX    = lrng() * CANVAS_W;
+      const phase    = lrng() * grassPx;          // stagger start positions
+      const fallSpd  = 10 + lrng() * 18;          // px/s
+      const swayAmp  = 14 + lrng() * 22;
+      const swayFreq = 0.35 + lrng() * 0.55;
+      const c        = leafColors[(lrng() * 3) | 0];
+      const rotSpd   = 0.6 + lrng() * 1.4;
+      const lx  = baseX + Math.sin(tSec * swayFreq + i * 1.3) * swayAmp;
+      const ly  = (phase + tSec * fallSpd) % grassPx;
+      const rot = tSec * rotSpd + i * 0.9;
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(rot);
+      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.82)`;
       ctx.beginPath();
-      ctx.ellipse(lx, ly, 2.2 * sx, 1.1 * sx, lrng() * Math.PI, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 2.2 * sx, 1.1 * sx, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -487,13 +518,13 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid) {
     grd.addColorStop(1,   'rgba(220, 110, 60, 0)');
     ctx.fillStyle = grd;
     ctx.beginPath(); ctx.arc(wx, wy, 22 * sx / 4, 0, Math.PI * 2); ctx.fill();
-    // Upward flicker — narrow trail of ellipses.
+    // Upward flicker — narrow trail of ellipses, time-driven oscillation.
     for (let i = 0; i < 5; i++) {
       const trailY = wy - (i * 6 + 4) * sy / 4;
       const a = 0.32 - i * 0.05;
       ctx.fillStyle = `rgba(255, 180, 110, ${a})`;
       ctx.beginPath();
-      ctx.ellipse(wx + Math.sin(i) * 2, trailY,
+      ctx.ellipse(wx + Math.sin(i * 1.4 + tSec * 4.5) * 3, trailY,
         (3 - i * 0.4) * sx / 4, (4 - i * 0.4) * sx / 4, 0, 0, Math.PI * 2);
       ctx.fill();
     }
@@ -540,11 +571,11 @@ function ShroomCanvas({ snapshot }) {
     if (!ref.current || !snapshot) return;
     const ctx = ref.current.getContext('2d');
     let raf = 0;
-    const tick = () => {
-      drawScene(ctx, snapshot);
+    const tick = (t) => {
+      drawScene(ctx, snapshot, t);
       raf = requestAnimationFrame(tick);
     };
-    tick();
+    raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [snapshot]);
 

@@ -3,6 +3,25 @@
 
 const { randomGenome } = require('./genome');
 
+// Playful made-up mushroom-y names for unnamed colonies. Shown in the UI as
+// "Wigglecap", "Glomwhisker", etc. until Nigehban gets around to bestowing a
+// real name. Combinatorial (25 × 16 = 400) so collisions are rare.
+const NAME_PREFIXES = [
+  'Wiggle', 'Bobble', 'Snorzel', 'Glim', 'Fizz', 'Snuffle', 'Pixie', 'Cobble',
+  'Quaggle', 'Plump', 'Wobble', 'Squidge', 'Whisper', 'Trumpet', 'Murmur',
+  'Hush', 'Glint', 'Tatter', 'Dizzy', 'Velvet', 'Bramble', 'Dew', 'Bumble',
+  'Mumble', 'Sniffle',
+];
+const NAME_SUFFIXES = [
+  'cap', 'stem', 'gill', 'foot', 'spore', 'throat', 'noodle', 'sprout',
+  'moss', 'bloom', 'whisker', 'snore', 'sigh', 'bath', 'wort', 'bell',
+];
+function pickPlaceholderName() {
+  const a = NAME_PREFIXES[Math.floor(Math.random() * NAME_PREFIXES.length)];
+  const b = NAME_SUFFIXES[Math.floor(Math.random() * NAME_SUFFIXES.length)];
+  return a + b;
+}
+
 const W = 320;
 const H = 180;
 // Grass line at row 63 — soil-dominant 35/65 band proportion, locked by
@@ -73,13 +92,14 @@ function createWorld(seed) {
 }
 
 function addDeepNutrientPockets(world) {
-  // Soil decays linearly with depth in paintBaseTerrain, which has no
-  // reason for hyphae to grow downward. Pockets create seams of rich
-  // substrate that reward vertical_bias genes. Soil persists across
-  // volumes — pockets are generated once and slowly deplete forever.
+  // Pockets carry all the soil-nutrient variation. The base soil is flat and
+  // lean (~25), so anything worth absorbing in the soil band lives here.
+  // Centres are biased toward the deep half of the band so mycelium has a
+  // reason to tunnel downward. Soil persists across volumes — pockets are
+  // generated once and slowly deplete forever.
   const { kind, nutrient } = world.grid;
   const soilHeight = H - GRASS_Y;
-  const pocketCount = 3 + Math.floor(Math.random() * 3); // 3–5
+  const pocketCount = 5 + Math.floor(Math.random() * 3); // 5–7
   for (let p = 0; p < pocketCount; p++) {
     const px = Math.floor(Math.random() * W);
     const depthFrac = 0.55 + Math.random() * 0.4; // 55–95% of soil band
@@ -94,7 +114,7 @@ function addDeepNutrientPockets(world) {
         const i = y * W + x;
         if (kind[i] !== SOIL) continue;
         const falloff = 1 - Math.sqrt(d2) / r;
-        nutrient[i] = Math.min(100, nutrient[i] + Math.floor(falloff * 55));
+        nutrient[i] = Math.min(100, nutrient[i] + Math.floor(falloff * 65));
       }
     }
   }
@@ -117,9 +137,12 @@ function paintBaseTerrain(world) {
         moisture[i] = 50;
       } else {
         kind[i] = SOIL;
-        // nutrient gradient: more abundant near grass, depleting with depth
+        // Flat, lean baseline. The substrate doesn't push hyphae any direction
+        // on its own — variation lives in addDeepNutrientPockets, which seeds
+        // rich seams in the lower soil band and gives mycelium a reason to
+        // tunnel downward. Moisture keeps its gradient (visual / dies-out only).
         const depth = (y - GRASS_Y) / (H - GRASS_Y);
-        nutrient[i] = Math.floor(80 - depth * 50 + (Math.random() * 10));
+        nutrient[i] = 22 + Math.floor(Math.random() * 8);  // 22–29
         moisture[i] = Math.floor(60 - depth * 20 + (Math.random() * 15));
       }
     }
@@ -219,6 +242,11 @@ function sowAt(world, x, y, genome) {
     cellCount: 1,
     fruitCount: 0,
     seasonsSurvived: 0,
+    reserves: 0,
+    // Placeholder name shown in UI until Nigehban grants a real one. Kept
+    // separate from `name` so salience.js still treats the colony as nameable
+    // (col.name remains undefined until Nigehban writes it).
+    placeholderName: pickPlaceholderName(),
     alive: true,
   };
   world.grid.colony[i] = id;

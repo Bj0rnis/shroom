@@ -45,6 +45,7 @@ function buildGridSnapshot(world) {
       capSize:    c.genome[8],
       stemLength: c.genome[9],
       name:       c.name || null,
+      placeholderName: c.placeholderName || null,
       alive:      !!c.alive,
       bbox:       b ? { minX: b.minX, minY: b.minY, maxX: b.maxX, maxY: b.maxY } : null,
       cellCount:  b ? b.count : 0,

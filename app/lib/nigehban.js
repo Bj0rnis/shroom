@@ -258,7 +258,7 @@ function doBlight(world, a) {
   if (!col || !col.alive) return;
   col.blightedUntil = world.meta.tick + 400;
   world.tools.blightUsedInSeason = world.meta.season;
-  logEvent(world, 'action', `nigehban blighted colony ${id} (${col.name || 'unnamed'})`);
+  logEvent(world, 'action', `nigehban blighted colony ${id} (${col.name || col.placeholderName || 'unnamed'})`);
 }
 
 function doSpare(world, a) {
@@ -269,7 +269,7 @@ function doSpare(world, a) {
   if (!col || !col.alive) return;
   col.sparedUntil = world.meta.tick + 600;
   world.tools.spareUsedInSeason = world.meta.season;
-  logEvent(world, 'action', `nigehban spared colony ${id} (${col.name || 'unnamed'})`);
+  logEvent(world, 'action', `nigehban spared colony ${id} (${col.name || col.placeholderName || 'unnamed'})`);
 }
 
 // ── Inscribe ────────────────────────────────────────────
@@ -283,7 +283,7 @@ function applyInscribe(world, ins) {
   // Avoid duplicate inscriptions for the same colony in the same volume
   if (hall.find(h => h.volume === world.meta.volume && h.colonyId === id)) return;
   hall.push({
-    name: col.name || `volume-${world.meta.volume}-c${id}`,
+    name: col.name || col.placeholderName || `volume-${world.meta.volume}-c${id}`,
     volume: world.meta.volume,
     colonyId: id,
     phenotype: phenotypeWords(col.genome),
@@ -295,7 +295,7 @@ function applyInscribe(world, ins) {
     epitaph:  String(ins.epitaph  || '').slice(0, 240),
   });
   persistence.saveHall(hall);
-  logEvent(world, 'inscribe', `inscribed: ${col.name || 'unnamed'} (volume ${world.meta.volume})`);
+  logEvent(world, 'inscribe', `inscribed: ${col.name || col.placeholderName || 'unnamed'} (volume ${world.meta.volume})`);
 }
 
 // ── Hooks for sim events ────────────────────────────────

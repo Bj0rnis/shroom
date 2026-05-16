@@ -21,7 +21,7 @@ services:
       - monitoring
     labels:
       - traefik.enable=true
-      - traefik.http.routers.shroom.rule=Host(`shroom.home-server`)
+      - traefik.http.routers.shroom.rule=Host(`${SHROOM_HOST:-shroom.local}`)
       - traefik.http.routers.shroom.entrypoints=websecure
       - traefik.http.routers.shroom.tls=true
       - traefik.http.services.shroom.loadbalancer.server.port=3000

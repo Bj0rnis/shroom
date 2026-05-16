@@ -553,8 +553,10 @@ function ShroomCanvas({ snapshot }) {
       width={CANVAS_W}
       height={CANVAS_H}
       style={{
-        width: '100%',
-        maxWidth: 960,
+        maxWidth: '100%',
+        maxHeight: '100%',
+        width: 'auto',
+        height: 'auto',
         aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
         imageRendering: 'pixelated',
         display: 'block',

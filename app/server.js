@@ -328,7 +328,7 @@ app.post('/api/debug/inscribe', (req, res) => {
     return res.json({ ok: false, error: 'already inscribed in this volume' });
   }
   hall.push({
-    name: target.name || `colony-${target.id}`,
+    name: target.name || target.placeholderName || `colony-${target.id}`,
     volume: world.meta.volume,
     colonyId: target.id,
     phenotype: phenotypeWords(target.genome),
@@ -340,7 +340,7 @@ app.post('/api/debug/inscribe', (req, res) => {
     epitaph: 'Carried the cap further than the others. The log remembers, briefly.',
   });
   persistence.saveHall(hall);
-  logEvent(world, 'inscribe', `debug-inscribe: ${target.name || `colony-${target.id}`} (volume ${world.meta.volume})`);
+  logEvent(world, 'inscribe', `debug-inscribe: ${target.name || target.placeholderName || `colony-${target.id}`} (volume ${world.meta.volume})`);
   res.json({ ok: true, name: target.name, volume: world.meta.volume });
 });
 

@@ -26,7 +26,7 @@ function TopColony({ snapshot, onOpenDev }) {
         ) : (
           <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {top.map((c, i) => {
-              const displayName = c.name || `colony ${c.key}`;
+              const displayName = c.name || c.placeholderName || `colony ${c.key}`;
               const ageDays = Math.floor((c.age || 0) / TICKS_PER_DAY);
               return (
                 <li key={c.key || i} style={{

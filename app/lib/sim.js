@@ -26,7 +26,7 @@ const SIM_DAYS_PER_SEASON = DAYS_PER_SEASON;     // 91 real days
 // ── Cell-level growth / absorption ──────────────────────
 const NUTRIENT_CONSUMPTION   = 1;
 const SIDE_ABSORPTION        = 1;
-const SIDE_ABSORPTION_FLOOR  = 20;
+const SIDE_ABSORPTION_FLOOR  = 10;   // lowered from 20 — frontier cells can
 const THICKNESS_BOX_RADIUS   = 2;
 const THICKNESS_MAX          = 3;
 const NUTRIENT_MAX           = 100;  // soft cap matching world.js generators
@@ -58,6 +58,18 @@ const OLD_AGE_DIE_RISK_MAX   = 0.0003;           // per-cell at full old-age
 
 // ── Fruiting / spores ────────────────────────────────────
 const FRUIT_BASE_RATE        = 0.0025;
+// Reserves economy:
+//   • EXTEND_COST: every new hypha cell costs this much from col.reserves.
+//     Colonies have to *invest* absorbed nutrient to grow — networks that
+//     just sit and recycle their own dieback can't expand. Pairs with
+//     FRUIT_COST so the colony pays for both infrastructure and offspring.
+//   • FRUIT_COST: base cost of a fruit body. Discounted by col.fruitCount
+//     (handleFruiting) so a colony that's already invested in a fruiting
+//     network gets cheaper subsequent fruits — rewards specialization.
+const EXTEND_COST            = 2;
+const FRUIT_COST             = 500;
+const FRUIT_COST_FLOOR       = 80;
+const FRUIT_DISCOUNT_PER_FRUIT = 0.8;   // multiplicative: 500, 400, 320, 256, …
 const FRUIT_MATURE_TICKS     = 80;          // ~4 real min from emergence to spore release
 const FRUIT_CAP_DECAY_TICKS  = TICKS_PER_DAY * 2;  // cap stays visible 2 sim days post-emergence
 // Minimum horizontal source-res cell-distance between simultaneously-active
@@ -77,16 +89,13 @@ const SPORE_AGE_LIMIT        = 60;
 const SPORE_HARD_CAP         = 60;
 
 // ── Toofan ───────────────────────────────────────────────
-// Rare and selective. ≥1 real year between toofans. Daily roll past the gate
-// with a tiny baseline plus a pressure boost — typical cadence works out to
-// roughly one toofan every 1–2 real years. The world is NOT reset: each
-// colony rolls a phenotype-aware survival check, so a toofan usually leaves
-// 1–2 survivors and a damaged but continuous world.
-const TOOFAN_MIN_TICKS_BETWEEN  = TICKS_PER_YEAR;
-const TOOFAN_DAILY_BASE_PROB    = 0.0010;  // ~30% over a year with no pressure
-const TOOFAN_DAILY_PRESSURE_MAX = 0.0050;  // +0.5% per day at full log exhaustion
-const TOOFAN_BASE_SURVIVAL      = 0.10;    // every colony has a small floor
-const TOOFAN_PHENOTYPE_WEIGHT   = 0.55;    // up to +0.55 for ideally adapted phenotype
+// Stochastic, decoupled from substrate. One roll per sim day at fixed
+// probability — mean ~1 toofan per sim year, with natural Poisson variance.
+// Pressure is purely narrative: time-since-last as a 0→1 gauge (>1 = overdue).
+// The world is NOT reset: each colony rolls a phenotype-aware survival check.
+const TOOFAN_DAILY_PROB         = 1 / 365;   // mean 1 per sim year
+const TOOFAN_BASE_SURVIVAL      = 0.10;
+const TOOFAN_PHENOTYPE_WEIGHT   = 0.55;
 const TOOFAN_FLAVORS            = ['flood', 'fire', 'frost', 'wind'];
 
 // ── Auto-bootstrap (silent safety net) ──────────────────
@@ -346,14 +355,19 @@ function growHyphae(world) {
     const col = world.colonies[cid];
     if (!col || !col.alive) continue;
 
-    // Self-consume + age
-    nutrient[i] = Math.max(0, nutrient[i] - NUTRIENT_CONSUMPTION);
+    // Self-consume + age. Track absorbed nutrient on the colony — drives the
+    // fruit-cost gate below. Use the actual draw, not the constant, so cells
+    // sitting on empty substrate don't earn phantom reserves.
+    const selfDraw = Math.min(NUTRIENT_CONSUMPTION, nutrient[i]);
+    nutrient[i] -= selfDraw;
+    col.reserves = (col.reserves || 0) + selfDraw;
     age[i] = Math.min(65535, age[i] + 1);
 
     const gene = col.genome;
     const growthRate   = gene[0]; // 0.5–2.0
     const chemotaxis   = gene[1]; // 0–1
-    const verticalBias = gene[2]; // 0–1
+    // gene[2] is reserved (formerly verticalBias — kept in the genome shape
+    // so existing colonies load cleanly, but no longer drives growth).
 
     // Walk 4 neighbors once. Each substrate-non-colony neighbor is:
     //   • a side-absorption target (drain at end of cell step), and
@@ -379,8 +393,9 @@ function growHyphae(world) {
       if (occupiedInBox(startSnapshot, j) > THICKNESS_MAX) continue;
 
       freeCount++;
+      // Pure chemotaxis: weight by neighbor nutrient, no directional bias.
+      // Substrate design (pockets, log richness) does all the steering.
       let w = 1 + chemotaxis * (nutrient[j] / 50);
-      if (off === -W && kind[i] === SOIL) w *= 1 + verticalBias * 1.5;
       candidates.push({ j, w });
       totalW += w;
     }
@@ -389,7 +404,9 @@ function growHyphae(world) {
     //   freeCount ≥ 3 = a real tip, extends reliably.
     //   freeCount = 2 = junction, low prob → occasional fork.
     //   freeCount = 1 = chain interior, almost never extends.
-    if (freeCount > 0) {
+    // Gated on col.reserves: each new cell costs EXTEND_COST. A colony that
+    // isn't absorbing enough nutrient can't grow.
+    if (freeCount > 0 && (col.reserves || 0) >= EXTEND_COST) {
       let baseExtend;
       if (freeCount >= 3)       baseExtend = 0.30  * growthRate * seasonMult;
       else if (freeCount === 2) baseExtend = 0.04  * growthRate * seasonMult;
@@ -403,17 +420,20 @@ function growHyphae(world) {
         }
         colony[chosen] = cid;
         age[chosen] = 0;
+        col.reserves -= EXTEND_COST;
       }
     }
 
     // Side-absorption: drain substrate neighbors but stop at the floor. The
     // floor keeps cells survivable as extension targets — without it the tip
     // depletes its own forward neighbors before extending, and the colony
-    // starves in place.
+    // starves in place. Actual draw is credited to col.reserves.
     for (const j of drainTargets) {
       if (colony[j] !== 0) continue;
       if (nutrient[j] > SIDE_ABSORPTION_FLOOR) {
-        nutrient[j] = Math.max(SIDE_ABSORPTION_FLOOR, nutrient[j] - SIDE_ABSORPTION);
+        const drained = Math.min(SIDE_ABSORPTION, nutrient[j] - SIDE_ABSORPTION_FLOOR);
+        nutrient[j] -= drained;
+        col.reserves = (col.reserves || 0) + drained;
       }
     }
   }
@@ -623,7 +643,8 @@ function handleFruiting(world) {
         col.fruitCount++;
         if (col.fruitCount === 1) fire('onFirstFruit', world, col);
       }
-      logEvent(world, 'fruit', `colony ${f.colonyId} fruited at (${f.x},${f.y})`);
+      const fname = col ? (col.name || col.placeholderName || `colony ${f.colonyId}`) : `colony ${f.colonyId}`;
+      logEvent(world, 'fruit', `${fname} fruited at (${f.x},${f.y})`);
       releaseSpores(world, f);
       // NOTE: cap stays visible after maturity; FRUIT cell persists.
     }
@@ -677,6 +698,14 @@ function handleFruiting(world) {
 
     const col = world.colonies[cid];
     if (!col || !col.alive || col.cellCount < 30) continue;
+    // Reserves gate with declining cost per successful fruit. First fruit is
+    // expensive (~500), subsequent fruits exponentially cheaper down to the
+    // floor — a colony that's built a fruiting network gets rewarded for it.
+    const fruitCost = Math.max(
+      FRUIT_COST_FLOOR,
+      FRUIT_COST * Math.pow(FRUIT_DISCOUNT_PER_FRUIT, col.fruitCount || 0)
+    );
+    if ((col.reserves || 0) < fruitCost) continue;
     const fruitThreshold = col.genome[3];
     const prob = FRUIT_BASE_RATE * seasonMult * substrateMult * (0.3 + fruitThreshold * 1.4);
     if (Math.random() > prob) continue;
@@ -692,6 +721,7 @@ function handleFruiting(world) {
     }
 
     kind[above] = FRUIT;
+    col.reserves -= fruitCost;
     world.fruits.push({
       x: fx, y: Math.floor(above / W),
       colonyId: cid, age: 0, mature: false, spent: false,
@@ -754,12 +784,20 @@ function germinateSpores(world) {
       if (k === AIR) remaining.push(sp);
       continue;
     }
-    // small germination prob, season-modulated. Lowered from 0.25 so a
-    // single cap doesn't guarantee a fresh colony — most spores fail.
-    const prob = 0.02 * seasonMult;
+    // Small germination prob, season-modulated. Most spores must fail —
+    // a single fruit releases up to ~13 spores at peak season, and even
+    // a couple of successful germinations per fruit floods the world.
+    // 0.005 × spring (1.6) over a 60-tick spore lifetime ≈ 30% chance to
+    // sprout while drifting on substrate; tunes to ~1–2 new colonies per
+    // fruit at peak, fewer off-season.
+    const prob = 0.005 * seasonMult;
     if (Math.random() > prob) { remaining.push(sp); continue; }
     const id = sowAt(world, ix, iy, sp.genome);
-    if (id) logEvent(world, 'germinate', `colony ${id} sprouted near (${ix},${iy})`);
+    if (id) {
+      const sprout = world.colonies[id];
+      const nm = (sprout && (sprout.name || sprout.placeholderName)) || `colony ${id}`;
+      logEvent(world, 'germinate', `${nm} sprouted near (${ix},${iy})`);
+    }
   }
   world.spores = remaining;
 }
@@ -767,30 +805,18 @@ function germinateSpores(world) {
 // ── Toofan ──────────────────────────────────────────────
 
 function rollToofan(world) {
-  // Pressure climbs with log exhaustion. Tracked for narration/UI even when
-  // the calendar gate hasn't opened yet.
-  const { kind, nutrient } = world.grid;
-  let logCells = 0, logNutSum = 0;
-  for (let i = 0; i < kind.length; i++) {
-    if (kind[i] === LOG) { logCells++; logNutSum += nutrient[i]; }
-  }
-  const avgNut = logCells > 0 ? logNutSum / logCells : 0;
-  const exhaustion = 1 - (avgNut / 80);
-  world.meta.toofanPressure = Math.max(0, Math.min(1, exhaustion));
+  const tick = world.meta.tick;
+  // Pressure = time-since-last as a 0→1 narration gauge. Caps at 1 in the UI
+  // but the underlying ratio can exceed it (read as "overdue").
+  const ticksSince = tick - (world.meta.lastToofanTick || 0);
+  world.meta.toofanPressure = Math.max(0, Math.min(1, ticksSince / TICKS_PER_YEAR));
 
-  // Roll once per real day, only past the minimum-gap gate. Daily probability
-  // is tiny — most days nothing happens; over a year the cumulative chance is
-  // moderate, scaled up by substrate exhaustion.
-  if (world.meta.tick - world.meta.lastToofanTick < TOOFAN_MIN_TICKS_BETWEEN) return;
-  if (world.meta.tick % TICKS_PER_DAY !== 0) return;
-  const dailyProb = TOOFAN_DAILY_BASE_PROB +
-                    world.meta.toofanPressure * TOOFAN_DAILY_PRESSURE_MAX;
-  if (Math.random() < dailyProb) {
+  // One roll per sim day, fixed probability — Poisson, ~1/year on average.
+  if (tick % TICKS_PER_DAY !== 0) return;
+  if (Math.random() < TOOFAN_DAILY_PROB) {
     triggerToofan(world);
-  } else if (Math.random() < dailyProb * 6) {
-    // Warning days happen ~6× more often than full toofans — the wind picks up,
-    // the air feels wrong, colonies brace.
-    logEvent(world, 'warning', `toofan-warning: pressure ${(world.meta.toofanPressure * 100).toFixed(0)}%`);
+  } else if (Math.random() < TOOFAN_DAILY_PROB * 6) {
+    logEvent(world, 'warning', `toofan-warning`);
     for (const c of Object.values(world.colonies)) if (c.alive) c.survivedWarning = true;
     fire('onToofanWarning', world);
   }
@@ -1024,7 +1050,8 @@ function recountColonies(world) {
         const bucket = world.meta.lifetime.deathsByCause;
         bucket[topCause] = (bucket[topCause] || 0) + 1;
       }
-      const label = c.name ? `${c.name} (${phenotypeWords(c.genome)})` : phenotypeWords(c.genome);
+      const named = c.name || c.placeholderName;
+      const label = named ? `${named} (${phenotypeWords(c.genome)})` : phenotypeWords(c.genome);
       logEvent(world, 'death', `colony ${c.id} — ${label} — died (${topCause})`);
       fire('onColonyDeath', world, c);
     }

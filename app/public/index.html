@@ -24,17 +24,17 @@
   <script src="canvas-atoms.js"></script>
   <script type="text/babel" src="canvas.js"></script>
 
-  <!-- Pixel-art kit for shroom chrome (hero, surfaces, panels).
-       Self-registers on window.PIX and window.SHROOM. Must load before
-       any component that uses them. -->
-  <script type="text/babel" src="pix/pix-core.jsx"></script>
-  <script type="text/babel" src="pix/pix-panels.jsx"></script>
-  <script type="text/babel" src="pix/pix-hero.jsx"></script>
+  <!-- Design kit — tokens first, then layered up to charts.
+       Each file registers globals on window.*; load order is the dependency order. -->
+  <script type="text/babel" src="kit/tokens.jsx"></script>
+  <script type="text/babel" src="kit/motifs.jsx"></script>
+  <script type="text/babel" src="kit/atmosphere.jsx"></script>
+  <script type="text/babel" src="kit/primitives.jsx"></script>
+  <script type="text/babel" src="kit/overlays.jsx"></script>
+  <script type="text/babel" src="kit/shell.jsx"></script>
+  <script type="text/babel" src="kit/charts.jsx"></script>
 
-  <script type="text/babel" src="status.js"></script>
   <script type="text/babel" src="chronicle.js"></script>
-  <script type="text/babel" src="hall.js"></script>
-  <script type="text/babel" src="dev-dashboard.js"></script>
   <script type="text/babel" src="app.js"></script>
 </body>
 </html>

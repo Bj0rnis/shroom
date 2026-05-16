@@ -19,8 +19,12 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <script type="text/babel" src="pix/pix-core.jsx"></script>
-  <script type="text/babel" src="pix/pix-panels.jsx"></script>
+  <!-- Design kit (engine only needs tokens → charts; no overlays/shell) -->
+  <script type="text/babel" src="kit/tokens.jsx"></script>
+  <script type="text/babel" src="kit/motifs.jsx"></script>
+  <script type="text/babel" src="kit/atmosphere.jsx"></script>
+  <script type="text/babel" src="kit/primitives.jsx"></script>
+  <script type="text/babel" src="kit/charts.jsx"></script>
 
   <script type="text/babel" src="engine.js"></script>
 </body>

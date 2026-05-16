@@ -155,33 +155,6 @@ function App() {
   );
 }
 
-function PageWallpaper() {
-  const wrapRef = React.useRef(null);
-  const [dim, setDim] = React.useState({ w: 200, h: 150 });
-  React.useLayoutEffect(() => {
-    const el = wrapRef.current; if (!el) return;
-    const SCALE = 3;
-    const ro = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setDim({
-        w: Math.max(60, Math.floor(width / SCALE)),
-        h: Math.max(60, Math.floor(height / SCALE)),
-      });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const PIX = window.PIX;
-  return (
-    <div ref={wrapRef} style={{ position: 'fixed', inset: 0, zIndex: -1, overflow: 'hidden' }}>
-      {PIX && (
-        <PIX.PixelStage w={dim.w} h={dim.h} scale={1} deps={[dim.w, dim.h]}
-          draw={(pb) => PIX.paintDark(pb, 0, 0, dim.w, dim.h, { seed: 5 })}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-        />
-      )}
-    </div>
-  );
-}
+// PageWallpaper lives in kit/atmosphere.jsx → window.PageWallpaper
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

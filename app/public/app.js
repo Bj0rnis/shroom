@@ -122,10 +122,9 @@ function App() {
         gap: 12,
         minHeight: 0,
       }}>
-        {/* ── LEFT — Hero / Canvas / StatusLeft ───────────────── */}
+        {/* ── LEFT — Canvas / StatusLeft ───────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-          <ShroomsHeader />
-          <DarkPanel seed={4} style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <DarkPanel seed={4} style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 }}>
             <div className="shroom-canvas-wrap" style={{ position: 'relative' }}>
               <ShroomCanvas snapshot={snapshot} />
             </div>

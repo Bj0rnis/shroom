@@ -11,10 +11,10 @@ const DEV_MODE = process.env.SHROOM_DEV === 'true';
 let nigehbanDisabled = process.env.NIGEHBAN_DISABLED === 'true';
 let tickIntervalMs   = BASE_TICK_INTERVAL_MS;
 
-const { createWorld, sowAt, logEvent, W, H } = require('./lib/world');
-const { tick, triggerToofan, setHooks, spawnSapling, fellTree, TICKS_PER_SIM_DAY } = require('./lib/sim');
+const { createWorld, sowAt, logEvent, W, H, GRASS_Y } = require('./lib/world');
+const { tick, triggerToofan, setHooks, spawnSapling, fellTree, TICKS_PER_SIM_DAY, CONSTANTS } = require('./lib/sim');
 const { TICKS_PER_DAY, ticksToHuman } = require('./lib/time');
-const { phenotypeWords, randomGenome } = require('./lib/genome');
+const { phenotypeWords, randomGenome, GENES } = require('./lib/genome');
 const persistence = require('./lib/persistence');
 const nigehban = require('./lib/nigehban');
 const { buildGridSnapshot } = require('./lib/grid-snapshot');
@@ -108,6 +108,18 @@ app.use(express.json());
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mode: MOCK ? 'mock' : 'live', service: 'shroom' });
+});
+
+app.get('/engine', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'engine.html'));
+});
+
+app.get('/api/engine-spec', (req, res) => {
+  res.json({
+    constants: CONSTANTS,
+    genome:    GENES,
+    world:     { W, H, GRASS_Y },
+  });
 });
 
 app.get('/api/journal', (req, res) => {

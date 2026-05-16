@@ -1,4 +1,4 @@
-// Almari Shroom — packed grid snapshot for the canvas renderer.
+// Shroom — packed grid snapshot for the canvas renderer.
 // Kind/occupied/moisture as base64 typed arrays; everything else as JSON.
 // Polled at ~1 Hz; payload is ~200 KB raw. Tight enough for local + Tailscale.
 

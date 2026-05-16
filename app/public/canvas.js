@@ -1,4 +1,4 @@
-// Almari Shroom — canvas wiring.
+// Shroom — canvas wiring.
 // Pure pixel-buffer atoms live in canvas-atoms.js (window.ShroomAtoms).
 // This file:
 //   · decodes the server snapshot

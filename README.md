@@ -1,10 +1,7 @@
-# Almari Shroom — `shroom.almari`
+# Shroom
 
 A small living world: mycelium growing on a fallen log, watched by Nigehban
-(the jinn). Reachable at `https://shroom.almari` over Tailscale.
-
-The full design is in [HANDOVER.md](HANDOVER.md). The pre-build archaeology
-of the previous attempt (Evochora) is in [EVOCHORA_NOTES.md](EVOCHORA_NOTES.md).
+(the jinn).
 
 ## Stack
 
@@ -13,8 +10,8 @@ of the previous attempt (Evochora) is in [EVOCHORA_NOTES.md](EVOCHORA_NOTES.md).
   rolls. State is persisted as JSON files (atomic write-temp + rename) every
   ~200 ticks and on graceful shutdown. No database.
 - **Frontend** — HTML5 canvas, no build step. React + Babel-in-browser.
-  Pulls `design/kit/` from the repo root for chrome (canvas itself is custom
-  rendering and does not use kit).
+  Pixel-art kit under `app/public/pix/` (canvas itself is custom rendering
+  and does not use the kit).
 - **LLM** — Nigehban calls the Anthropic API directly with `claude-haiku-4-5`.
   Graceful failure: sim keeps ticking when the call errors, he just stays silent.
 
@@ -26,6 +23,7 @@ vars are set in [docker-compose.yml](docker-compose.yml):
 | Variable | Default (compose) | Notes |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | _(required)_ | From `.env`. |
+| `SHROOM_HOST` | `shroom.local` | Traefik `Host()` routing rule — set to your domain. |
 | `NIGEHBAN_MODEL` | `claude-haiku-4-5` | Any Claude model ID. |
 | `TICK_INTERVAL_MS` | `3000` | Real ms per sim tick. |
 | `NIGEHBAN_INTERVAL_TICKS` | `600` | Periodic-wake interval (~30 min real at 3s/tick). |
@@ -41,7 +39,7 @@ Usage stats live at `GET /api/journal` under `.nigehban.usage` — `callsLast24h
 
 ## Persistence
 
-Bind-mounted at `/opt/almari/data/shroom` on the host:
+Bind-mounted at `/opt/shroom/data/shroom` on the host:
 
 ```
 data/
@@ -53,12 +51,10 @@ data/
 └── hall.json          inscribed mushrooms, persists across all volumes
 ```
 
-Backed up automatically by the host's restic cron (config in main CLAUDE.md).
-
 ## Local dev
 
 ```bash
-cd stacks/shroom/app
+cd app
 npm install
 MOCK=true npm run dev   # → http://localhost:3000
 ```
@@ -71,17 +67,6 @@ MOCK=true npm run dev
 Override the model if you want to try a different tier:
 ```bash
 NIGEHBAN_MODEL=claude-sonnet-4-6 ANTHROPIC_API_KEY=… MOCK=true npm run dev
-```
-
-## Deploy
-
-```bash
-# Local: commit, push
-git push
-
-# Server:
-ssh agent@192.168.50.11 -p 2222 "cd /opt/almari/repo && git pull"
-ssh bjorn@192.168.50.11 -p 2222 "cd /opt/almari/repo/stacks/shroom && docker compose up -d --build"
 ```
 
 ## Debug endpoints
@@ -107,3 +92,5 @@ All accept `POST` and return JSON:
 | `/api/world/grid` | ASCII debug view |
 | `/api/journal` | Nigehban's entries + nigehban state |
 | `/api/hall` | Hall of fame across all volumes |
+| `/engine` | Field guide to the simulation |
+| `/api/engine-spec` | Live sim constants used by the engine page |

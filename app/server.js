@@ -499,5 +499,5 @@ app.post('/api/dev/fast-forward', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Almari shroom running on http://localhost:${PORT} [${MOCK ? 'MOCK' : 'LIVE'}]${DEV_MODE ? ' [DEV]' : ''} · tick every ${tickIntervalMs}ms`);
+  console.log(`Shroom running on http://localhost:${PORT} [${MOCK ? 'MOCK' : 'LIVE'}]${DEV_MODE ? ' [DEV]' : ''} · tick every ${tickIntervalMs}ms`);
 });

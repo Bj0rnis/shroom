@@ -15,13 +15,13 @@ services:
       # - SHROOM_DEV=true
       # - NIGEHBAN_DISABLED=true        # stop Nigehban while tuning the natural world
     volumes:
-      - /opt/almari/data/shroom:/app/data
+      - /opt/shroom/data/shroom:/app/data
     networks:
       - traefik-public
       - monitoring
     labels:
       - traefik.enable=true
-      - traefik.http.routers.shroom.rule=Host(`shroom.almari`)
+      - traefik.http.routers.shroom.rule=Host(`${SHROOM_HOST:-shroom.local}`)
       - traefik.http.routers.shroom.entrypoints=websecure
       - traefik.http.routers.shroom.tls=true
       - traefik.http.services.shroom.loadbalancer.server.port=3000

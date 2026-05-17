@@ -38,12 +38,29 @@ const NUTRIENT_MAX           = 100;  // soft cap matching world.js generators
 const DECAY_DEPOSIT          = 15;
 const DECAY_NEIGHBOR_DEPOSIT = 4;
 
+// ── Branching shape ─────────────────────────────────────
+// Tips have a chance to extend in TWO directions in one tick, producing
+// Y-shaped forks instead of a single thread. Combined with the inner
+// extension roll (~30% at a tip) this yields an effective fork rate of
+// ~12%/tick — first Y-branch by cell ~8 on a healthy colony. Tuned for
+// "roots, not worms" with THICKNESS_MAX still capping mature density.
+const TIP_BIFURCATION_PROB = 0.40;
+
 // ── Substrate slow regeneration ─────────────────────────
 // Decomposer microbes and rainfall slowly restore substrate richness between
 // colony pulses. nutrient is Uint8Array so regen works as integer pulses:
 // every SUBSTRATE_REGEN_INTERVAL ticks every LOG/SOIL cell gains +1, capped
 // at NUTRIENT_MAX. An empty log cell recovers 0 → 100 in ~17 real days.
 const SUBSTRATE_REGEN_INTERVAL = 4896;
+
+// ── Log decay ───────────────────────────────────────────
+// Wood-decay fungi consume their substrate. A LOG cell that has been eaten
+// down to zero nutrient (consumption outpacing regen → a colony is actively
+// on it) has a small chance per tick to crumble into SOIL. ~5h half-life at
+// full depletion: slow enough to forgive brief overconsumption, fast enough
+// to witness a log shrink over weeks of colonisation. Closes the loop on
+// tree-fall: sapling → tree → log → consumed → soil → next sapling.
+const LOG_DECAY_PROB = 0.00005;
 
 // ── Cell aging + dieback ─────────────────────────────────
 // Cells turn over within a real week; replacement keeps the colony alive.
@@ -117,11 +134,15 @@ const AUTO_BOOTSTRAP_AFTER_TICKS = 2 * TICKS_PER_HOUR;
 // Species vary in height, crown size, lifespan, and the nutrient richness of
 // the log they leave behind. This is the closed-loop replenishment that
 // keeps the world fertile without needing a cataclysm to reset substrate.
+// Lifespans tuned so each tree spends ~half its life as an observable mature
+// tree, then falls on a real-weeks timescale. With log-decay closing the loop
+// (LOG_DECAY_PROB below) the substrate cycle no longer needs sim-seasons of
+// replenishment, so the cycle can run 4× faster and actually be witnessed.
 const TREE_SPECIES = [
-  { name: 'oak',    maxHeight: 50, crownRadius: 12, lifespanDays: 240, logRichness: 92 },
-  { name: 'birch',  maxHeight: 45, crownRadius:  9, lifespanDays: 180, logRichness: 78 },
-  { name: 'pine',   maxHeight: 60, crownRadius:  9, lifespanDays: 300, logRichness: 60 },
-  { name: 'willow', maxHeight: 35, crownRadius: 14, lifespanDays: 140, logRichness: 70 },
+  { name: 'oak',    maxHeight: 50, crownRadius: 12, lifespanDays: 60, logRichness: 92 },
+  { name: 'birch',  maxHeight: 45, crownRadius:  9, lifespanDays: 45, logRichness: 78 },
+  { name: 'pine',   maxHeight: 60, crownRadius:  9, lifespanDays: 75, logRichness: 60 },
+  { name: 'willow', maxHeight: 35, crownRadius: 14, lifespanDays: 35, logRichness: 70 },
 ];
 const TREE_STEM_HALF_WIDTH    = 1;                            // 3-wide trunk
 const TREE_GROW_INTERVAL      = Math.floor(TICKS_PER_DAY / 2); // ~one cell per half real day
@@ -273,7 +294,7 @@ function paintTree(world, t) {
 }
 
 function fellTree(world, t) {
-  const { kind, nutrient, moisture } = world.grid;
+  const { kind } = world.grid;
   // Clear any TREE cells in this tree's footprint (everything within crownRadius+stem of its x).
   const footprint = t.crownRadius + TREE_STEM_HALF_WIDTH + 2;
   for (let y = 0; y < GRASS_Y; y++) {
@@ -308,7 +329,7 @@ function fellTree(world, t) {
 }
 
 function paintLogCapsule(world, x0, yTop, logWidth, logHeight, richness, species) {
-  const { kind, nutrient, moisture } = world.grid;
+  const { kind, nutrient } = world.grid;
   const r       = logHeight / 2;
   const cy      = yTop + r;
   const xCoreL  = x0 + r;
@@ -327,9 +348,7 @@ function paintLogCapsule(world, x0, yTop, logWidth, logHeight, richness, species
       if (kind[i] !== AIR) continue;
       kind[i] = LOG;
       const n = richness - 12 + Math.floor(Math.random() * 24);
-      const m = 55 + Math.floor(Math.random() * 20);
       nutrient[i] = Math.max(0, Math.min(NUTRIENT_MAX, n));
-      moisture[i] = Math.max(0, Math.min(100, m));
     }
   }
 }
@@ -431,10 +450,11 @@ function growHyphae(world) {
         col.reserves -= EXTEND_COST;
 
         // Bifurcation — tips can split into two directions at once, producing
-        // Y-shaped branching instead of a single worm. 22% chance when ≥2
-        // candidates remain and the colony can afford the second cell.
+        // Y-shaped branching instead of a single worm. Probability tuned by
+        // TIP_BIFURCATION_PROB; gated on ≥2 candidates and reserves for a
+        // second EXTEND_COST.
         if (freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
-          if (Math.random() < 0.22) {
+          if (Math.random() < TIP_BIFURCATION_PROB) {
             const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
             if (others.length > 0) {
               const ow = others.reduce((s, c) => s + c.w, 0);
@@ -770,7 +790,10 @@ function releaseSpores(world, fruit) {
       x: fruit.x + (Math.random() * 4 - 2),
       y: fruit.y - 2,
       vx: (Math.random() * 2 - 1) * 1.5,
-      vy: -(Math.random() * 2.0 + 0.5),
+      // vy range [-0.3, 0.2] — slight drift, gentle fall. Combined with the
+      // gravity term in driftSpores this lands spores across both log and
+      // soil layers instead of launching them off the canvas top.
+      vy: (Math.random() * 0.5 - 0.3),
       age: 0,
       genome: mutate(col.genome),
     });
@@ -972,16 +995,9 @@ function triggerToofan(world, flavor) {
   }
 
   // Era scar — a persistent visual mark on the substrate. Fades over
-  // ~3 real weeks via age in the renderer (see paintEraScar).
-  // x1/x2 cover the widest dying-colony spread, fallback to the log span.
+  // ~3 real weeks via age in the renderer (see paintEraScar). Dying-colony
+  // bboxes were cleared above, so the log span is the best signal we have.
   let x1 = W, x2 = 0;
-  for (const col of dying) {
-    if (!col || !col.deathBbox) {
-      // dying colony might not have bbox cached; use any cell of theirs
-      // before we cleared them — but we already cleared. Fallback to log.
-    }
-  }
-  // Best signal we have post-clear is the log span.
   if (world.meta.logs && world.meta.logs.length) {
     const lg = world.meta.logs[0];
     x1 = lg.x0;
@@ -1055,12 +1071,41 @@ function autoBootstrap(world) {
 // ── Bookkeeping ─────────────────────────────────────────
 
 function regenSubstrate(world) {
-  if (world.meta.tick % SUBSTRATE_REGEN_INTERVAL !== 0) return;
+  const doRegen = world.meta.tick % SUBSTRATE_REGEN_INTERVAL === 0;
   const { kind, nutrient } = world.grid;
   for (let i = 0; i < kind.length; i++) {
     const k = kind[i];
-    if ((k === LOG || k === SOIL) && nutrient[i] < NUTRIENT_MAX) nutrient[i]++;
+    if (k === LOG) {
+      if (doRegen && nutrient[i] < NUTRIENT_MAX) nutrient[i]++;
+      else if (nutrient[i] === 0 && Math.random() < LOG_DECAY_PROB) {
+        // Consumed faster than regen can restore — crumble to soil.
+        kind[i] = SOIL;
+      }
+    } else if (k === SOIL) {
+      if (doRegen && nutrient[i] < NUTRIENT_MAX) nutrient[i]++;
+    }
   }
+  // Once per sim day, prune log entries whose footprint has been fully
+  // converted to soil. Frees the spawning columns for new saplings.
+  if (world.meta.tick % TICKS_PER_DAY === 0) pruneEmptyLogs(world);
+}
+
+function pruneEmptyLogs(world) {
+  const logs = world.meta.logs;
+  if (!logs || !logs.length) return;
+  const { kind } = world.grid;
+  world.meta.logs = logs.filter(lg => {
+    for (let dy = 0; dy < lg.h; dy++) {
+      const y = lg.y0 + dy;
+      if (y < 0 || y >= H) continue;
+      for (let dx = 0; dx < lg.w; dx++) {
+        const x = lg.x0 + dx;
+        if (x < 0 || x >= W) continue;
+        if (kind[y * W + x] === LOG) return true;
+      }
+    }
+    return false;
+  });
 }
 
 function recountColonies(world) {

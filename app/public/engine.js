@@ -12,7 +12,7 @@ function EngineApp() {
   // Pull kit components from window globals (set by kit/* script tags).
   const {
     PageWallpaper, Section, KV, Subhead, Aside,
-    TickPipeline, TerrainDiagram, FruitLadder, ReservesFlow,
+    TickPipeline, TerrainDiagram, FruitLadder, ReservesFlow, CycleDiagram,
     GenomeTable, FirstDayLedger, FruitDecisions, ToofanRoll, FlavorChips,
   } = window;
 
@@ -57,32 +57,38 @@ function EngineApp() {
             how this shroom works
           </div>
           <div style={{ fontFamily: SERIF_RUN, color: COL.text2, fontSize: 16, lineHeight: 1.45, fontStyle: 'italic', maxWidth: 740 }}>
-            A field guide to the simulation that powers <a href="/" style={{ color: COL.emberHi, textDecoration: 'none', borderBottom: `1px dotted ${COL.emberHi}` }}>the live page at /</a>.
-            Mycelium grows on a {w.W}×{w.H} grid, absorbs nutrients into a reserves pool, spends them to extend and to fruit, drifts spores, decays, and once a sim-year weathers a toofan. Numbers come straight from sim.js.
+            A field guide to the simulation behind <a href="/" style={{ color: COL.emberHi, textDecoration: 'none', borderBottom: `1px dotted ${COL.emberHi}` }}>the live page at /</a>.
+            Mycelium grows on a {w.W}×{w.H} grid, absorbs nutrients into a reserves
+            pool, spends them to extend and to fruit, drifts spores. Saplings rise,
+            mature, and fall into logs. Logs are eaten back to soil. Once a sim-year
+            a toofan weathers everything. Two quiet loops keep the world alive
+            between storms. Numbers come straight from sim.js.
           </div>
         </div>
 
         {/* 01 — Tick pipeline */}
         <Section seed={7} num="01" kicker="every tick" glyph="tick" accent={COL.hypha}
           title="the tick pipeline"
-          sub="Every tick runs the same seven stages, in this order. Clock advances first so everyone sees the new season and weather; toofan-roll is last so a destroyed colony still got its turn to grow and fruit beforehand.">
+          sub="Every tick runs the same nine stages, in this order. Clock advances first so everyone sees the new season and weather. Trees and substrate move before colonies do — a new log might fall onto a colony's grow phase, or a soil cell might appear under a tip. Toofan-roll is last so a destroyed colony still got its turn to grow and fruit beforehand.">
           <TickPipeline />
         </Section>
 
         {/* 02 — Substrate */}
         <Section seed={11} num="02" kicker="terrain" glyph="substrate" accent={COL.ember}
           title="substrate & terrain"
-          sub="A flat 320×180 grid. Air on top, a one-row grass line, soil below. The initial log capsule rests on the grass. Deep nutrient pockets are scattered into the lower half of the soil band so mycelium has a reason to tunnel down.">
+          sub="A flat 320×180 grid. Air on top, a one-row grass line, soil below. The initial log capsule rests on the grass. Deep nutrient pockets are scattered into the lower half of the soil band so mycelium has a reason to tunnel down. The substrate is not static — it slowly regenerates, and consumed logs crumble back to soil.">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 24, alignItems: 'start' }}>
             <TerrainDiagram world={w} />
             <KV accent={COL.emberHi} rows={[
-              ['grid',         `${w.W} × ${w.H}`,                'cells, indexed y · W + x'],
-              ['grass row',    w.GRASS_Y,                         'one-cell bridge between log & soil'],
-              ['log',          'oak, 72–96 × 16–22',             'capsule: rect core + rounded caps'],
-              ['pockets',      '5–7 of radius 8–13',              'placed 55–95% down the soil band'],
-              ['base soil',    'nutrient 22–29',                  'lean, flat — variation lives in pockets'],
-              ['log nutrient', '70–95',                            'lowered by knot/dry zones, lifted by wet'],
-              ['NUTRIENT_MAX', c.NUTRIENT_MAX,                    'soft cap for all generators'],
+              ['grid',             `${w.W} × ${w.H}`,                'cells, indexed y · W + x'],
+              ['grass row',        w.GRASS_Y,                         'one-cell bridge between log & soil'],
+              ['log',              'oak, 72–96 × 16–22',             'capsule: rect core + rounded caps'],
+              ['pockets',          '5–7 of radius 8–13',              'placed 55–95% down the soil band'],
+              ['base soil',        'nutrient 22–29',                  'lean, flat — variation lives in pockets'],
+              ['log nutrient',     '70–95',                           'knot pockets lean, dry pockets rich'],
+              ['NUTRIENT_MAX',     c.NUTRIENT_MAX,                    'soft cap for all generators'],
+              ['SUBSTRATE_REGEN_INTERVAL', `${c.SUBSTRATE_REGEN_INTERVAL} ticks`, 'every log/soil cell gains +1 nutrient'],
+              ['LOG_DECAY_PROB',   c.LOG_DECAY_PROB,                  'per tick · only empty log cells · crumbles to soil'],
             ]} />
           </div>
         </Section>
@@ -120,6 +126,16 @@ function EngineApp() {
                 ['OLD_AGE_DIE_RISK_MAX',  c.OLD_AGE_DIE_RISK_MAX,  `peak at age ${c.COLONY_OLD_AGE_DAYS}d`],
                 ['BLIGHT_DIE_RISK',       c.BLIGHT_DIE_RISK,       'when Nigehban blights'],
               ]} />
+
+              <Subhead accent={COL.hyphaTip}>branch · the shape of growth</Subhead>
+              <div style={{ fontFamily: SERIF_RUN, fontSize: 13, color: COL.text2, lineHeight: 1.5, margin: '4px 0 8px', fontStyle: 'italic' }}>
+                Tips fork Y-branches. Junctions push lateral shoots. Interior cells barely move. The result reads as a root system rather than a single thread.
+              </div>
+              <KV accent={COL.hyphaTip} rows={[
+                ['TIP_BIFURCATION_PROB', c.TIP_BIFURCATION_PROB, 'chance a tip splits in two on the same tick'],
+                ['THICKNESS_MAX',        c.THICKNESS_MAX,        'most filled neighbors before extension blocks'],
+                ['THICKNESS_BOX_RADIUS', c.THICKNESS_BOX_RADIUS, 'fattening check radius (cells)'],
+              ]} />
             </div>
             <div>
               <Subhead accent={COL.ember}>fruit · out of reserves</Subhead>
@@ -138,8 +154,50 @@ function EngineApp() {
           </div>
         </Section>
 
-        {/* 04 — In practice */}
-        <Section seed={17} num="04" kicker="worked examples" glyph="hyphae" accent={COL.hyphaTip}
+        {/* 04 — The cycle */}
+        <Section seed={21} num="04" kicker="closed loop" glyph="hyphae" accent={COL.hyphaTip}
+          title="the cycle"
+          sub="Two loops keep the world running. Spores carry colonies forward through generations. Trees and logs cycle the substrate back to soil. Each closes without help from the toofan.">
+
+          <CycleDiagram />
+
+          <div style={{ marginTop: 18 }}>
+            <Subhead accent={COL.hypha}>the spore loop</Subhead>
+            <div style={{ fontFamily: SERIF_RUN, fontSize: 14, color: COL.text2, lineHeight: 1.55, fontStyle: 'italic', maxWidth: 740 }}>
+              A spore drifts on the breeze, falls onto viable substrate, and germinates at low probability. The colony grows on its reserves. Tips fork. Mature colonies push fruit; fruit ripens; spores release. Wind carries them. Most die. A few find soil. The chain continues.
+            </div>
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            <Subhead accent={COL.ember}>the substrate loop</Subhead>
+            <div style={{ fontFamily: SERIF_RUN, fontSize: 14, color: COL.text2, lineHeight: 1.55, fontStyle: 'italic', maxWidth: 740 }}>
+              Saplings sprout in open soil and grow upward over real weeks. A mature tree falls horizontally and becomes the next log — species-tinted, with the richness it earned in life. Colonies consume it, cell by cell. Empty log cells crumble to soil at <span style={{ color: COL.emberHi, fontFamily: MONO, fontStyle: 'normal' }}>LOG_DECAY_PROB</span>. Soil regenerates. A new sapling finds room.
+            </div>
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            <Subhead accent={COL.grass}>tree species · lifespan & log richness</Subhead>
+            <KV accent={COL.grass} rows={(c.TREE_SPECIES || []).map(s => [
+              s.name,
+              `${s.lifespanDays}d · richness ${s.logRichness}`,
+              `max height ${s.maxHeight} · crown ${s.crownRadius}`,
+            ])} />
+          </div>
+
+          <Aside accent={COL.hyphaTip}>
+            Before #10 the log only ever depleted — no regen, no decay, no replacement. A single log was the whole world's substrate. Now it's one stage in a self-replenishing system: spores find each new log, colonies eat it down, soil takes its place, the next tree rises.
+          </Aside>
+        </Section>
+
+        {/* 05 — Genome */}
+        <Section seed={19} num="05" kicker="ten floats" glyph="genome" accent={COL.cool}
+          title="the genome"
+          sub="Ten floats per colony. Spores carry a mutated copy of the parent's genome. Mutation is substitution-only with scale-proportional perturbation — no swapping, no crossover.">
+          <GenomeTable genes={spec.genome} />
+        </Section>
+
+        {/* 06 — In practice */}
+        <Section seed={17} num="06" kicker="worked examples" glyph="hyphae" accent={COL.hyphaTip}
           title="in practice"
           sub="The same economy seen as scenarios — what the numbers feel like from inside a colony.">
 
@@ -157,15 +215,8 @@ function EngineApp() {
           </div>
         </Section>
 
-        {/* 05 — Genome */}
-        <Section seed={19} num="05" kicker="ten floats" glyph="genome" accent={COL.cool}
-          title="the genome"
-          sub="Ten floats per colony. Spores carry a mutated copy of the parent's genome. Mutation is substitution-only with scale-proportional perturbation — no swapping, no crossover.">
-          <GenomeTable genes={spec.genome} />
-        </Section>
-
-        {/* 06 — Toofan */}
-        <Section seed={23} num="06" kicker="annual event" glyph="toofan" accent={COL.danger}
+        {/* 07 — Toofan */}
+        <Section seed={23} num="07" kicker="annual event" glyph="toofan" accent={COL.danger}
           title="the toofan"
           sub="Once per simulated year, on a Poisson roll, the world picks a flavor and every colony rolls survival — weighted by how well its phenotype matches the flavor. No warning. No buildup. No pressure meter.">
           <KV accent={COL.danger} rows={[
@@ -182,8 +233,8 @@ function EngineApp() {
           </Aside>
         </Section>
 
-        {/* 07 — Nigehban */}
-        <Section seed={27} num="07" kicker="the narrator" glyph="nigehban" accent={COL.glow}
+        {/* 08 — Nigehban */}
+        <Section seed={27} num="08" kicker="the narrator" glyph="nigehban" accent={COL.glow}
           title="nigehban"
           sub="A Claude-backed pass that wakes once a sim-day, reads the recent events, and writes a journal entry for the Chronicle. Bestows real names on standout colonies; otherwise they keep their placeholder name (Wigglecap, Bramblewort, etc.) until they earn one — or die.">
           <KV accent={COL.glow} rows={[
@@ -191,6 +242,18 @@ function EngineApp() {
             ['inputs',       'last events + colony stats', 'see lib/nigehban.js'],
             ['can bestow',   'name · blight · sparing',    'persisted on the colony record'],
             ['hall',         'durable colony obits',       'written on death, kept forever'],
+          ]} />
+        </Section>
+
+        {/* 09 — The ambient */}
+        <Section seed={29} num="09" kicker="between ticks" glyph="tick" accent={COL.glow}
+          title="the ambient"
+          sub="The sim ticks every three seconds. Between ticks, the world keeps moving at 60fps — not because anything has changed, but because still air would feel dead. None of it touches gameplay; all of it is for the watcher.">
+          <KV accent={COL.glow} rows={[
+            ['critters', '3–5 per world', 'worms · beetles · ants · springtails · pillbugs'],
+            ['wind',     'autumn · spring', 'biases spore drift along the season'],
+            ['sky',      '24h cycle',     'sun arcs by day, moon by night, season tints'],
+            ['scars',    '~3 real weeks', 'persistent visual after each toofan flavor'],
           ]} />
         </Section>
 

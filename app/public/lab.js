@@ -157,29 +157,66 @@ function LabApp() {
   const [slotB,     setSlotB]     = useState(null);
   const [error,     setError]     = useState(null);
   const [copyState, setCopyState] = useState(null);     // 'copied' | 'error' | null
-  const pollRef = useRef(null);
+  const pollRef     = useRef(null);
+  const idsBeforeRef = useRef(new Set());                // run ids snapshotted at run start
 
-  // Fetch scenarios + history on mount.
+  // Fetch scenarios + history on mount. Also check for an in-flight run —
+  // if the user reloaded mid-run, we want the progress bar to pick up where
+  // it left off and the viewer to populate once the run finishes.
   useEffect(() => {
     fetch('/api/lab/scenarios').then(r => r.json()).then(list => {
       setScenarios(list);
       if (list.length && !picked) setPicked(list[1]?.id || list[0].id);   // default to week-on-log
     }).catch(e => setError(e.message));
     refreshRuns();
+    fetch('/api/lab/current').then(r => r.json()).then(job => {
+      if (!job) return;
+      // A run is already in flight on the server. Snapshot the current run
+      // ids so the poller can identify which sim-N appeared when it lands.
+      fetch('/api/lab/runs').then(r => r.json()).then(list => {
+        idsBeforeRef.current = new Set(list.map(r => r.id));
+        setRuns(list);
+        setProgress(job);
+        setRunning(true);
+      }).catch(() => {});
+    }).catch(() => {});
   }, []);
 
   function refreshRuns() {
     fetch('/api/lab/runs').then(r => r.json()).then(setRuns).catch(() => {});
   }
 
-  // Progress polling while a run is in flight.
+  // Progress polling. We rely on /api/lab/current as the source of truth for
+  // both "what's the progress" and "is the run done." The POST /api/lab/run
+  // response is unreliable for long runs: a reverse proxy in front of the
+  // container may close the connection at its idle timeout (a 7-day run is
+  // ~12 min, well past most defaults). The run still completes server-side —
+  // we just need a different signal that doesn't require holding a connection
+  // open. The transition from non-null → null tells us a run just finished.
   useEffect(() => {
     if (!running) {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
+    let prevJob = null;
     pollRef.current = setInterval(() => {
-      fetch('/api/lab/current').then(r => r.json()).then(setProgress).catch(() => {});
+      fetch('/api/lab/current').then(r => r.json()).then(job => {
+        const justFinished = prevJob && job === null;
+        prevJob = job;
+        if (justFinished) {
+          // Run completed server-side. Refresh history and open whichever
+          // sim-N appeared since we started.
+          fetch('/api/lab/runs').then(r => r.json()).then(list => {
+            setRuns(list);
+            const fresh = list.find(r => !idsBeforeRef.current.has(r.id));
+            if (fresh) openRun(fresh.id);
+          }).catch(() => {});
+          setRunning(false);
+          setProgress(null);
+          return;
+        }
+        if (job) setProgress(job);
+      }).catch(() => { /* network blip; keep polling */ });
     }, 500);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [running]);
@@ -187,23 +224,18 @@ function LabApp() {
   function runScenario() {
     if (!picked || running) return;
     setError(null);
+    idsBeforeRef.current = new Set(runs.map(r => r.id));
     setRunning(true);
     setProgress({ currentTick: 0, totalTicks: 1, scenarioName: scenarios.find(s => s.id === picked)?.name });
+    // Fire and forget. The proxy may kill the response for long runs; the
+    // poller above watches /api/lab/current and picks up the result when
+    // the server-side run finishes. Errors here are only meaningful if the
+    // request fails *quickly* (before the run starts).
     fetch('/api/lab/run', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ scenarioId: picked }),
-    })
-      .then(r => r.ok ? r.json() : r.json().then(j => Promise.reject(new Error(j.error || `HTTP ${r.status}`))))
-      .then(run => {
-        setViewing(run);
-        refreshRuns();
-      })
-      .catch(e => setError(e.message))
-      .finally(() => {
-        setRunning(false);
-        setProgress(null);
-      });
+    }).catch(() => { /* swallow — let the poller resolve completion */ });
   }
 
   function openRun(id) {

@@ -95,13 +95,17 @@ Key numbers in `app/lib/sim.js` and what they control:
 |---|---|---|
 | `EXTEND_COST` | 2 | Reserves spent per new hypha cell |
 | `THICKNESS_MAX` | 3 | Max filled neighbors before extension is blocked |
-| `THICKNESS_BOX_RADIUS` | 2 | 5×5 box around a candidate cell checked for density |
+| `THICKNESS_BOX_RADIUS` | 1 | 3×3 box around a candidate cell checked for density |
 | `FRUIT_COST` | 500 | Base reserves cost for first fruiting body |
-| `FRUIT_COST_FLOOR` | 80 | Minimum cost after repeat-fruiting discount |
+| `FRUIT_COST_FLOOR` | 300 | Minimum cost after repeat-fruiting discount |
 | `FRUIT_DISCOUNT_PER_FRUIT` | 0.8 | Multiplicative discount per prior fruit |
-| `HYPHA_AGE_LIMIT` | 1 week | Individual cell lifespan |
+| `HYPHA_AGE_LIMIT` | ~2 months | Individual cell lifespan (cells are network spine) |
 | `COLONY_PRIME_DAYS` | 60 | Days before old-age decline begins |
 | `COLONY_OLD_AGE_DAYS` | 365 | Days at which old-age pressure is maximum |
+
+Hyphae cells do **not** die when the substrate beneath them is exhausted —
+they persist as transport pipes connecting absorbing tips to fruit sites.
+See `BALANCE.md` for the rationale and any future revisions.
 
 Branching is controlled by the `freeCount` probability tiers in `growHyphae`:
 - `freeCount >= 3` (tip): 30% base extension chance

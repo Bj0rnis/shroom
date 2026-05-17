@@ -135,6 +135,10 @@ app.get('/preview', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'preview.html'));
 });
 
+app.get('/lab', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'lab.html'));
+});
+
 app.get('/api/engine-spec', (req, res) => {
   res.json({
     constants: CONSTANTS,
@@ -173,6 +177,10 @@ app.post('/api/lab/run', async (req, res) => {
 
 app.get('/api/lab/runs', (req, res) => {
   res.json(lab.listRuns());
+});
+
+app.get('/api/lab/current', (req, res) => {
+  res.json(lab.getCurrentJob());
 });
 
 app.get('/api/lab/runs/:id', (req, res) => {

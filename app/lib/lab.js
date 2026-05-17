@@ -25,6 +25,15 @@ const LAB_DIR  = path.join(DATA_DIR, 'lab');
 const RUNS_DIR = path.join(LAB_DIR, 'runs');
 const SEQ_PATH = path.join(LAB_DIR, 'seq.json');
 
+const HISTORY_LIMIT = 20;   // keep only the 20 newest sim-N.json files
+
+// In-flight run state for the progress endpoint. Only one run at a time.
+let currentJob = null;
+
+function getCurrentJob() {
+  return currentJob;
+}
+
 // ── Scenarios ───────────────────────────────────────────
 // Each scenario is data: id, label, duration, and a setup(world) hook that
 // places the initial colonies/spores after createWorld has run. Add new
@@ -136,6 +145,20 @@ function persistRun(run) {
   const tmp = p + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(run));
   fs.renameSync(tmp, p);
+  trimHistory();
+}
+
+// Keep only the HISTORY_LIMIT newest sim-N.json files. Called after every
+// successful run. We sort by sim number (id), not mtime, because that's the
+// user-visible ordering.
+function trimHistory() {
+  if (!fs.existsSync(RUNS_DIR)) return;
+  const files = fs.readdirSync(RUNS_DIR).filter(f => /^sim-\d+\.json$/.test(f));
+  if (files.length <= HISTORY_LIMIT) return;
+  files.sort((a, b) => simNum(b.replace(/\.json$/, '')) - simNum(a.replace(/\.json$/, '')));
+  for (const stale of files.slice(HISTORY_LIMIT)) {
+    try { fs.unlinkSync(path.join(RUNS_DIR, stale)); } catch {}
+  }
 }
 
 function loadRun(id) {
@@ -378,6 +401,15 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
   const t0 = Date.now();
   samples.push(captureSample(world));
 
+  currentJob = {
+    scenarioId,
+    scenarioName: scenario.name,
+    startedAt:    new Date(t0).toISOString(),
+    totalTicks,
+    currentTick:  0,
+    seed:         world.meta.seed,
+  };
+
   try {
     for (let i = 0; i < totalTicks; i++) {
       tick(world);
@@ -385,8 +417,14 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
         samples.push(captureSample(world));
         ingestWorldEvents();
       }
-      if (i % 100 === 0) await new Promise(r => setImmediate(r));   // yield event loop
+      // Update progress + yield event loop in the same window so polls land
+      // on a consistent currentTick.
+      if (i % 100 === 0) {
+        currentJob.currentTick = i;
+        await new Promise(r => setImmediate(r));
+      }
     }
+    if (currentJob) currentJob.currentTick = totalTicks;
   } finally {
     if (typeof restoreHooks === 'function') restoreHooks();
   }
@@ -412,6 +450,7 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
     ascii:         renderAscii(world),
   };
   persistRun(run);
+  currentJob = null;
   return run;
 }
 
@@ -531,6 +570,7 @@ function sampleEvenly(arr, n) {
 module.exports = {
   SCENARIOS,
   runScenario,
+  getCurrentJob,
   listRuns, loadRun, deleteRun,
   renderRunMarkdown,
   renderAscii,

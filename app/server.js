@@ -11,7 +11,7 @@ const DEV_MODE = process.env.SHROOM_DEV === 'true';
 let nigehbanDisabled = process.env.NIGEHBAN_DISABLED === 'true';
 let tickIntervalMs   = BASE_TICK_INTERVAL_MS;
 
-const { createWorld, sowAt, logEvent, W, H, GRASS_Y } = require('./lib/world');
+const { createWorld, sowAt, logEvent, W, H, GRASS_Y, SOIL } = require('./lib/world');
 const { tick, triggerToofan, setHooks, spawnSapling, fellTree, TICKS_PER_SIM_DAY, CONSTANTS } = require('./lib/sim');
 const { TICKS_PER_DAY, ticksToHuman } = require('./lib/time');
 const { phenotypeWords, randomGenome, GENES } = require('./lib/genome');
@@ -43,8 +43,20 @@ if (world) {
 }
 
 function bootstrapColony(w) {
+  const { kind, nutrient } = w.grid;
+  // 50% chance to sow in soil — spreads load off the log.
+  if (Math.random() < 0.5) {
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const i = Math.floor(Math.random() * kind.length);
+      if (kind[i] !== SOIL || nutrient[i] < 10) continue;
+      const x = i % W;
+      const y = Math.floor(i / W);
+      const id = sowAt(w, x, y, randomGenome());
+      if (id) { logEvent(w, 'sow', `bootstrap colony ${id} sown at (${x},${y})`); return id; }
+    }
+  }
   const lb = w.meta.logBounds;
-  if (!lb) return;
+  if (!lb) return null;
   for (let attempt = 0; attempt < 80; attempt++) {
     const x = lb.x0 + Math.floor(Math.random() * lb.w);
     const y = lb.y0 + Math.floor(Math.random() * lb.h);

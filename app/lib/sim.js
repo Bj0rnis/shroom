@@ -38,6 +38,13 @@ const NUTRIENT_MAX           = 100;  // soft cap matching world.js generators
 const DECAY_DEPOSIT          = 15;
 const DECAY_NEIGHBOR_DEPOSIT = 4;
 
+// ── Substrate slow regeneration ─────────────────────────
+// Decomposer microbes and rainfall slowly restore substrate richness between
+// colony pulses. nutrient is Uint8Array so regen works as integer pulses:
+// every SUBSTRATE_REGEN_INTERVAL ticks every LOG/SOIL cell gains +1, capped
+// at NUTRIENT_MAX. An empty log cell recovers 0 → 100 in ~17 real days.
+const SUBSTRATE_REGEN_INTERVAL = 4896;
+
 // ── Cell aging + dieback ─────────────────────────────────
 // Cells turn over within a real week; replacement keeps the colony alive.
 const HYPHA_DEATH_THRESHOLD  = 5;
@@ -82,7 +89,7 @@ const FRUIT_MIN_X_SPACING    = 5;
 // rare (colony deep in soil sending a body up through the grass).
 const FRUIT_SUBSTRATE_MULT_LOG   = 1.0;
 const FRUIT_SUBSTRATE_MULT_GRASS = 0.4;
-const FRUIT_SUBSTRATE_MULT_SOIL  = 0.2;
+const FRUIT_SUBSTRATE_MULT_SOIL  = 0.35;
 const FRUIT_MAX_RISE_ROWS        = 20;       // how far up we'll walk to find AIR
 const SPORE_DRIFT_GRAVITY    = 0.02;
 const SPORE_AGE_LIMIT        = 60;
@@ -139,6 +146,7 @@ function tick(world) {
   advanceSeasons(world);
   growTrees(world);
   maybeSpawnSapling(world);
+  regenSubstrate(world);
   growHyphae(world);
   decayHyphae(world);
   cascadeIsolationDeath(world);
@@ -1045,6 +1053,15 @@ function autoBootstrap(world) {
 }
 
 // ── Bookkeeping ─────────────────────────────────────────
+
+function regenSubstrate(world) {
+  if (world.meta.tick % SUBSTRATE_REGEN_INTERVAL !== 0) return;
+  const { kind, nutrient } = world.grid;
+  for (let i = 0; i < kind.length; i++) {
+    const k = kind[i];
+    if ((k === LOG || k === SOIL) && nutrient[i] < NUTRIENT_MAX) nutrient[i]++;
+  }
+}
 
 function recountColonies(world) {
   for (const c of Object.values(world.colonies)) c.cellCount = 0;

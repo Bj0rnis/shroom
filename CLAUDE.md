@@ -44,6 +44,10 @@ Data persists at `/opt/almari/data/shroom`. Never touch it during a deploy unles
 explicitly migrating. The world.json is the living state of the sim — treat it
 with care.
 
+`/lab` runs (scenario sandbox) accumulate under `data/lab/runs/sim-N.json` and a
+sequence counter at `data/lab/seq.json`. Safe to remove individual run files
+to free space — they're regenerable. The lab never touches the live world.
+
 Verify after deploy: `docker logs shroom | tail -10`. Look for `loaded world.json`
 and the tick number. A clean restart picks up from the last saved tick.
 

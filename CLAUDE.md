@@ -29,20 +29,21 @@ more complex.
 
 The server is at `the maintainer@shroom-server`.
 The repo lives at `/opt/home-server/shroom`, owned by the `agent` user.
-Pull and restart as:
+Pull and rebuild as:
 
 ```bash
-sudo -u agent bash -c 'cd /opt/home-server/shroom && git pull'
-docker compose restart shroom
+ssh agent@shroom-server 'cd /opt/home-server/shroom && git pull && docker compose up -d --build shroom'
 ```
 
-**Static JS changes** (anything under `app/public/` or `app/lib/`): restart only, no rebuild.
+The Dockerfile bakes the code into the image (`COPY . .`) — the container
+has no bind mount for `/app`. Any change to `app/public/` or `app/lib/`
+requires a rebuild, not just a restart. `docker compose restart shroom`
+will look like it worked but actually serves the previous image.
 
-**Dockerfile or dependency changes**: `docker compose up -d --build`.
-
-Data persists at `/opt/home-server/data/shroom`. Never touch it during a deploy unless
-explicitly migrating. The world.json is the living state of the sim — treat it
-with care.
+Data persists at `/opt/shroom/data/shroom` (the repo path `/opt/home-server/...`
+is unrelated). Bind-mounted into the container at `/app/data`. Never touch
+it during a deploy unless explicitly migrating. The world.json is the
+living state of the sim — treat it with care.
 
 `/lab` runs (scenario sandbox) accumulate under `data/lab/runs/sim-N.json` and a
 sequence counter at `data/lab/seq.json`. Safe to remove individual run files

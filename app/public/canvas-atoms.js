@@ -751,16 +751,20 @@
     if (!critters) return;
     for (const c of critters) {
       if (c.kind === 'worm') {
-        const segs = c.segs || 9;
-        const col  = hsl(12, 35, 30);
-        const colD = hsl(12, 35, 18);
+        const segs  = c.segs || 9;
+        const col   = hsl(12, 35, 30);
+        const colD  = hsl(12, 35, 18);
+        const phase = c.phase || 0;
         let x = c.x, y = c.y;
         for (let i = 0; i < segs; i++) {
           const c2 = i % 2 === 0 ? col : colD;
           pb.set(x | 0, y | 0, c2[0], c2[1], c2[2]);
           pb.blend((x | 0) + 1, y | 0, c2[0], c2[1], c2[2], 200);
-          x += Math.cos(c.angle + Math.sin(i * 0.7) * 0.4) * 1.2;
-          y += Math.sin(c.angle + Math.sin(i * 0.7) * 0.4) * 1.2;
+          // Traveling sin wave along the body — phase advances over time so
+          // the S-curve slides head→tail, reading as undulation.
+          const wave = Math.sin(i * 0.7 - phase) * 0.4;
+          x += Math.cos(c.angle + wave) * 1.2;
+          y += Math.sin(c.angle + wave) * 1.2;
         }
       } else if (c.kind === 'beetle') {
         const col = hsl(20, 25, 12);

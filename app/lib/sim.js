@@ -27,7 +27,7 @@ const SIM_DAYS_PER_SEASON = DAYS_PER_SEASON;     // 91 real days
 const NUTRIENT_CONSUMPTION   = 1;
 const SIDE_ABSORPTION        = 1;
 const SIDE_ABSORPTION_FLOOR  = 10;   // lowered from 20 — frontier cells can
-const THICKNESS_BOX_RADIUS   = 2;
+const THICKNESS_BOX_RADIUS   = 1;    // 3×3 density check; see BALANCE.md 2026-05-17
 const THICKNESS_MAX          = 3;
 const NUTRIENT_MAX           = 100;  // soft cap matching world.js generators
 
@@ -63,14 +63,19 @@ const SUBSTRATE_REGEN_INTERVAL = 4896;
 const LOG_DECAY_PROB = 0.00005;
 
 // ── Cell aging + dieback ─────────────────────────────────
-// Cells turn over within a real week; replacement keeps the colony alive.
+// Hyphae cells are infrastructure — once placed they should remain as part of
+// the network's transport spine, not die when the substrate beneath them is
+// eaten. Death pressures live at the colony level (handleFruiting / toofan /
+// old-age) and at the very-old-cell level (turnover, slow). See
+// BALANCE.md 2026-05-17 — "snake hyphae" fix.
 const HYPHA_DEATH_THRESHOLD  = 5;
-const HYPHA_AGE_LIMIT        = TICKS_PER_WEEK;   // 201,600
+const HYPHA_AGE_LIMIT        = TICKS_PER_WEEK * 8;   // ~2 months — cells persist as pipes
 
-// Per-tick dieback risks — kept tiny so colony lifespans land in months.
-// At full pressure each contributes ~1e-4 → cell half-life ~6 real hours.
-const STARVATION_DIE_RISK    = 0.0005;           // cell with nutrient < threshold
-const TURNOVER_DIE_RISK      = 0.0002;           // aged cell turnover
+// Per-tick dieback risks. STARVATION_DIE_RISK is retained as a constant for
+// future use (colony-level starvation, surfaced via the engine page) but is
+// no longer applied per-cell — see growHyphae death loop below.
+const STARVATION_DIE_RISK    = 0.0005;           // unused per-cell as of 2026-05-17
+const TURNOVER_DIE_RISK      = 0.00002;          // 10× slower than before
 const WINTER_DIE_RISK        = 0.00005;
 const BLIGHT_DIE_RISK        = 0.0001;
 
@@ -92,7 +97,7 @@ const FRUIT_BASE_RATE        = 0.0025;
 //     network gets cheaper subsequent fruits — rewards specialization.
 const EXTEND_COST            = 2;
 const FRUIT_COST             = 500;
-const FRUIT_COST_FLOOR       = 80;
+const FRUIT_COST_FLOOR       = 300;  // raised from 80; see BALANCE.md 2026-05-17
 const FRUIT_DISCOUNT_PER_FRUIT = 0.8;   // multiplicative: 500, 400, 320, 256, …
 const FRUIT_MATURE_TICKS     = 80;          // ~4 real min from emergence to spore release
 const FRUIT_CAP_DECAY_TICKS  = TICKS_PER_DAY * 2;  // cap stays visible 2 sim days post-emergence
@@ -536,9 +541,16 @@ function decayHyphae(world) {
       if (contrib > topContrib) { topContrib = contrib; topCause = cause; }
     }
 
-    if (nutrient[i] < HYPHA_DEATH_THRESHOLD) {
-      add('starvation', STARVATION_DIE_RISK * (1 - decayResistance));
-    }
+    // Per-cell starvation gate intentionally disabled — see BALANCE.md
+    // 2026-05-17. A hypha cell on exhausted substrate is still useful as
+    // part of the transport network connecting absorbing tips to fruit
+    // sites. Killing it produces the "snake" behavior — colony moves
+    // across the substrate dropping a trail of corpses instead of holding
+    // a network. Reintroduce later at the colony level if needed.
+    //
+    // if (nutrient[i] < HYPHA_DEATH_THRESHOLD) {
+    //   add('starvation', STARVATION_DIE_RISK * (1 - decayResistance));
+    // }
     if (age[i] > HYPHA_AGE_LIMIT) {
       add('turnover', TURNOVER_DIE_RISK * (1 - decayResistance));
     }

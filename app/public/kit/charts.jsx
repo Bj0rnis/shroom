@@ -13,6 +13,8 @@ const StageGlyph = window.StageGlyph;
 // ── Tick pipeline ─────────────────────────────────────────────────────────
 const TICK_STAGES = [
   { k: 'clock',       d: 'advance tick, roll season, drift weather',                color: 'textHi' },
+  { k: 'trees',       d: 'saplings rise · grow · mature · fall into logs',          color: 'grass' },
+  { k: 'substrate',   d: 'log nutrient regen · empty log cells crumble to soil',    color: 'soil' },
   { k: 'grow',        d: 'absorb · extend (costs reserves) · thicken',              color: 'hypha' },
   { k: 'fruit',       d: 'mature stalks · roll new fruit (cost declines per fruit)',color: 'ember' },
   { k: 'spores',      d: 'drift caps · age out · release at maturity',              color: 'hyphaTip' },
@@ -445,6 +447,88 @@ function FlavorChips({ flavors }) {
   );
 }
 
+// ── Cycle diagram ─────────────────────────────────────────────────────────
+// Two loops that keep the world running. Each ring renders six labelled
+// nodes around a circle with arrowed arcs between them. Visual register
+// matches TickPipeline (mono labels, pixel-aligned, accent stripe).
+function CycleDiagram() {
+  const loops = [
+    {
+      title: 'spore cycle',
+      caption: 'a colony, carried forward',
+      accent: 'hyphaTip',
+      nodes: ['spore', 'germinate', 'colony', 'fruit', 'release', 'drift'],
+    },
+    {
+      title: 'substrate cycle',
+      caption: 'a stage, replaced',
+      accent: 'ember',
+      nodes: ['sapling', 'tree', 'fall', 'log', 'consumed', 'soil'],
+    },
+  ];
+  const W = 880, ringW = 380, ringH = 300;
+  const cx = ringW / 2, cy = ringH / 2 - 4, r = 92;
+
+  function ring({ title, caption, accent, nodes }, dx) {
+    const acc = COL[accent];
+    return (
+      <g transform={`translate(${dx}, 0)`} key={title}>
+        <text x={cx} y="16" textAnchor="middle"
+          fontFamily={MONO} fontSize="10" fill={COL.dim}
+          letterSpacing="0.2em">{title.toUpperCase()}</text>
+        <text x={cx} y={ringH - 6} textAnchor="middle"
+          fontFamily={SERIF} fontSize="13" fill={COL.text2} fontStyle="italic">
+          {caption}
+        </text>
+        {/* Faint guide ring */}
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={COL.faint} strokeDasharray="2 3" />
+        {nodes.map((n, i) => {
+          const t  = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+          const tN = ((i + 1) / nodes.length) * Math.PI * 2 - Math.PI / 2;
+          const x  = cx + r * Math.cos(t),  y  = cy + r * Math.sin(t);
+          const xN = cx + r * Math.cos(tN), yN = cy + r * Math.sin(tN);
+          // Pull-back endpoints so arcs don't overlap node dots.
+          const pull = 12;
+          const ax = (x + xN) / 2,  ay = (y + yN) / 2;
+          const vx = xN - x, vy = yN - y, vL = Math.hypot(vx, vy) || 1;
+          const x1 = x  + (vx / vL) * pull;
+          const y1 = y  + (vy / vL) * pull;
+          const x2 = xN - (vx / vL) * pull;
+          const y2 = yN - (vy / vL) * pull;
+          // Arrowhead at the tail (x2,y2), pointed along (vx,vy).
+          const ang = Math.atan2(vy, vx);
+          const ah = 5;
+          const ahx = x2, ahy = y2;
+          const ah1x = ahx - ah * Math.cos(ang - 0.5);
+          const ah1y = ahy - ah * Math.sin(ang - 0.5);
+          const ah2x = ahx - ah * Math.cos(ang + 0.5);
+          const ah2y = ahy - ah * Math.sin(ang + 0.5);
+          // Label placement — push outside the ring radially.
+          const lx = cx + (r + 22) * Math.cos(t);
+          const ly = cy + (r + 22) * Math.sin(t);
+          const anchor = Math.cos(t) > 0.3 ? 'start' : Math.cos(t) < -0.3 ? 'end' : 'middle';
+          return (
+            <g key={n}>
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={acc} strokeWidth="1" />
+              <polygon points={`${ahx},${ahy} ${ah1x},${ah1y} ${ah2x},${ah2y}`} fill={acc} />
+              <rect x={x - 3} y={y - 3} width="6" height="6" fill={acc} />
+              <text x={lx} y={ly + 3} textAnchor={anchor}
+                fontFamily={MONO} fontSize="10" fill={COL.textHi}>{n}</text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${ringH}`} width="100%" style={{ display: 'block', maxWidth: 880, marginBottom: 6 }}>
+      {ring(loops[0], 60)}
+      {ring(loops[1], 60 + ringW + 20)}
+    </svg>
+  );
+}
+
 window.TickPipeline    = TickPipeline;
 window.TerrainDiagram  = TerrainDiagram;
 window.FruitLadder     = FruitLadder;
@@ -454,5 +538,6 @@ window.FirstDayLedger  = FirstDayLedger;
 window.FruitDecisions  = FruitDecisions;
 window.ToofanRoll      = ToofanRoll;
 window.FlavorChips     = FlavorChips;
+window.CycleDiagram    = CycleDiagram;
 
 })();

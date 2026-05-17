@@ -94,6 +94,24 @@ function StageGlyph({ k, color }) {
           <rect x="4" y="4" width="2" height="1" fill={color} />
         </svg>
       );
+    case 'trees':
+      return (
+        <svg width="12" height="12" viewBox="0 0 7 7" shapeRendering="crispEdges">
+          <rect x="3" y="4" width="1" height="3" fill={color} />
+          <rect x="2" y="2" width="3" height="1" fill={color} />
+          <rect x="1" y="3" width="5" height="1" fill={color} />
+          <rect x="3" y="1" width="1" height="1" fill={color} />
+        </svg>
+      );
+    case 'substrate':
+      return (
+        <svg width="12" height="12" viewBox="0 0 7 7" shapeRendering="crispEdges">
+          <rect x="0" y="2" width="7" height="1" fill={color} />
+          <rect x="0" y="4" width="7" height="1" fill={color} opacity="0.7" />
+          <rect x="2" y="3" width="1" height="1" fill={color} opacity="0.5" />
+          <rect x="5" y="5" width="1" height="1" fill={color} opacity="0.5" />
+        </svg>
+      );
     case 'fruit':
       return (
         <svg width="12" height="12" viewBox="0 0 7 7" shapeRendering="crispEdges">

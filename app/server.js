@@ -19,16 +19,21 @@ const persistence = require('./lib/persistence');
 const nigehban = require('./lib/nigehban');
 const { buildGridSnapshot } = require('./lib/grid-snapshot');
 const observability = require('./lib/observability');
+const lab = require('./lib/lab');
 
-// Sim hooks → Nigehban triggers + tool-cooldown resets
-setHooks({
+// Sim hooks → Nigehban triggers + tool-cooldown resets.
+// Captured as a named object so the lab harness can swap them out for the
+// duration of a sandbox run and restore them after via `restoreLiveHooks`.
+const liveHooks = {
   onSeasonChange: (w) => { nigehban.resetSeasonTools(w); nigehban.onSeasonChange(w); },
   onToofan:       (w) => { persistence.rotateVolume(w.meta.volume); nigehban.resetVolumeTools(w); nigehban.resetSeasonTools(w); nigehban.onToofan(w); },
   onToofanWarning:(w) => { nigehban.onToofanWarning(w); },
   onFirstFruit:   (w, c) => { nigehban.onFirstFruit(w, c); },
   onColonyDeath:  (w, c) => { observability.recordDeath(w, c); nigehban.onColonyDeath(w, c); },
   onWorldEmpty:   (w)    => { nigehban.onWorldEmpty(w); },
-});
+};
+setHooks(liveHooks);
+function restoreLiveHooks() { setHooks(liveHooks); }
 
 // ── Boot world ─────────────────────────────────────────
 let world = persistence.loadWorld();
@@ -136,6 +141,56 @@ app.get('/api/engine-spec', (req, res) => {
     genome:    GENES,
     world:     { W, H, GRASS_Y },
   });
+});
+
+// ── Lab — scenario sandbox (PR 1: harness + persistence + markdown) ─────
+// Each run is sandbox-only: a separate world is created, ticks N times,
+// the live world keeps ticking via the event-loop yield inside lab.js.
+// The lab swaps the global sim hooks for the duration of a run; we hand
+// it `restoreLiveHooks` to reinstall the live wiring afterwards.
+
+app.get('/api/lab/scenarios', (req, res) => {
+  res.json(lab.SCENARIOS.map(s => ({
+    id:           s.id,
+    name:         s.name,
+    description:  s.description,
+    durationDays: s.durationDays,
+  })));
+});
+
+app.post('/api/lab/run', async (req, res) => {
+  const { scenarioId, seed } = req.body || {};
+  if (!scenarioId) return res.status(400).json({ error: 'scenarioId required' });
+  try {
+    const run = await lab.runScenario(scenarioId, { seed, restoreHooks: restoreLiveHooks });
+    res.json(run);
+  } catch (err) {
+    console.error('lab: runScenario failed —', err);
+    restoreLiveHooks();
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/lab/runs', (req, res) => {
+  res.json(lab.listRuns());
+});
+
+app.get('/api/lab/runs/:id', (req, res) => {
+  const run = lab.loadRun(req.params.id);
+  if (!run) return res.status(404).json({ error: 'not found' });
+  res.json(run);
+});
+
+app.get('/api/lab/runs/:id/markdown', (req, res) => {
+  const run = lab.loadRun(req.params.id);
+  if (!run) return res.status(404).type('text/plain').send('not found');
+  res.type('text/markdown').send(lab.renderRunMarkdown(run));
+});
+
+app.delete('/api/lab/runs/:id', (req, res) => {
+  const ok = lab.deleteRun(req.params.id);
+  if (!ok) return res.status(404).json({ ok: false });
+  res.json({ ok: true });
 });
 
 app.get('/api/journal', (req, res) => {

@@ -544,10 +544,88 @@ function DevDashboardTrigger({ onOpen }) {
   );
 }
 
+// ── Page nav triggers (engine / lab) ─────────────────────────────────────
+// Small pixel-art anchors that sit alongside DevDashboardTrigger in the
+// TopColony header. Use real <a href> so middle-click / cmd-click open in
+// a new tab — the lab page is the one you keep open in a second tab while
+// the live world ticks here.
+function NavLinkTrigger({ href, title, draw }) {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <a href={href} title={title}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ display: 'inline-flex', textDecoration: 'none', cursor: 'pointer' }}
+    >
+      {window.PIX ? (
+        <window.PIX.PixelStage w={9} h={9} scale={3}
+          deps={[hover]}
+          draw={(pb) => draw(pb, window.PIX.C, hover)}
+        />
+      ) : <span style={{ color: '#7a7060', fontSize: 12 }}>·</span>}
+    </a>
+  );
+}
+
+// Tiny open-book glyph for /engine — the field guide.
+function EnginePageTrigger() {
+  return (
+    <NavLinkTrigger
+      href="/engine"
+      title="engine — field guide"
+      draw={(pb, C, hover) => {
+        window.PIX.panel(pb, 0, 0, 9, 9, { surface: 'dark', seed: 4 });
+        const c = hover ? C.ember : C.text2;
+        // Two open pages with a spine down the middle (col 4).
+        // Top + bottom borders.
+        for (let x = 1; x <= 7; x++) { pb.set(x, 2, c); pb.set(x, 6, c); }
+        // Outer sides + spine.
+        pb.set(1, 3, c); pb.set(1, 4, c); pb.set(1, 5, c);
+        pb.set(7, 3, c); pb.set(7, 4, c); pb.set(7, 5, c);
+        pb.set(4, 3, c); pb.set(4, 4, c); pb.set(4, 5, c);
+        // Faint "text lines" on each page.
+        const t = hover ? C.text2 : C.textFaint;
+        pb.set(2, 4, t); pb.set(3, 4, t);
+        pb.set(5, 4, t); pb.set(6, 4, t);
+      }}
+    />
+  );
+}
+
+// Tiny beaker/flask glyph for /lab — the sandbox.
+function LabPageTrigger() {
+  return (
+    <NavLinkTrigger
+      href="/lab"
+      title="lab — scenario sandbox"
+      draw={(pb, C, hover) => {
+        window.PIX.panel(pb, 0, 0, 9, 9, { surface: 'dark', seed: 5 });
+        const c = hover ? C.ember : C.text2;
+        // Mouth: 3 wide at top.
+        pb.set(3, 1, c); pb.set(4, 1, c); pb.set(5, 1, c);
+        // Neck.
+        pb.set(3, 2, c); pb.set(5, 2, c);
+        pb.set(3, 3, c); pb.set(5, 3, c);
+        // Flask body widens then closes at the bottom.
+        pb.set(2, 4, c); pb.set(6, 4, c);
+        pb.set(2, 5, c); pb.set(6, 5, c);
+        pb.set(2, 6, c); pb.set(6, 6, c);
+        pb.set(2, 7, c); pb.set(3, 7, c); pb.set(4, 7, c); pb.set(5, 7, c); pb.set(6, 7, c);
+        // Liquid sits in the bottom of the flask. Brighter when hovered.
+        const liq = hover ? C.glow : C.emberLo;
+        pb.set(3, 6, liq); pb.set(4, 6, liq); pb.set(5, 6, liq);
+      }}
+    />
+  );
+}
+
 window.HallTrigger        = HallTrigger;
 window.HallModal          = HallModal;
 window.HallDetail         = HallDetail;
 window.DevDashboard       = DevDashboard;
 window.DevDashboardTrigger = DevDashboardTrigger;
+window.NavLinkTrigger     = NavLinkTrigger;
+window.EnginePageTrigger  = EnginePageTrigger;
+window.LabPageTrigger     = LabPageTrigger;
 
 })();

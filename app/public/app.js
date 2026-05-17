@@ -19,7 +19,11 @@ function TopColony({ snapshot, onOpenDev }) {
           <span style={{ fontFamily: mono, color: '#7a7060', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             top colony
           </span>
-          <DevDashboardTrigger onOpen={onOpenDev} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <EnginePageTrigger />
+            <LabPageTrigger />
+            <DevDashboardTrigger onOpen={onOpenDev} />
+          </span>
         </div>
         {top.length === 0 ? (
           <div style={{ fontFamily: mono, color: '#5a5240', fontSize: 10, fontStyle: 'italic' }}>none</div>

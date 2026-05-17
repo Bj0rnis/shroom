@@ -170,16 +170,26 @@ function worldToCfg(snap, now, t = 0) {
     const kindIdx = Math.floor(critterRng() * critterKinds.length);
     const baseX   = critterRng() * SHROOM_W;
     const baseY   = 80 + critterRng() * 90;
-    const baseAng = critterRng() * Math.PI * 2;
+    // Walk horizontally — body angle stays aligned with travel direction so
+    // worms read as crawling, not spinning. Body undulation comes from
+    // `phase` in canvas-atoms.js worm draw.
+    const dir     = critterRng() < 0.5 ? -1 : 1;
+    const baseAng = dir > 0 ? 0 : Math.PI;
     const segs    = 8 + Math.floor(critterRng() * 3);
-    const speed   = 0.35 + (i % 3) * 0.2;   // px/s, varies per critter
-    const walkX   = ((baseX + Math.cos(baseAng) * speed * tSec) % SHROOM_W + SHROOM_W) % SHROOM_W;
+    // px/s, varies per critter. Tuned so forward motion outpaces the body
+    // wiggle amplitude — at 2-3 px/s a worm crosses the 320-wide canvas in
+    // ~2 real minutes, slow enough to be ambient but visibly moving.
+    const speed   = 2.0 + (i % 3) * 0.6;
+    const walkX   = ((baseX + dir * speed * tSec) % SHROOM_W + SHROOM_W) % SHROOM_W;
     const walkY   = baseY + Math.sin(tSec * 0.55 + i * 1.8) * 1.4;
     critters.push({
       kind:  critterKinds[kindIdx],
       x:     Math.round(walkX),
       y:     Math.round(walkY),
-      angle: baseAng + tSec * 1.4,
+      angle: baseAng,
+      // Time phase per-critter: drives body undulation in the worm draw so
+      // the S-curve travels down the body as it moves forward.
+      phase: tSec * 3 + i * 0.9,
       segs,
     });
   }

@@ -226,10 +226,25 @@ function doSow(world, a) {
     x = clampInt(a.target.x ?? Math.floor(W/2), 0, W - 1);
     y = clampInt(a.target.y ?? Math.floor(H*0.45), 0, H - 1);
   } else {
-    // pick random log cell
-    const lb = world.meta.logBounds || { x0: 0, y0: 0, w: W, h: H };
-    x = lb.x0 + Math.floor(Math.random() * lb.w);
-    y = lb.y0 + Math.floor(Math.random() * lb.h);
+    // 50% chance to sow in soil — spreads colonies across the world instead
+    // of always piling onto the log and exhausting it.
+    const { kind, nutrient } = world.grid;
+    let placed = false;
+    if (Math.random() < 0.5) {
+      for (let attempt = 0; attempt < 80; attempt++) {
+        const i = Math.floor(Math.random() * kind.length);
+        if (kind[i] !== SOIL || nutrient[i] < 10) continue;
+        x = i % W;
+        y = Math.floor(i / W);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      const lb = world.meta.logBounds || { x0: 0, y0: 0, w: W, h: H };
+      x = lb.x0 + Math.floor(Math.random() * lb.w);
+      y = lb.y0 + Math.floor(Math.random() * lb.h);
+    }
   }
   const id = sowAt(world, x, y, randomGenome());
   if (id) {

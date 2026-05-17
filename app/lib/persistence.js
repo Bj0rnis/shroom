@@ -36,7 +36,6 @@ function serializeWorld(world) {
     grid: {
       kind:     Array.from(world.grid.kind),
       nutrient: Array.from(world.grid.nutrient),
-      moisture: Array.from(world.grid.moisture),
       colony:   Array.from(world.grid.colony),
       age:      Array.from(world.grid.age),
     },
@@ -59,7 +58,6 @@ function hydrateWorld(raw) {
     grid: {
       kind:     Uint8Array.from(raw.grid.kind),
       nutrient: Uint8Array.from(raw.grid.nutrient),
-      moisture: Uint8Array.from(raw.grid.moisture),
       colony:   Uint16Array.from(raw.grid.colony),
       age:      Uint16Array.from(raw.grid.age),
     },

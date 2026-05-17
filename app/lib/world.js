@@ -71,7 +71,6 @@ function createWorld(seed) {
     grid: {
       kind:     new Uint8Array(cellCount),
       nutrient: new Uint8Array(cellCount),
-      moisture: new Uint8Array(cellCount),
       colony:   new Uint16Array(cellCount),
       age:      new Uint16Array(cellCount),
     },
@@ -121,36 +120,32 @@ function addDeepNutrientPockets(world) {
 }
 
 function paintBaseTerrain(world) {
-  const { kind, nutrient, moisture } = world.grid;
+  const { kind, nutrient } = world.grid;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
       if (y < GRASS_Y) {
         kind[i] = AIR;
         nutrient[i] = 0;
-        moisture[i] = 0;
       } else if (y === GRASS_Y) {
         kind[i] = GRASS;
         // grass is the bridge between log and soil — needs enough nutrient
         // for hyphae to pass through without immediately dying back
         nutrient[i] = 25 + Math.floor(Math.random() * 10);
-        moisture[i] = 50;
       } else {
         kind[i] = SOIL;
         // Flat, lean baseline. The substrate doesn't push hyphae any direction
         // on its own — variation lives in addDeepNutrientPockets, which seeds
         // rich seams in the lower soil band and gives mycelium a reason to
-        // tunnel downward. Moisture keeps its gradient (visual / dies-out only).
-        const depth = (y - GRASS_Y) / (H - GRASS_Y);
+        // tunnel downward.
         nutrient[i] = 22 + Math.floor(Math.random() * 8);  // 22–29
-        moisture[i] = Math.floor(60 - depth * 20 + (Math.random() * 15));
       }
     }
   }
 }
 
 function generateLog(world) {
-  const { kind, nutrient, moisture } = world.grid;
+  const { kind, nutrient } = world.grid;
   // Sized so the initial log feels like a fallen oak's worth of wood,
   // matching fellTree's output (oak maxHeight 50 → width ~80, thickness
   // ~16-22). Earlier 100-140 × 22-28 was ~2x bigger than any tree could
@@ -161,14 +156,15 @@ function generateLog(world) {
   // Log sits ON the grass, no embedding. Bottom row of log = grass row above.
   const yTop = GRASS_Y - logHeight;
 
-  const zone = (label) => ({
-    label,
+  // Internal nutrient bias pockets — a knot (nutrient-poor) and a dry pocket
+  // (nutrient-rich) give the log a bit of texture for foragers. Kept local;
+  // the rest of the sim never reads them.
+  const zone = () => ({
     cx: x0 + Math.floor(Math.random() * logWidth),
     cy: yTop + Math.floor(Math.random() * logHeight),
     r:  6 + Math.floor(Math.random() * 4),
   });
-  const knot = zone('knot'), wet = zone('wet'), dry = zone('dry');
-  world.meta.logZones  = { knot, wet, dry };
+  const knot = zone(), dry = zone();
   world.meta.logBounds = { x0, y0: yTop, w: logWidth, h: logHeight };
 
   // Renderer needs per-log bounds + species + age so it can paint species-specific
@@ -213,15 +209,11 @@ function generateLog(world) {
       const i = y * W + x;
       kind[i] = LOG;
       let n = 70 + Math.floor(Math.random() * 25);
-      let m = 55 + Math.floor(Math.random() * 20);
       const dKnot = Math.hypot(x - knot.cx, y - knot.cy);
-      const dWet  = Math.hypot(x - wet.cx,  y - wet.cy);
       const dDry  = Math.hypot(x - dry.cx,  y - dry.cy);
-      if (dKnot < knot.r) { n -= 30; m -= 10; }
-      if (dWet  < wet.r)  { m += 25; }
-      if (dDry  < dry.r)  { m -= 25; n += 10; }
+      if (dKnot < knot.r) n -= 30;
+      if (dDry  < dry.r)  n += 10;
       nutrient[i] = Math.max(0, Math.min(100, n));
-      moisture[i] = Math.max(0, Math.min(100, m));
     }
   }
 }

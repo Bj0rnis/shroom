@@ -1,5 +1,5 @@
 // Shroom — packed grid snapshot for the canvas renderer.
-// Kind/occupied/moisture as base64 typed arrays; everything else as JSON.
+// Kind/colony as base64 typed arrays; everything else as JSON.
 // Polled at ~1 Hz; payload is ~200 KB raw. Tight enough for local + Tailscale.
 
 const { mutate } = require('./genome'); // no-op import to keep tree-shake honest
@@ -9,7 +9,7 @@ function packBytes(typedArr) {
 }
 
 function buildGridSnapshot(world) {
-  const { kind, colony, moisture, age } = world.grid;
+  const { kind, colony, age } = world.grid;
   const [W, H] = world.shape;
 
   // Per-colony bbox + cell count. Kept for the smoothed-glow overlay
@@ -57,7 +57,6 @@ function buildGridSnapshot(world) {
     shape: world.shape,
     kind:     packBytes(kind),
     colony:   packBytes(colony),       // Uint16Array — colony id per cell
-    moisture: packBytes(moisture),
     spores:   world.spores.map(s => ({ x: s.x, y: s.y, age: s.age })),
     fruits:   world.fruits.filter(f => !f.spent).map(f => ({
       x: f.x, y: f.y, colonyId: f.colonyId, age: f.age, mature: f.mature,

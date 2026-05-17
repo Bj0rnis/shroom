@@ -103,8 +103,9 @@ Branching is controlled by the `freeCount` probability tiers in `growHyphae`:
 - `freeCount === 2` (junction): 14% base extension chance
 - `freeCount <= 1` (interior): 2% base extension chance
 
-Tips also have a 22% chance of bifurcation — extending in two directions in one
-tick to produce Y-shaped branches.
+Tips also have a 40% chance of bifurcation (`TIP_BIFURCATION_PROB`) — extending
+in two directions in one tick to produce Y-shaped branches. Tuned for
+"roots, not worms"; first Y-branch appears around cell ~8 on a healthy colony.
 
 All growth is multiplied by `growthRate` (genome) and `seasonMult` (season).
 Winter suppresses growth significantly; spring amplifies it.

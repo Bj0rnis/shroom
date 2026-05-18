@@ -139,6 +139,22 @@ app.get('/lab', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'lab.html'));
 });
 
+// Lab journals — render the markdown files in app/lib/sim-lab/ as HTML
+// so they're readable in the browser without leaving the project. Source
+// of truth stays in markdown; this is a view on it.
+const fs = require('fs');
+const { renderPage } = require('./lib/sim-lab/render');
+function serveJournal(filename, title) {
+  return (req, res) => {
+    const p = path.join(__dirname, 'lib', 'sim-lab', filename);
+    if (!fs.existsSync(p)) return res.status(404).send('not found');
+    const md = fs.readFileSync(p, 'utf8');
+    res.type('html').send(renderPage(title, md));
+  };
+}
+app.get('/research', serveJournal('RESEARCH.md', 'research'));
+app.get('/notes',    serveJournal('NOTES.md',    'notes'));
+
 app.get('/api/engine-spec', (req, res) => {
   res.json({
     constants: CONSTANTS,

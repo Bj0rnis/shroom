@@ -29,6 +29,12 @@ function atomicWrite(p, data) {
 // ── World snapshot ──────────────────────────────────────
 
 function serializeWorld(world) {
+  // Persist the rng state so a save → load → continue produces the same
+  // tick stream as if the server had never restarted. meta.seed alone is
+  // enough to rebuild the rng; meta.rngState carries the position in it.
+  if (world.rng && typeof world.rng.state === 'number') {
+    world.meta.rngState = world.rng.state;
+  }
   return {
     meta: world.meta,
     shape: world.shape,
@@ -52,9 +58,16 @@ function hydrateWorld(raw) {
   // counters to zero. Pre-existing history isn't back-filled — the running
   // totals start counting forward from this point.
   if (raw.meta && !raw.meta.lifetime) raw.meta.lifetime = freshLifetime();
+  // Rebuild rng from seed + saved state. Legacy worlds without rngState fall
+  // back to a fresh seed-only rng; the stream will diverge from pre-save but
+  // future save/load cycles will be deterministic.
+  const { createRng } = require('./rng');
+  const rng = createRng(raw.meta.seed | 0);
+  if (typeof raw.meta.rngState === 'number') rng.state = raw.meta.rngState;
   return {
     meta: raw.meta,
     shape: raw.shape,
+    rng,
     grid: {
       kind:     Uint8Array.from(raw.grid.kind),
       nutrient: Uint8Array.from(raw.grid.nutrient),

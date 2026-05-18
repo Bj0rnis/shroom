@@ -72,6 +72,17 @@ const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (rare — lea
 const NON_LEADER_EXTEND_PROB  = 0.012;  // any non-leader cell with freeCount >= 3
 const NON_LEADER_EXTEND_JUNC  = 0.002;  // any non-leader cell with freeCount = 2
 const MAX_LEADERS_PER_COLONY  = 3;
+// Leader senescence: a leader stops being a leader after this many extensions.
+// Real hyphal tips age out — their vigour decays as they age, and growth
+// passes to younger forks. Without this cap the leader-mechanic still
+// produces unbounded growth on rich substrate (just slower than a free-for-
+// all): three leaders × LEADER_EXTEND_PROB × 28800 ticks → 10k+ cells on a
+// log-rich seed. Capping at LEADER_LIFESPAN extensions stops a single leader
+// before it can mat. Bifurcation creates fresh leaders (count = 0) that
+// inherit the frontier. When all leaders senesce, growth halts until a new
+// frontier cell is lazily promoted — which only happens after one of the
+// senesced cells eventually dies. Sim-lab iter-5.
+const LEADER_LIFESPAN          = 60;
 
 // ── Substrate slow regeneration ─────────────────────────
 // Decomposer microbes and rainfall slowly restore substrate richness between
@@ -500,8 +511,10 @@ function growHyphae(world) {
     //   is promoted — covers the founder tick and recovery from full
     //   leader-die-off. Gated on col.reserves: each new cell costs EXTEND_COST.
     if (!col.leaders) col.leaders = [];
-    if (col.leaders.length === 0) col.leaders.push(i);
-    const isLeader = col.leaders.indexOf(i) >= 0;
+    if (!col.leaderExt) col.leaderExt = [];
+    if (col.leaders.length === 0) { col.leaders.push(i); col.leaderExt.push(0); }
+    const leaderIdx = col.leaders.indexOf(i);
+    const isLeader  = leaderIdx >= 0;
 
     if (freeCount > 0 && (col.reserves || 0) >= EXTEND_COST) {
       let baseExtend;
@@ -525,17 +538,23 @@ function growHyphae(world) {
         age[chosen] = 0;
         col.reserves -= EXTEND_COST;
         // Leadership transfer: parent becomes static, new cell is now the
-        // active leading tip. Non-leader extensions don't create leaders.
+        // active leading tip. The leader's accumulated extension count moves
+        // with the lineage — once it hits LEADER_LIFESPAN the leader senesces
+        // and is dropped. Non-leader extensions don't create leaders.
         if (isLeader) {
-          const idx = col.leaders.indexOf(i);
-          if (idx >= 0) col.leaders.splice(idx, 1);
-          col.leaders.push(chosen);
+          const prevExt = col.leaderExt[leaderIdx] || 0;
+          col.leaders.splice(leaderIdx, 1);
+          col.leaderExt.splice(leaderIdx, 1);
+          if (prevExt + 1 < LEADER_LIFESPAN) {
+            col.leaders.push(chosen);
+            col.leaderExt.push(prevExt + 1);
+          }
         }
 
-        // Bifurcation — leaders only. The second new cell becomes a second
-        // leader if the colony is below MAX_LEADERS_PER_COLONY; otherwise it
-        // joins the static network. This is how a single founding leader
-        // grows the colony's leader count up to the cap as the network forks.
+        // Bifurcation — leaders only. The second new cell becomes a fresh
+        // leader (extension count 0) if the colony is below
+        // MAX_LEADERS_PER_COLONY; otherwise it joins the static network. A
+        // young fork inherits the frontier when the parent leader senesces.
         if (isLeader && freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
           if (rng() < TIP_BIFURCATION_PROB) {
             const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
@@ -549,6 +568,7 @@ function growHyphae(world) {
               col.reserves -= EXTEND_COST;
               if (col.leaders.length < MAX_LEADERS_PER_COLONY) {
                 col.leaders.push(chosen2);
+                col.leaderExt.push(0);
               }
             }
           }
@@ -682,11 +702,14 @@ function decayHyphae(world) {
     if (dieRisk > 0 && world.rng() < dieRisk) {
       colony[i] = 0;
       age[i] = 0;
-      // If this cell was a leader, drop it — lazy-init in growHyphae will
-      // promote a replacement next tick.
+      // If this cell was a leader, drop it (and its ext-count) — lazy-init
+      // in growHyphae will promote a replacement next tick.
       if (col.leaders) {
         const li = col.leaders.indexOf(i);
-        if (li >= 0) col.leaders.splice(li, 1);
+        if (li >= 0) {
+          col.leaders.splice(li, 1);
+          if (col.leaderExt) col.leaderExt.splice(li, 1);
+        }
       }
       // Decay-feeds-substrate: deposit at the dead cell + bleed to 4-neighbors.
       nutrient[i] = Math.min(NUTRIENT_MAX, nutrient[i] + DECAY_DEPOSIT);
@@ -784,7 +807,10 @@ function cascadeIsolationDeath(world) {
       age[i]    = 0;
       if (col.leaders) {
         const li = col.leaders.indexOf(i);
-        if (li >= 0) col.leaders.splice(li, 1);
+        if (li >= 0) {
+          col.leaders.splice(li, 1);
+          if (col.leaderExt) col.leaderExt.splice(li, 1);
+        }
       }
       col.deathCounts = col.deathCounts || {};
       col.deathCounts['stranded'] = (col.deathCounts['stranded'] || 0) + 1;
@@ -1277,7 +1303,7 @@ const CONSTANTS = {
   EXTEND_COST, TIP_BIFURCATION_PROB, TIP_AGE_DECAY,
   LEADER_EXTEND_PROB, LEADER_EXTEND_JUNCTION,
   NON_LEADER_EXTEND_PROB, NON_LEADER_EXTEND_JUNC,
-  MAX_LEADERS_PER_COLONY,
+  MAX_LEADERS_PER_COLONY, LEADER_LIFESPAN,
   FRUIT_COST, FRUIT_COST_FLOOR, FRUIT_DISCOUNT_PER_FRUIT,
   FRUIT_MATURE_TICKS, FRUIT_CAP_DECAY_TICKS, FRUIT_MIN_X_SPACING,
   FRUIT_SUBSTRATE_MULT_LOG, FRUIT_SUBSTRATE_MULT_GRASS, FRUIT_SUBSTRATE_MULT_SOIL,

@@ -64,6 +64,23 @@ hitting log-rich substrate explodes. modestSize 150-800 needs ~30× slower.
 Next: cut LEADER_EXTEND_PROB 0.30 → 0.05 (and junction 0.10 → 0.02). Slows
 the founder enough that it cannot reach the fruit gate inside day 1.
 
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-5 · [mechanic]
+Hypothesis: leaders never retire — leadership moves with the lineage but the
+lineage extends forever. Add LEADER_LIFESPAN (extensions count) per leader.
+After 60 extensions, leader is dropped (no replacement). Bifurcation-born
+leaders start fresh. Caps a single leader's reach, and once all leaders in
+a colony senesce, growth halts until a senesced cell dies and lazy-init
+promotes a new one — natural relay handoff.
+Setup: only the new mechanic. LEADER_EXTEND_PROB stays at 0.12.
+Result: modestSize 1/5, branchedDensity 4/5, descended 4/5, multipleDescents
+3/5, noPrematureFruit 2/5, notSaturated 4/5. Seed 42 hits 5/6 (255 cells,
+beautifully branched). Seed 1337 still mats (13866).
+Reading: senescence per-leader doesn't bound colony growth — bifurcation
+keeps refilling leader slots. Colony stays at ~3 active leaders perpetually,
+so total ~3 × 0.12 × 28800 = ~10k cells. The fix is in bifurcation: it must
+*not* add a new leader. Then founder has 1 leader for life of that leader,
+and after senescence the colony slows to non-leader rates (~10× less).
+
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-1 · [mechanic]
 Hypothesis: every cell-with-a-free-neighbour rolls extension every tick → liquid mat.
 Constrain growth to a few "leader" tips per colony; non-leaders extend at ~10×

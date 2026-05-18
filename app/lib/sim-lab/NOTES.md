@@ -17,6 +17,20 @@ Next: one move.
 Tags: `[tweak]` (constant change), `[mechanic]` (new code path),
 `[rewrite]` (structural change).
 
+## License to rewrite
+
+Explicit permission from Bjorn (2026-05-18) — if a vision keeps failing
+because the *design space* is missing a mechanism, add it. Don't just
+sweep constants in a circle. Things he flagged as fair game:
+
+- Inter-colony pressure (colonies eating each other)
+- Genome competition / selective fitness (some genes outcompete others)
+- Anything else that closes a missing loop
+
+Process still applies: one change per iteration, tagged `[mechanic]` or
+`[rewrite]`, journal entry per try, PR to main (never push direct). The
+license is about *scope*, not *process*.
+
 ---
 
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-3 · [tweak]

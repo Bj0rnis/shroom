@@ -26,6 +26,13 @@ Findings only graduate into `sim.js` on `main` when they pass the
 target across the seed set AND match the vision when watched. The
 journal here writes a section explaining *why* a change worked.
 
+Iteration is not bound to tuning the existing knobs. If a vision target
+keeps failing because the *design space* is missing a mechanism — a
+pressure, a feedback loop, a trait — add the mechanism. Inter-colony
+predation, genome selection effects, environmental gradients we haven't
+modelled — all are fair game. The lab is the right place to prototype
+them; this file is where they're written up when they prove their worth.
+
 ---
 
 ## Vision 1 — day-1 root

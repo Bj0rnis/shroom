@@ -63,25 +63,43 @@ const SUBSTRATE_REGEN_INTERVAL = 4896;
 const LOG_DECAY_PROB = 0.00005;
 
 // ── Cell aging + dieback ─────────────────────────────────
-// Hyphae cells are infrastructure — once placed they should remain as part of
-// the network's transport spine, not die when the substrate beneath them is
-// eaten. Death pressures live at the colony level (handleFruiting / toofan /
-// old-age) and at the very-old-cell level (turnover, slow). See
-// BALANCE.md 2026-05-17 — "snake hyphae" fix.
+// Hyphae cells are infrastructure — once placed they remain as part of the
+// network's transport spine, not killed when the pixel of substrate beneath
+// them is eaten. Death pressures live at the colony level (starvation, toofan,
+// old-age) and at the very-old-cell level (turnover, slow). See BALANCE.md
+// 2026-05-17 (snake-hyphae fix) and 2026-05-18 (colony-level starvation).
 const HYPHA_DEATH_THRESHOLD  = 5;
 const HYPHA_AGE_LIMIT        = TICKS_PER_WEEK * 8;   // ~2 months — cells persist as pipes
 
-// Per-tick dieback risks. STARVATION_DIE_RISK is retained as a constant for
-// future use (colony-level starvation, surfaced via the engine page) but is
-// no longer applied per-cell — see growHyphae death loop below.
-const STARVATION_DIE_RISK    = 0.0005;           // unused per-cell as of 2026-05-17
+// Per-tick dieback risks.
+const STARVATION_DIE_RISK    = 0.0005;           // see colony-level starvation below
 const TURNOVER_DIE_RISK      = 0.00002;          // 10× slower than before
 const WINTER_DIE_RISK        = 0.00005;
 const BLIGHT_DIE_RISK        = 0.0001;
 
+// ── Colony-level starvation ──────────────────────────────
+// Hyphae cells don't die when their personal pixel of substrate is empty —
+// they hold the transport spine. But a colony whose absorption *as a whole*
+// has stalled (every tip on dead ground, side-absorption neighbors at floor)
+// needs to retract or the world fills up with eternal mats. We track per-tick
+// intake on each colony; if it falls below ~1% of cell count for the grace
+// period, perimeter cells begin to die at STARVATION_DIE_RISK, ramped up over
+// the next stretch to full pressure. The connectivity mult in decayHyphae
+// keeps interior cells safe — only the frontier retracts, releasing
+// DECAY_DEPOSIT back into substrate as it goes. If absorption recovers (a
+// surviving tip finds fresh ground), the streak unwinds 4× faster than it
+// built up. See BALANCE.md 2026-05-18.
+const STARVATION_INTAKE_PER_CELL = 0.01;             // need ≥1% of cells/tick absorbing
+const STARVATION_GRACE_TICKS     = TICKS_PER_HOUR * 6;   // ~6h breathing room
+const STARVATION_RAMP_TICKS      = TICKS_PER_HOUR * 18;  // full pressure at +18h
+const STARVATION_RECOVER_RATE    = 4;                // streak unwinds 4× faster than it builds
+
 // ── Colony-level aging ───────────────────────────────────
 // Old-age decline curves up between prime and old-age thresholds (real days).
-const COLONY_PRIME_DAYS      = 60;               // up to here, no old-age decline
+// Prime shortened (was 60) — colonies saturate the substrate in well under a
+// sim-day, so 60-day prime meant "no old-age pressure ever." 20 days lets
+// established mats face slow attrition before they'd outlast the toofan cycle.
+const COLONY_PRIME_DAYS      = 20;               // up to here, no old-age decline
 const COLONY_OLD_AGE_DAYS    = 365;              // by here, full old-age pressure
 const OLD_AGE_DIE_RISK_MAX   = 0.0003;           // per-cell at full old-age
 
@@ -174,6 +192,7 @@ function tick(world) {
   maybeSpawnSapling(world);
   regenSubstrate(world);
   growHyphae(world);
+  updateStarvationStreak(world);
   decayHyphae(world);
   cascadeIsolationDeath(world);
   handleFruiting(world);
@@ -377,6 +396,11 @@ function growHyphae(world) {
   const { kind, nutrient, colony, age } = world.grid;
   const seasonMult = SEASON_GROWTH_MULT[world.meta.season];
 
+  // Reset per-tick intake so applyColonyStarvation can read it after the loop.
+  for (const c of Object.values(world.colonies)) {
+    if (c.alive) c.absorbedThisTick = 0;
+  }
+
   // Snapshot ownership at tick start so newly-extended cells don't act this tick
   // and thickness checks see a consistent state.
   const startSnapshot = colony.slice();
@@ -393,6 +417,7 @@ function growHyphae(world) {
     const selfDraw = Math.min(NUTRIENT_CONSUMPTION, nutrient[i]);
     nutrient[i] -= selfDraw;
     col.reserves = (col.reserves || 0) + selfDraw;
+    col.absorbedThisTick += selfDraw;
     age[i] = Math.min(65535, age[i] + 1);
 
     const gene = col.genome;
@@ -485,6 +510,7 @@ function growHyphae(world) {
         const drained = Math.min(SIDE_ABSORPTION, nutrient[j] - SIDE_ABSORPTION_FLOOR);
         nutrient[j] -= drained;
         col.reserves = (col.reserves || 0) + drained;
+        col.absorbedThisTick += drained;
       }
     }
   }
@@ -505,6 +531,23 @@ function occupiedInBox(snapshot, j) {
     }
   }
   return count;
+}
+
+// Update each alive colony's starvation streak based on the intake that
+// growHyphae just credited. Streak ticks up while intake is below the
+// per-cell threshold and unwinds (faster) once the colony absorbs again. The
+// streak is read by decayHyphae below.
+function updateStarvationStreak(world) {
+  for (const col of Object.values(world.colonies)) {
+    if (!col.alive) continue;
+    const intake = col.absorbedThisTick || 0;
+    const threshold = Math.max(1, col.cellCount * STARVATION_INTAKE_PER_CELL);
+    if (intake < threshold) {
+      col.starvationStreak = (col.starvationStreak || 0) + 1;
+    } else {
+      col.starvationStreak = Math.max(0, (col.starvationStreak || 0) - STARVATION_RECOVER_RATE);
+    }
+  }
 }
 
 // Real mycelium is a transport network: tips at the frontier absorb nutrients
@@ -541,16 +584,17 @@ function decayHyphae(world) {
       if (contrib > topContrib) { topContrib = contrib; topCause = cause; }
     }
 
-    // Per-cell starvation gate intentionally disabled — see BALANCE.md
-    // 2026-05-17. A hypha cell on exhausted substrate is still useful as
-    // part of the transport network connecting absorbing tips to fruit
-    // sites. Killing it produces the "snake" behavior — colony moves
-    // across the substrate dropping a trail of corpses instead of holding
-    // a network. Reintroduce later at the colony level if needed.
-    //
-    // if (nutrient[i] < HYPHA_DEATH_THRESHOLD) {
-    //   add('starvation', STARVATION_DIE_RISK * (1 - decayResistance));
-    // }
+    // Per-cell starvation gate stays off — a hypha on exhausted substrate is
+    // still useful as part of the transport network. Starvation is colony-
+    // level now (see updateStarvationStreak): a colony whose intake has
+    // stalled for the grace window applies a ramped die-risk that the
+    // connectivity multiplier below funnels onto the perimeter. Tips retract
+    // first; the trunk holds. See BALANCE.md 2026-05-18.
+    const streak = col.starvationStreak || 0;
+    if (streak > STARVATION_GRACE_TICKS) {
+      const ramp = Math.min(1, (streak - STARVATION_GRACE_TICKS) / STARVATION_RAMP_TICKS);
+      add('starvation', STARVATION_DIE_RISK * ramp * (1 - decayResistance));
+    }
     if (age[i] > HYPHA_AGE_LIMIT) {
       add('turnover', TURNOVER_DIE_RISK * (1 - decayResistance));
     }
@@ -1158,6 +1202,8 @@ const CONSTANTS = {
   SUBSTRATE_REGEN_INTERVAL, LOG_DECAY_PROB,
   HYPHA_DEATH_THRESHOLD, HYPHA_AGE_LIMIT,
   STARVATION_DIE_RISK, TURNOVER_DIE_RISK, WINTER_DIE_RISK, BLIGHT_DIE_RISK,
+  STARVATION_INTAKE_PER_CELL, STARVATION_GRACE_TICKS, STARVATION_RAMP_TICKS,
+  STARVATION_RECOVER_RATE,
   COLONY_PRIME_DAYS, COLONY_OLD_AGE_DAYS, OLD_AGE_DIE_RISK_MAX,
   FRUIT_BASE_RATE,
   EXTEND_COST, TIP_BIFURCATION_PROB,

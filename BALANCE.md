@@ -20,6 +20,52 @@ Rules:
 
 ---
 
+## 2026-05-18 — colony-level starvation · perimeter retraction
+
+**Branch**: `hyphae-mortality-tuning`
+
+**Motivating observation**: live world, vol 3 — see "Outcome" of the
+2026-05-17 entry below. One colony saturated the grid and sat there fruiting
+forever; no natural deaths logged across thousands of ticks.
+
+**Root cause read**:
+The 2026-05-17 fix correctly removed the *per-cell* starvation gate (which
+created the "snake" pathology), but did not introduce any *colony-level*
+replacement. The result was a hyphae mat with no retraction mechanism: once
+substrate beneath the network depleted, intake fell to zero, but the network
+itself stayed intact. Combined with `COLONY_PRIME_DAYS = 60` (well past the
+real-time horizon a colony actually lives in), the only mortality path left
+was the toofan — Poisson, once-a-year.
+
+**Changes** (all in `app/lib/sim.js`):
+
+| constant / path | before | after | reason |
+|---|---|---|---|
+| `STARVATION_DIE_RISK` use | unused per-cell | applied at colony level, gated by streak | retraction without resurrecting the snake bug |
+| `STARVATION_INTAKE_PER_CELL` | (new) | `0.01` | min ratio of intake to cell count to count as fed (1%) |
+| `STARVATION_GRACE_TICKS` | (new) | `TICKS_PER_HOUR * 6` (~6h) | breathing room before retraction starts |
+| `STARVATION_RAMP_TICKS` | (new) | `TICKS_PER_HOUR * 18` (~18h further) | full pressure reached at +24h of stall |
+| `STARVATION_RECOVER_RATE` | (new) | `4` | streak unwinds 4× faster than it builds — finding new substrate revives |
+| `COLONY_PRIME_DAYS` | `60` | `20` | old-age decline kicks in on the timescale colonies actually reach |
+
+Connectivity multiplier (already in `decayHyphae`) does the perimeter-vs-trunk
+gating: `sameN <= 1` cells take full starvation risk, 4-connected interior
+cells get `× 0.08`. So a starving colony loses tips first, retracts inward,
+and only loses the spine if starvation continues long after the perimeter is
+gone. Cells that die release `DECAY_DEPOSIT` (15) back into substrate, so a
+shrunken colony lands on a slightly richer pad — natural negative feedback.
+
+**Hypothesis to verify in production**:
+- Saturated colonies retract within ~12–24 real hours of stalling.
+- Multiple colonies can coexist longer — Tarka-style monoculture goes away.
+- `deathsByCause.starvation` becomes the dominant non-toofan death cause.
+- World holds 2–4 alive colonies as steady state, not 1.
+
+**Outcome**: _to be filled in after running the new constants for ~1 sim-week
+on the live world._
+
+---
+
 ## 2026-05-17 — snake hyphae fix · network as transport spine
 
 **Branch**: `hyphae-as-network`
@@ -74,4 +120,11 @@ magic number.
 - Some downward tunneling into soil below the log
 - Log nutrient still depletes but later (day 6-7, not 4-5)
 
-**Outcome**: _to be filled in after re-running `week-on-log`._
+**Outcome**: confirmed on the live world (vol 3, ticks 24,156–27,056). The
+network-spine model worked — Tarka held shape, grew steadily, no oscillation.
+But the fix overshot: without per-cell starvation and with `COLONY_PRIME_DAYS`
+at 60, a colony has *no* mortality pressure once it saturates. Tarka grew
+15,642 → 23,898 cells in ~3,000 ticks (≈40% of grid), then sat at exactly
+23,898 for 14 real hours, fruiting 60 times. Lifetime deathsByCause for vol 3:
+0 starvation, 0 turnover, 0 old-age, 0 winter. The world became one colony
+waiting for a toofan. Addressed in the 2026-05-18 entry below.

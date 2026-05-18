@@ -100,12 +100,19 @@ Key numbers in `app/lib/sim.js` and what they control:
 | `FRUIT_COST_FLOOR` | 300 | Minimum cost after repeat-fruiting discount |
 | `FRUIT_DISCOUNT_PER_FRUIT` | 0.8 | Multiplicative discount per prior fruit |
 | `HYPHA_AGE_LIMIT` | ~2 months | Individual cell lifespan (cells are network spine) |
-| `COLONY_PRIME_DAYS` | 60 | Days before old-age decline begins |
+| `COLONY_PRIME_DAYS` | 20 | Days before old-age decline begins |
 | `COLONY_OLD_AGE_DAYS` | 365 | Days at which old-age pressure is maximum |
+| `STARVATION_GRACE_TICKS` | ~6 sim hours | Grace before colony-level starvation retraction starts |
+| `STARVATION_RAMP_TICKS` | ~18 sim hours | Additional ticks to ramp to full starvation pressure |
 
-Hyphae cells do **not** die when the substrate beneath them is exhausted —
-they persist as transport pipes connecting absorbing tips to fruit sites.
-See `BALANCE.md` for the rationale and any future revisions.
+Hyphae cells do **not** die when the pixel of substrate beneath them is
+exhausted — they persist as transport pipes connecting absorbing tips to
+fruit sites. Starvation is *colony-level*: a network whose total intake
+stalls (every tip on dead ground, side-absorption pinned at floor) accrues
+a starvation streak and the **perimeter retracts** toward the trunk while
+the interior holds. Recovery is 4× faster than buildup — if any tip finds
+fresh ground, the streak unwinds. See `BALANCE.md` for the rationale and
+any future revisions.
 
 Branching is controlled by the `freeCount` probability tiers in `growHyphae`:
 - `freeCount >= 3` (tip): 30% base extension chance

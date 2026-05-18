@@ -19,6 +19,24 @@ Tags: `[tweak]` (constant change), `[mechanic]` (new code path),
 
 ---
 
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-1 · [mechanic]
+Hypothesis: every cell-with-a-free-neighbour rolls extension every tick → liquid mat.
+Constrain growth to a few "leader" tips per colony; non-leaders extend at ~10×
+lower probability. Leadership *moves* on extension; bifurcation can add a
+leader up to MAX_LEADERS_PER_COLONY. Adapted from `growth-shape-leading-tip`
+WIP but threaded through `world.rng` so the lab stays deterministic.
+Also: FRUIT_MIN_CELL_COUNT=300 gate, TIP_AGE_DECAY taper on stragglers.
+Setup: baseline seeds, vision 1, no other changes.
+Result: modestSize 1/5, branchedDensity 4/5, descended 5/5, multipleDescents 4/5,
+noPrematureFruit 0/5, notSaturated 3/5. Per-seed cell counts swing 487 → 22293
+(seed 1337 still mats). Median seed (555) is genuinely branched and descended
+but founders are crossing the 300 fruit gate within the sim-day and seeding
+children — fruitsTotal=29 there.
+Reading: leaders work. The shape is real (see seed 555 ASCII — root-like).
+Failure modes left: (a) some seeds the founder still saturates, (b) fruit gate
+of 300 cells is reachable inside a sim-day on log-rich substrate.
+Next: raise FRUIT_MIN_CELL_COUNT well past day-1 founder size (500+).
+
 ## 2026-05-18 · sim-lab/foundation · [mechanic]
 Foundation pass: seeded RNG (mulberry32) threaded through sim/world/genome/lab,
 lab scaffolding under `app/lib/sim-lab/`, two journals, vision 1 written into

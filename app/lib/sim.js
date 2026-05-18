@@ -67,10 +67,10 @@ const TIP_AGE_DECAY = 400;
 // the cap — so a young colony's leader count ramps from 1 to MAX as the
 // network forks out. When all leaders of a colony die, the next alive cell
 // encountered in growHyphae is promoted (lazy revival). Sim-lab iter-1.
-const LEADER_EXTEND_PROB      = 0.30;   // leader at freeCount >= 3
-const LEADER_EXTEND_JUNCTION  = 0.10;   // leader at freeCount = 2 (rare — leader squeezed)
-const NON_LEADER_EXTEND_PROB  = 0.03;   // any non-leader cell with freeCount >= 3
-const NON_LEADER_EXTEND_JUNC  = 0.005;  // any non-leader cell with freeCount = 2
+const LEADER_EXTEND_PROB      = 0.12;   // leader at freeCount >= 3
+const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (rare — leader squeezed)
+const NON_LEADER_EXTEND_PROB  = 0.012;  // any non-leader cell with freeCount >= 3
+const NON_LEADER_EXTEND_JUNC  = 0.002;  // any non-leader cell with freeCount = 2
 const MAX_LEADERS_PER_COLONY  = 3;
 
 // ── Substrate slow regeneration ─────────────────────────
@@ -136,7 +136,7 @@ const FRUIT_BASE_RATE        = 0.0025;
 // this gate a founder fruits within ~100 ticks and immediately germinates
 // child colonies that compete for the same log surface from the start.
 // Raising the gate forces "grow into roots, then fruit, then propagate."
-const FRUIT_MIN_CELL_COUNT   = 300;
+const FRUIT_MIN_CELL_COUNT   = 800;
 // Reserves economy:
 //   • EXTEND_COST: every new hypha cell costs this much from col.reserves.
 //     Colonies have to *invest* absorbed nutrient to grow — networks that

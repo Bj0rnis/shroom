@@ -62,12 +62,13 @@ const SCENARIOS = [
     setup(world) {
       const target = findRichSoil(world);
       if (!target) return;
+      const rng = world.rng;
       for (let k = 0; k < 3; k++) {
         world.spores.push({
-          x: target.x + (Math.random() * 4 - 2),
-          y: target.y + (Math.random() * 4 - 2),
+          x: target.x + (rng() * 4 - 2),
+          y: target.y + (rng() * 4 - 2),
           vx: 0, vy: 0, age: 0,
-          genome: randomGenome(),
+          genome: randomGenome(rng),
         });
       }
     },
@@ -78,14 +79,15 @@ const SCENARIOS = [
     description: '50 spores released over the canvas at tick 1 — 3 sim-days.',
     durationDays: 3,
     setup(world) {
+      const rng = world.rng;
       for (let s = 0; s < 50; s++) {
         world.spores.push({
-          x: Math.random() * W,
-          y: 10 + Math.random() * 30,
-          vx: (Math.random() * 2 - 1) * 1.5,
-          vy: Math.random() * 0.5 - 0.3,
+          x: rng() * W,
+          y: 10 + rng() * 30,
+          vx: (rng() * 2 - 1) * 1.5,
+          vy: rng() * 0.5 - 0.3,
           age: 0,
-          genome: randomGenome(),
+          genome: randomGenome(rng),
         });
       }
     },
@@ -106,14 +108,14 @@ function sowOnLog(world, count) {
   for (let k = 0; k < sownCount; k++) {
     const x = lb.x0 + Math.floor(((k + 1) * lb.w) / (sownCount + 1));
     const y = lb.y0 + Math.floor(lb.h / 2);
-    sowAt(world, x, y, randomGenome());
+    sowAt(world, x, y, randomGenome(world.rng));
   }
 }
 
 function findRichSoil(world) {
   const { kind, nutrient } = world.grid;
   for (let attempt = 0; attempt < 400; attempt++) {
-    const i = Math.floor(Math.random() * kind.length);
+    const i = Math.floor(world.rng() * kind.length);
     if (kind[i] === SOIL && nutrient[i] > 50) {
       return { x: i % W, y: Math.floor(i / W) };
     }

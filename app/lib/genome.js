@@ -21,31 +21,37 @@ const SCALE_EXPONENT         = 0.5;
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-function randomGenome() {
+// rng is an optional callable returning a float in [0, 1). Falls back to
+// Math.random for callers that haven't been threaded yet (e.g. one-off CLI
+// utilities). Sim and lab callers should always pass world.rng so output
+// is deterministic for the (seed, config) pair.
+function randomGenome(rng) {
+  const r = rng || Math.random;
   return GENES.map(g => {
-    if (g.continuous) return g.min + Math.random() * (g.max - g.min);
-    return Math.floor(Math.random() * (g.max - g.min + 1)) + g.min;
+    if (g.continuous) return g.min + r() * (g.max - g.min);
+    return Math.floor(r() * (g.max - g.min + 1)) + g.min;
   });
 }
 
-function mutate(parent) {
+function mutate(parent, rng) {
+  const r = rng || Math.random;
   const child = parent.slice();
   for (let i = 0; i < GENES.length; i++) {
     const g = GENES[i];
     if (!g.continuous) {
-      if (Math.random() < SHAPE_MUTATION_RATE) {
+      if (r() < SHAPE_MUTATION_RATE) {
         const span = g.max - g.min + 1;
-        const step = Math.random() < 0.5 ? -1 : 1;
+        const step = r() < 0.5 ? -1 : 1;
         child[i] = ((child[i] - g.min + step + span) % span) + g.min;
       }
       continue;
     }
-    if (Math.random() < MUTATION_RATE_PER_GENE) {
+    if (r() < MUTATION_RATE_PER_GENE) {
       const span = g.max - g.min;
       const eps  = 0.01 * span;
       const offsetFromMin = Math.abs(child[i] - g.min) + eps;
       const delta = Math.max(eps, Math.pow(offsetFromMin, SCALE_EXPONENT) * 0.1 * span / Math.pow(span, SCALE_EXPONENT));
-      const perturb = (Math.random() * 2 - 1) * delta;
+      const perturb = (r() * 2 - 1) * delta;
       child[i] = clamp(child[i] + perturb, g.min, g.max);
     }
   }

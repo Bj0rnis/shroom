@@ -1,3 +1,5 @@
+<img src="shroom-header-1280x400-2.png" width="100%" alt="shroom" />
+
 # shroom
 
 A small living world runs here. Mycelium spreads through a fallen log.

@@ -2,6 +2,7 @@
 // Grid is stored as parallel typed arrays indexed by y * W + x.
 
 const { randomGenome } = require('./genome');
+const { createRng } = require('./rng');
 
 // Playful made-up mushroom-y names for unnamed colonies. Shown in the UI as
 // "Wigglecap", "Glomwhisker", etc. until Nigehban gets around to bestowing a
@@ -16,9 +17,10 @@ const NAME_SUFFIXES = [
   'cap', 'stem', 'gill', 'foot', 'spore', 'throat', 'noodle', 'sprout',
   'moss', 'bloom', 'whisker', 'snore', 'sigh', 'bath', 'wort', 'bell',
 ];
-function pickPlaceholderName() {
-  const a = NAME_PREFIXES[Math.floor(Math.random() * NAME_PREFIXES.length)];
-  const b = NAME_SUFFIXES[Math.floor(Math.random() * NAME_SUFFIXES.length)];
+function pickPlaceholderName(rng) {
+  const r = rng || Math.random;
+  const a = NAME_PREFIXES[Math.floor(r() * NAME_PREFIXES.length)];
+  const b = NAME_SUFFIXES[Math.floor(r() * NAME_SUFFIXES.length)];
   return a + b;
 }
 
@@ -54,6 +56,7 @@ function freshLifetime() {
 
 function createWorld(seed) {
   const cellCount = W * H;
+  const resolvedSeed = seed ?? Math.floor(Math.random() * 1e9);
   const world = {
     meta: {
       volume: 1,
@@ -61,12 +64,18 @@ function createWorld(seed) {
       simStartMs: Date.now(),
       lastToofanTick: 0,
       season: 'spring',
-      seed: seed ?? Math.floor(Math.random() * 1e9),
+      seed: resolvedSeed,
       weather: 'clear',
       toofanPressure: 0,
       lastSavedTick: 0,
       lifetime: freshLifetime(),
     },
+    // Seeded RNG. All Math.random() calls in sim.js/world.js/lab.js/genome.js
+    // should go through world.rng() so (seed, config) → identical output.
+    // The state is captured here as a non-enumerable property so it survives
+    // structuredClone-ish save flows; persistence layer can serialise
+    // world.rng.state alongside meta.seed for full save/load determinism.
+    rng: createRng(resolvedSeed),
     shape: [W, H],
     grid: {
       kind:     new Uint8Array(cellCount),
@@ -97,13 +106,14 @@ function addDeepNutrientPockets(world) {
   // reason to tunnel downward. Soil persists across volumes — pockets are
   // generated once and slowly deplete forever.
   const { kind, nutrient } = world.grid;
+  const rng = world.rng;
   const soilHeight = H - GRASS_Y;
-  const pocketCount = 5 + Math.floor(Math.random() * 3); // 5–7
+  const pocketCount = 5 + Math.floor(rng() * 3); // 5–7
   for (let p = 0; p < pocketCount; p++) {
-    const px = Math.floor(Math.random() * W);
-    const depthFrac = 0.55 + Math.random() * 0.4; // 55–95% of soil band
+    const px = Math.floor(rng() * W);
+    const depthFrac = 0.55 + rng() * 0.4; // 55–95% of soil band
     const py = GRASS_Y + Math.floor(depthFrac * soilHeight);
-    const r = 8 + Math.floor(Math.random() * 6);  // 8–13 cells
+    const r = 8 + Math.floor(rng() * 6);  // 8–13 cells
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         const d2 = dx * dx + dy * dy;
@@ -121,6 +131,7 @@ function addDeepNutrientPockets(world) {
 
 function paintBaseTerrain(world) {
   const { kind, nutrient } = world.grid;
+  const rng = world.rng;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
@@ -131,14 +142,14 @@ function paintBaseTerrain(world) {
         kind[i] = GRASS;
         // grass is the bridge between log and soil — needs enough nutrient
         // for hyphae to pass through without immediately dying back
-        nutrient[i] = 25 + Math.floor(Math.random() * 10);
+        nutrient[i] = 25 + Math.floor(rng() * 10);
       } else {
         kind[i] = SOIL;
         // Flat, lean baseline. The substrate doesn't push hyphae any direction
         // on its own — variation lives in addDeepNutrientPockets, which seeds
         // rich seams in the lower soil band and gives mycelium a reason to
         // tunnel downward.
-        nutrient[i] = 22 + Math.floor(Math.random() * 8);  // 22–29
+        nutrient[i] = 22 + Math.floor(rng() * 8);  // 22–29
       }
     }
   }
@@ -146,13 +157,14 @@ function paintBaseTerrain(world) {
 
 function generateLog(world) {
   const { kind, nutrient } = world.grid;
+  const rng = world.rng;
   // Sized so the initial log feels like a fallen oak's worth of wood,
   // matching fellTree's output (oak maxHeight 50 → width ~80, thickness
   // ~16-22). Earlier 100-140 × 22-28 was ~2x bigger than any tree could
   // produce — read as comically massive against the world's tree scale.
-  const logWidth  = 72 + Math.floor(Math.random() * 24);   // 72–96 cells
-  const logHeight = 16 + Math.floor(Math.random() * 6);    // 16–22 cells thick
-  const x0 = Math.floor((W - logWidth) / 2 + (Math.random() * 30 - 15));
+  const logWidth  = 72 + Math.floor(rng() * 24);   // 72–96 cells
+  const logHeight = 16 + Math.floor(rng() * 6);    // 16–22 cells thick
+  const x0 = Math.floor((W - logWidth) / 2 + (rng() * 30 - 15));
   // Log sits ON the grass, no embedding. Bottom row of log = grass row above.
   const yTop = GRASS_Y - logHeight;
 
@@ -160,9 +172,9 @@ function generateLog(world) {
   // (nutrient-rich) give the log a bit of texture for foragers. Kept local;
   // the rest of the sim never reads them.
   const zone = () => ({
-    cx: x0 + Math.floor(Math.random() * logWidth),
-    cy: yTop + Math.floor(Math.random() * logHeight),
-    r:  6 + Math.floor(Math.random() * 4),
+    cx: x0 + Math.floor(rng() * logWidth),
+    cy: yTop + Math.floor(rng() * logHeight),
+    r:  6 + Math.floor(rng() * 4),
   });
   const knot = zone(), dry = zone();
   world.meta.logBounds = { x0, y0: yTop, w: logWidth, h: logHeight };
@@ -208,7 +220,7 @@ function generateLog(world) {
 
       const i = y * W + x;
       kind[i] = LOG;
-      let n = 70 + Math.floor(Math.random() * 25);
+      let n = 70 + Math.floor(rng() * 25);
       const dKnot = Math.hypot(x - knot.cx, y - knot.cy);
       const dDry  = Math.hypot(x - dry.cx,  y - dry.cy);
       if (dKnot < knot.r) n -= 30;
@@ -226,7 +238,7 @@ function sowAt(world, x, y, genome) {
   if (world.grid.colony[i] !== 0) return null;
   if (world.grid.nutrient[i] <= 0) return null;
   const id = world.nextColonyId++;
-  const g = genome ?? randomGenome();
+  const g = genome ?? randomGenome(world.rng);
   world.colonies[id] = {
     id,
     genome: g,
@@ -238,7 +250,7 @@ function sowAt(world, x, y, genome) {
     // Placeholder name shown in UI until Nigehban grants a real one. Kept
     // separate from `name` so salience.js still treats the colony as nameable
     // (col.name remains undefined until Nigehban writes it).
-    placeholderName: pickPlaceholderName(),
+    placeholderName: pickPlaceholderName(world.rng),
     alive: true,
   };
   world.grid.colony[i] = id;

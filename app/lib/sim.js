@@ -216,12 +216,13 @@ function maybeSpawnSapling(world) {
   if (!world.meta.trees) world.meta.trees = [];
   const aliveTrees = world.meta.trees.filter(t => t.alive).length;
   if (aliveTrees >= MAX_TREES) return;
-  if (Math.random() > SAPLING_SPAWN_PROB) return;
+  if (world.rng() > SAPLING_SPAWN_PROB) return;
   spawnSapling(world);
 }
 
 function spawnSapling(world) {
   const { kind } = world.grid;
+  const rng = world.rng;
   // Mark columns occupied by an existing log or tree (any cell in that x)
   const occupied = new Uint8Array(W);
   for (let i = 0; i < kind.length; i++) {
@@ -231,7 +232,7 @@ function spawnSapling(world) {
   // Find a clear column with TREE_BUFFER_X gap on each side
   let x = -1;
   for (let attempt = 0; attempt < 40; attempt++) {
-    const cand = 12 + Math.floor(Math.random() * (W - 24));
+    const cand = 12 + Math.floor(rng() * (W - 24));
     let clear = true;
     for (let dx = -TREE_BUFFER_X; dx <= TREE_BUFFER_X; dx++) {
       const xx = cand + dx;
@@ -241,7 +242,7 @@ function spawnSapling(world) {
     if (clear) { x = cand; break; }
   }
   if (x < 0) return;
-  const species = TREE_SPECIES[Math.floor(Math.random() * TREE_SPECIES.length)];
+  const species = TREE_SPECIES[Math.floor(rng() * TREE_SPECIES.length)];
   if (!world.meta.trees) world.meta.trees = [];
   if (!world.meta.nextTreeId) world.meta.nextTreeId = 1;
   const t = {
@@ -330,9 +331,9 @@ function fellTree(world, t) {
     }
   }
   // Lay a new horizontal log near the tree base, falling left or right.
-  const fallDir   = Math.random() < 0.5 ? -1 : 1;
+  const fallDir   = world.rng() < 0.5 ? -1 : 1;
   const logWidth  = Math.max(40, Math.floor(t.maxHeight * 1.6));
-  const logHeight = 16 + Math.floor(Math.random() * 6);
+  const logHeight = 16 + Math.floor(world.rng() * 6);
   const baseX     = t.x + fallDir * (TREE_STEM_HALF_WIDTH + 2);
   const x0        = fallDir === 1 ? baseX : baseX - logWidth;
   const yTop      = GRASS_Y - logHeight;
@@ -371,7 +372,7 @@ function paintLogCapsule(world, x0, yTop, logWidth, logHeight, richness, species
       // Only paint into empty air — don't overwrite existing log/colony/soil.
       if (kind[i] !== AIR) continue;
       kind[i] = LOG;
-      const n = richness - 12 + Math.floor(Math.random() * 24);
+      const n = richness - 12 + Math.floor(world.rng() * 24);
       nutrient[i] = Math.max(0, Math.min(NUTRIENT_MAX, n));
     }
   }
@@ -394,6 +395,7 @@ function advanceSeasons(world) {
 
 function growHyphae(world) {
   const { kind, nutrient, colony, age } = world.grid;
+  const rng = world.rng;
   const seasonMult = SEASON_GROWTH_MULT[world.meta.season];
 
   // Reset per-tick intake so applyColonyStarvation can read it after the loop.
@@ -468,8 +470,8 @@ function growHyphae(world) {
       if (freeCount >= 3)       baseExtend = 0.30  * growthRate * seasonMult;
       else if (freeCount === 2) baseExtend = 0.14  * growthRate * seasonMult;  // was 0.04
       else                       baseExtend = 0.02  * growthRate * seasonMult;  // was 0.005
-      if (Math.random() <= baseExtend) {
-        let r = Math.random() * totalW;
+      if (rng() <= baseExtend) {
+        let r = rng() * totalW;
         let chosen = candidates[0].j;
         for (const c of candidates) {
           r -= c.w;
@@ -484,11 +486,11 @@ function growHyphae(world) {
         // TIP_BIFURCATION_PROB; gated on ≥2 candidates and reserves for a
         // second EXTEND_COST.
         if (freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
-          if (Math.random() < TIP_BIFURCATION_PROB) {
+          if (rng() < TIP_BIFURCATION_PROB) {
             const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
             if (others.length > 0) {
               const ow = others.reduce((s, c) => s + c.w, 0);
-              let r2 = Math.random() * ow;
+              let r2 = rng() * ow;
               let chosen2 = others[0].j;
               for (const c of others) { r2 -= c.w; if (r2 <= 0) { chosen2 = c.j; break; } }
               colony[chosen2] = cid;
@@ -623,7 +625,7 @@ function decayHyphae(world) {
                     0.08;
     dieRisk *= connectivityMult;
 
-    if (dieRisk > 0 && Math.random() < dieRisk) {
+    if (dieRisk > 0 && world.rng() < dieRisk) {
       colony[i] = 0;
       age[i] = 0;
       // Decay-feeds-substrate: deposit at the dead cell + bleed to 4-neighbors.
@@ -717,7 +719,7 @@ function cascadeIsolationDeath(world) {
     if (!col || col.cellCount <= 4) continue;
     const trunk = trunkByColony.get(cid);
     if (find(i) === trunk) continue;
-    if (Math.random() < 0.50) {
+    if (world.rng() < 0.50) {
       colony[i] = 0;
       age[i]    = 0;
       col.deathCounts = col.deathCounts || {};
@@ -810,7 +812,7 @@ function handleFruiting(world) {
     if ((col.reserves || 0) < fruitCost) continue;
     const fruitThreshold = col.genome[3];
     const prob = FRUIT_BASE_RATE * seasonMult * substrateMult * (0.3 + fruitThreshold * 1.4);
-    if (Math.random() > prob) continue;
+    if (world.rng() > prob) continue;
 
     const fx = above % W;
     const xs = activeX.get(cid);
@@ -838,20 +840,21 @@ function handleFruiting(world) {
 function releaseSpores(world, fruit) {
   const col = world.colonies[fruit.colonyId];
   if (!col) return;
+  const rng = world.rng;
   const seasonMult = SEASON_SPORE_MULT[world.meta.season];
   const count = Math.floor(col.genome[5] * seasonMult);
   for (let s = 0; s < count; s++) {
     if (world.spores.length >= SPORE_HARD_CAP) break;
     world.spores.push({
-      x: fruit.x + (Math.random() * 4 - 2),
+      x: fruit.x + (rng() * 4 - 2),
       y: fruit.y - 2,
-      vx: (Math.random() * 2 - 1) * 1.5,
+      vx: (rng() * 2 - 1) * 1.5,
       // vy range [-0.3, 0.2] — slight drift, gentle fall. Combined with the
       // gravity term in driftSpores this lands spores across both log and
       // soil layers instead of launching them off the canvas top.
-      vy: (Math.random() * 0.5 - 0.3),
+      vy: (rng() * 0.5 - 0.3),
       age: 0,
-      genome: mutate(col.genome),
+      genome: mutate(col.genome, rng),
     });
   }
 }
@@ -863,7 +866,7 @@ function driftSpores(world) {
   const wind = season === 'autumn' ? 0.15 : season === 'spring' ? 0.05 : 0;
   const surviving = [];
   for (const sp of world.spores) {
-    sp.x  += sp.vx + wind * (Math.random() * 2 - 1);
+    sp.x  += sp.vx + wind * (world.rng() * 2 - 1);
     sp.y  += sp.vy + SPORE_DRIFT_GRAVITY;
     sp.vy += SPORE_DRIFT_GRAVITY * 0.5;
     sp.age++;
@@ -896,7 +899,7 @@ function germinateSpores(world) {
     // sprout while drifting on substrate; tunes to ~1–2 new colonies per
     // fruit at peak, fewer off-season.
     const prob = 0.005 * seasonMult;
-    if (Math.random() > prob) { remaining.push(sp); continue; }
+    if (world.rng() > prob) { remaining.push(sp); continue; }
     const id = sowAt(world, ix, iy, sp.genome);
     if (id) {
       const sprout = world.colonies[id];
@@ -918,9 +921,9 @@ function rollToofan(world) {
 
   // One roll per sim day, fixed probability — Poisson, ~1/year on average.
   if (tick % TICKS_PER_DAY !== 0) return;
-  if (Math.random() < TOOFAN_DAILY_PROB) {
+  if (world.rng() < TOOFAN_DAILY_PROB) {
     triggerToofan(world);
-  } else if (Math.random() < TOOFAN_DAILY_PROB * 6) {
+  } else if (world.rng() < TOOFAN_DAILY_PROB * 6) {
     logEvent(world, 'warning', `toofan-warning`);
     for (const c of Object.values(world.colonies)) if (c.alive) c.survivedWarning = true;
     fire('onToofanWarning', world);
@@ -933,6 +936,7 @@ function rollToofan(world) {
 //   flood — colonies sitting higher in the soil/log band survive
 //   wind  — short-stemmed phenotypes hold; tall ones snap
 function colonySurvivesToofan(world, col, flavor) {
+  const rng = world.rng;
   if (!col.alive) return false;
   const g = col.genome;
   let fit = 0.5; // 50/50 if nothing keys in
@@ -958,7 +962,7 @@ function colonySurvivesToofan(world, col, flavor) {
   }
 
   const prob = TOOFAN_BASE_SURVIVAL + TOOFAN_PHENOTYPE_WEIGHT * fit;
-  return Math.random() < prob;
+  return rng() < prob;
 }
 
 function colonyAvgY(world, cid) {
@@ -971,7 +975,7 @@ function colonyAvgY(world, cid) {
 }
 
 function triggerToofan(world, flavor) {
-  const f = flavor || TOOFAN_FLAVORS[Math.floor(Math.random() * TOOFAN_FLAVORS.length)];
+  const f = flavor || TOOFAN_FLAVORS[Math.floor(world.rng() * TOOFAN_FLAVORS.length)];
 
   // Selective phenotype survival — most colonies die, 1–2 typically pull through.
   const survivors = [];
@@ -1024,7 +1028,7 @@ function triggerToofan(world, flavor) {
     for (const t of world.meta.trees || []) {
       if (!t.alive) continue;
       const tallness = Math.min(1, t.height / 40);
-      if (Math.random() < tallness * 0.6) {
+      if (world.rng() < tallness * 0.6) {
         t.alive = false;
         t.felledTick = world.meta.tick;
         fellTree(world, t);
@@ -1107,14 +1111,14 @@ function checkAutoBootstrap(world) {
 function autoBootstrap(world) {
   const { kind, colony, nutrient } = world.grid;
   for (let attempt = 0; attempt < 120; attempt++) {
-    const i = Math.floor(Math.random() * kind.length);
+    const i = Math.floor(world.rng() * kind.length);
     const k = kind[i];
     if (k !== LOG && k !== SOIL && k !== GRASS) continue;
     if (colony[i] !== 0) continue;
     if (nutrient[i] < 10) continue;
     const x = i % W;
     const y = Math.floor(i / W);
-    const id = sowAt(world, x, y, randomGenome());
+    const id = sowAt(world, x, y, randomGenome(world.rng));
     if (id) {
       const emptyHours = (world.meta.emptyTicks / TICKS_PER_HOUR).toFixed(1);
       logEvent(world, 'auto-sow', `world re-seeded after ${emptyHours} h empty`);
@@ -1133,7 +1137,7 @@ function regenSubstrate(world) {
     const k = kind[i];
     if (k === LOG) {
       if (doRegen && nutrient[i] < NUTRIENT_MAX) nutrient[i]++;
-      else if (nutrient[i] === 0 && Math.random() < LOG_DECAY_PROB) {
+      else if (nutrient[i] === 0 && world.rng() < LOG_DECAY_PROB) {
         // Consumed faster than regen can restore — crumble to soil.
         kind[i] = SOIL;
       }

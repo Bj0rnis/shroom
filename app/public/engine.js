@@ -119,9 +119,10 @@ function EngineApp() {
               ]} />
 
               <Subhead accent={COL.cool}>die · per-tick risks</Subhead>
+              <div style={{ fontFamily: SERIF_RUN, fontSize: 13, color: COL.text2, lineHeight: 1.5, margin: '4px 0 8px', fontStyle: 'italic' }}>
+                Hyphae do not die from substrate exhaustion. A cell on spent ground persists as transport — connecting absorbing tips to fruit sites. Only age, blight, and isolation end a hypha cell.
+              </div>
               <KV accent={COL.cool} rows={[
-                ['HYPHA_DEATH_THRESHOLD', c.HYPHA_DEATH_THRESHOLD, 'starve below this nutrient sum'],
-                ['STARVATION_DIE_RISK',   c.STARVATION_DIE_RISK,   'while under threshold'],
                 ['TURNOVER_DIE_RISK',     c.TURNOVER_DIE_RISK,     'past HYPHA_AGE_LIMIT'],
                 ['OLD_AGE_DIE_RISK_MAX',  c.OLD_AGE_DIE_RISK_MAX,  `peak at age ${c.COLONY_OLD_AGE_DAYS}d`],
                 ['BLIGHT_DIE_RISK',       c.BLIGHT_DIE_RISK,       'when Nigehban blights'],

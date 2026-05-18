@@ -44,7 +44,45 @@ const DECAY_NEIGHBOR_DEPOSIT = 4;
 // extension roll (~30% at a tip) this yields an effective fork rate of
 // ~12%/tick — first Y-branch by cell ~8 on a healthy colony. Tuned for
 // "roots, not worms" with THICKNESS_MAX still capping mature density.
-const TIP_BIFURCATION_PROB = 0.40;
+const TIP_BIFURCATION_PROB = 0.20;
+
+// Extension probability decays with cell age. Real mycelium has a small
+// number of *leading* hyphal tips that explore outward — once a tip has
+// extended a few times, it becomes part of the static transport network and
+// the new frontier cell is the one doing the exploring. Without this decay,
+// every cell with a free neighbour keeps rolling forever and the colony fills
+// its bounding box like liquid. Factor: exp(-age[i] / TIP_AGE_DECAY).
+// Set high; the dominant shape-control is the leader mechanic below — this
+// is a gentle long-term taper on stragglers.
+const TIP_AGE_DECAY = 400;
+
+// ── Leader cells (leading hyphae) ───────────────────────
+// Each colony tracks up to MAX_LEADERS_PER_COLONY "leader" cells — the active
+// exploring tips that drive growth forward. Real mycelium has a small number
+// of leading hyphal tips at any moment; the bulk of the network is static
+// transport. We model this directly: leader cells extend at full LEADER rate,
+// every other cell extends at NON_LEADER rates an order of magnitude lower.
+// On extension, leadership *moves* to the new cell (parent becomes static
+// infrastructure). On bifurcation, the second new cell *adds* a leader up to
+// the cap — so a young colony's leader count ramps from 1 to MAX as the
+// network forks out. When all leaders of a colony die, the next alive cell
+// encountered in growHyphae is promoted (lazy revival). Sim-lab iter-1.
+const LEADER_EXTEND_PROB      = 0.12;   // leader at freeCount >= 3
+const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (rare — leader squeezed)
+const NON_LEADER_EXTEND_PROB  = 0.012;  // any non-leader cell with freeCount >= 3
+const NON_LEADER_EXTEND_JUNC  = 0.002;  // any non-leader cell with freeCount = 2
+const MAX_LEADERS_PER_COLONY  = 3;
+// Leader senescence: a leader stops being a leader after this many extensions.
+// Real hyphal tips age out — their vigour decays as they age, and growth
+// passes to younger forks. Without this cap the leader-mechanic still
+// produces unbounded growth on rich substrate (just slower than a free-for-
+// all): three leaders × LEADER_EXTEND_PROB × 28800 ticks → 10k+ cells on a
+// log-rich seed. Capping at LEADER_LIFESPAN extensions stops a single leader
+// before it can mat. Bifurcation creates fresh leaders (count = 0) that
+// inherit the frontier. When all leaders senesce, growth halts until a new
+// frontier cell is lazily promoted — which only happens after one of the
+// senesced cells eventually dies. Sim-lab iter-5.
+const LEADER_LIFESPAN          = 60;
 
 // ── Substrate slow regeneration ─────────────────────────
 // Decomposer microbes and rainfall slowly restore substrate richness between
@@ -105,6 +143,11 @@ const OLD_AGE_DIE_RISK_MAX   = 0.0003;           // per-cell at full old-age
 
 // ── Fruiting / spores ────────────────────────────────────
 const FRUIT_BASE_RATE        = 0.0025;
+// A colony cannot fruit until it has built a meaningful network. Without
+// this gate a founder fruits within ~100 ticks and immediately germinates
+// child colonies that compete for the same log surface from the start.
+// Raising the gate forces "grow into roots, then fruit, then propagate."
+const FRUIT_MIN_CELL_COUNT   = 800;
 // Reserves economy:
 //   • EXTEND_COST: every new hypha cell costs this much from col.reserves.
 //     Colonies have to *invest* absorbed nutrient to grow — networks that
@@ -459,17 +502,31 @@ function growHyphae(world) {
       totalW += w;
     }
 
-    // Extension decision — three-tier branching by freeCount.
-    //   freeCount ≥ 3 = a real tip — extends reliably, can bifurcate.
-    //   freeCount = 2 = junction — branches at meaningful rate (lateral shoots).
-    //   freeCount = 1 = chain interior — occasional deep side-branch.
-    // Gated on col.reserves: each new cell costs EXTEND_COST. A colony that
-    // isn't absorbing enough nutrient can't grow.
+    // Extension decision — leader-driven.
+    //   Each colony tracks a small set of leader cells (the active tips).
+    //   Leaders extend at LEADER_* probabilities; non-leaders at NON_LEADER_*
+    //   probabilities ~10× lower. Leadership moves to the new cell on
+    //   extension; bifurcation may add a leader up to MAX_LEADERS_PER_COLONY.
+    //   Lazy revival: if a colony has no leaders, the first encountered cell
+    //   is promoted — covers the founder tick and recovery from full
+    //   leader-die-off. Gated on col.reserves: each new cell costs EXTEND_COST.
+    if (!col.leaders) col.leaders = [];
+    if (!col.leaderExt) col.leaderExt = [];
+    if (col.leaders.length === 0) { col.leaders.push(i); col.leaderExt.push(0); }
+    const leaderIdx = col.leaders.indexOf(i);
+    const isLeader  = leaderIdx >= 0;
+
     if (freeCount > 0 && (col.reserves || 0) >= EXTEND_COST) {
       let baseExtend;
-      if (freeCount >= 3)       baseExtend = 0.30  * growthRate * seasonMult;
-      else if (freeCount === 2) baseExtend = 0.14  * growthRate * seasonMult;  // was 0.04
-      else                       baseExtend = 0.02  * growthRate * seasonMult;  // was 0.005
+      if (isLeader) {
+        baseExtend = (freeCount >= 3 ? LEADER_EXTEND_PROB : LEADER_EXTEND_JUNCTION) * growthRate * seasonMult;
+      } else {
+        baseExtend = (freeCount >= 3 ? NON_LEADER_EXTEND_PROB : NON_LEADER_EXTEND_JUNC) * growthRate * seasonMult;
+      }
+      // Age-decay: gentle long-term taper on stragglers. Dominant shape-
+      // control is the leader mechanic above. See sim-lab iter-1 notes.
+      const ageFactor = Math.exp(-age[i] / TIP_AGE_DECAY);
+      baseExtend *= ageFactor;
       if (rng() <= baseExtend) {
         let r = rng() * totalW;
         let chosen = candidates[0].j;
@@ -480,12 +537,25 @@ function growHyphae(world) {
         colony[chosen] = cid;
         age[chosen] = 0;
         col.reserves -= EXTEND_COST;
+        // Leadership transfer: parent becomes static, new cell is now the
+        // active leading tip. The leader's accumulated extension count moves
+        // with the lineage — once it hits LEADER_LIFESPAN the leader senesces
+        // and is dropped. Non-leader extensions don't create leaders.
+        if (isLeader) {
+          const prevExt = col.leaderExt[leaderIdx] || 0;
+          col.leaders.splice(leaderIdx, 1);
+          col.leaderExt.splice(leaderIdx, 1);
+          if (prevExt + 1 < LEADER_LIFESPAN) {
+            col.leaders.push(chosen);
+            col.leaderExt.push(prevExt + 1);
+          }
+        }
 
-        // Bifurcation — tips can split into two directions at once, producing
-        // Y-shaped branching instead of a single worm. Probability tuned by
-        // TIP_BIFURCATION_PROB; gated on ≥2 candidates and reserves for a
-        // second EXTEND_COST.
-        if (freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
+        // Bifurcation — leaders only. The second new cell becomes a fresh
+        // leader (extension count 0) if the colony is below
+        // MAX_LEADERS_PER_COLONY; otherwise it joins the static network. A
+        // young fork inherits the frontier when the parent leader senesces.
+        if (isLeader && freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
           if (rng() < TIP_BIFURCATION_PROB) {
             const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
             if (others.length > 0) {
@@ -496,6 +566,10 @@ function growHyphae(world) {
               colony[chosen2] = cid;
               age[chosen2] = 0;
               col.reserves -= EXTEND_COST;
+              if (col.leaders.length < MAX_LEADERS_PER_COLONY) {
+                col.leaders.push(chosen2);
+                col.leaderExt.push(0);
+              }
             }
           }
         }
@@ -628,6 +702,15 @@ function decayHyphae(world) {
     if (dieRisk > 0 && world.rng() < dieRisk) {
       colony[i] = 0;
       age[i] = 0;
+      // If this cell was a leader, drop it (and its ext-count) — lazy-init
+      // in growHyphae will promote a replacement next tick.
+      if (col.leaders) {
+        const li = col.leaders.indexOf(i);
+        if (li >= 0) {
+          col.leaders.splice(li, 1);
+          if (col.leaderExt) col.leaderExt.splice(li, 1);
+        }
+      }
       // Decay-feeds-substrate: deposit at the dead cell + bleed to 4-neighbors.
       nutrient[i] = Math.min(NUTRIENT_MAX, nutrient[i] + DECAY_DEPOSIT);
       for (let ni = 0; ni < 4; ni++) {
@@ -722,6 +805,13 @@ function cascadeIsolationDeath(world) {
     if (world.rng() < 0.50) {
       colony[i] = 0;
       age[i]    = 0;
+      if (col.leaders) {
+        const li = col.leaders.indexOf(i);
+        if (li >= 0) {
+          col.leaders.splice(li, 1);
+          if (col.leaderExt) col.leaderExt.splice(li, 1);
+        }
+      }
       col.deathCounts = col.deathCounts || {};
       col.deathCounts['stranded'] = (col.deathCounts['stranded'] || 0) + 1;
     }
@@ -801,7 +891,7 @@ function handleFruiting(world) {
     if (above < 0 || rise > FRUIT_MAX_RISE_ROWS || kind[above] !== AIR) continue;
 
     const col = world.colonies[cid];
-    if (!col || !col.alive || col.cellCount < 30) continue;
+    if (!col || !col.alive || col.cellCount < FRUIT_MIN_CELL_COUNT) continue;
     // Reserves gate with declining cost per successful fruit. First fruit is
     // expensive (~500), subsequent fruits exponentially cheaper down to the
     // floor — a colony that's built a fruiting network gets rewarded for it.
@@ -1209,8 +1299,11 @@ const CONSTANTS = {
   STARVATION_INTAKE_PER_CELL, STARVATION_GRACE_TICKS, STARVATION_RAMP_TICKS,
   STARVATION_RECOVER_RATE,
   COLONY_PRIME_DAYS, COLONY_OLD_AGE_DAYS, OLD_AGE_DIE_RISK_MAX,
-  FRUIT_BASE_RATE,
-  EXTEND_COST, TIP_BIFURCATION_PROB,
+  FRUIT_BASE_RATE, FRUIT_MIN_CELL_COUNT,
+  EXTEND_COST, TIP_BIFURCATION_PROB, TIP_AGE_DECAY,
+  LEADER_EXTEND_PROB, LEADER_EXTEND_JUNCTION,
+  NON_LEADER_EXTEND_PROB, NON_LEADER_EXTEND_JUNC,
+  MAX_LEADERS_PER_COLONY, LEADER_LIFESPAN,
   FRUIT_COST, FRUIT_COST_FLOOR, FRUIT_DISCOUNT_PER_FRUIT,
   FRUIT_MATURE_TICKS, FRUIT_CAP_DECAY_TICKS, FRUIT_MIN_X_SPACING,
   FRUIT_SUBSTRATE_MULT_LOG, FRUIT_SUBSTRATE_MULT_GRASS, FRUIT_SUBSTRATE_MULT_SOIL,

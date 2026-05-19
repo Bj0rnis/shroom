@@ -16,7 +16,7 @@ const fs   = require('fs');
 const path = require('path');
 
 const { createWorld, sowAt, W, H, GRASS_Y, AIR, SOIL, GRASS, LOG, FRUIT, TREE } = require('./world');
-const { randomGenome, phenotypeWords } = require('./genome');
+const { randomGenome, pinnedGenome, phenotypeWords } = require('./genome');
 const { tick, setHooks, CONSTANTS, TICKS_PER_SIM_DAY } = require('./sim');
 const { buildGridSnapshot } = require('./grid-snapshot');
 const { DATA_DIR } = require('./persistence');
@@ -128,7 +128,11 @@ function sowOnLog(world, count) {
     if (bestI >= 0) {
       const x = bestI % W;
       const y = Math.floor(bestI / W);
-      sowAt(world, x, y, randomGenome(world.rng));
+      // Sim-lab iter-18: pinned genome for vision tests. The lottery roll
+      // on growth_rate (0.5-2.0) was the dominant cause of seed-to-seed
+      // variance. Pinning to the midpoint lets us iterate on the mechanic
+      // without "doomed by birth" seeds. Live world still uses random.
+      sowAt(world, x, y, pinnedGenome());
     }
   }
 }

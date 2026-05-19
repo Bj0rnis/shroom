@@ -69,11 +69,11 @@ const TIP_AGE_DECAY = 400;
 // encountered in growHyphae is promoted (lazy revival). Sim-lab iter-1.
 const LEADER_EXTEND_PROB      = 0.12;   // leader at freeCount >= 3
 const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (rare — leader squeezed)
-// Sim-lab iter-12: neutralize the lead-cell asymmetry. Non-leader rates
-// raised to leader rates so the carrying-cap is the sole brake on growth
-// volume. Bifurcation still gates on leaders (Y-fork pattern preserved).
-const NON_LEADER_EXTEND_PROB  = 0.12;   // = LEADER_EXTEND_PROB
-const NON_LEADER_EXTEND_JUNC  = 0.05;   // = LEADER_EXTEND_JUNCTION
+// Sim-lab iter-13: restored lead-cell asymmetry (back to iter-5 values).
+// Leaders concentrate reserves at the frontier; non-leaders crawl. Cap
+// shapes the volume; leaders shape the spatial concentration.
+const NON_LEADER_EXTEND_PROB  = 0.012;
+const NON_LEADER_EXTEND_JUNC  = 0.002;
 const MAX_LEADERS_PER_COLONY  = 3;
 // Leader senescence: a leader stops being a leader after this many extensions.
 // Real hyphal tips age out — their vigour decays as they age, and growth
@@ -100,8 +100,8 @@ const LEADER_LIFESPAN          = 60;
 // crude. CARRYING_SOFTNESS controls how sharply the brake bites: 1 = linear
 // drop-off, 2 = (1-x)² (gentle for most of the range, hard near the cap),
 // higher = sharper.
-const COLONY_CARRYING_CAPACITY = 500;
-const CARRYING_SOFTNESS        = 2;
+const COLONY_CARRYING_CAPACITY = 1500;
+const CARRYING_SOFTNESS        = 1;
 
 // ── Substrate slow regeneration ─────────────────────────
 // Decomposer microbes and rainfall slowly restore substrate richness between

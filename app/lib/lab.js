@@ -106,9 +106,30 @@ function sowOnLog(world, count) {
   if (!lb) return;
   const sownCount = Math.max(1, count);
   for (let k = 0; k < sownCount; k++) {
-    const x = lb.x0 + Math.floor(((k + 1) * lb.w) / (sownCount + 1));
-    const y = lb.y0 + Math.floor(lb.h / 2);
-    sowAt(world, x, y, randomGenome(world.rng));
+    // Sim-lab iter-17: substrate-aware sow. The painting target represents a
+    // successful founder, not a lottery-loser one — find the richest log cell
+    // in this spore's "neighbourhood" instead of dropping it on the geometric
+    // centre. Splits the log into `sownCount` columns so multi-sow scenarios
+    // still spread spores across the log; within a column, pick the richest
+    // cell. Deterministic — uses no rng calls, so the seed sweep stays clean.
+    const colW = Math.floor(lb.w / sownCount);
+    const colX0 = lb.x0 + k * colW;
+    const colX1 = lb.x0 + (k + 1) * colW;
+    let bestI = -1, bestN = -1;
+    const { kind, nutrient } = world.grid;
+    for (let yy = lb.y0; yy < lb.y0 + lb.h; yy++) {
+      for (let xx = colX0; xx < colX1; xx++) {
+        const i = yy * W + xx;
+        if (kind[i] !== LOG) continue;
+        if (world.grid.colony[i] !== 0) continue;
+        if (nutrient[i] > bestN) { bestN = nutrient[i]; bestI = i; }
+      }
+    }
+    if (bestI >= 0) {
+      const x = bestI % W;
+      const y = Math.floor(bestI / W);
+      sowAt(world, x, y, randomGenome(world.rng));
+    }
   }
 }
 

@@ -24,15 +24,34 @@ function parseNotes(md) {
   const entries = [];
   let current = null;
   let activeField = null;     // which field a wrap-line should append to
+  let asciiBuf = null;        // collecting lines inside an ```ascii``` block
 
   function flush() {
     if (!current) return;
     entries.push(current);
     current = null;
     activeField = null;
+    asciiBuf = null;
   }
 
   for (const line of lines) {
+    // Inside an ascii fenced block: collect raw lines until closing fence.
+    if (asciiBuf !== null) {
+      if (/^```\s*$/.test(line)) {
+        if (current) current.ascii = asciiBuf.join('\n');
+        asciiBuf = null;
+      } else {
+        asciiBuf.push(line);
+      }
+      continue;
+    }
+    // Open an ascii block — only inside a current entry.
+    if (current && /^```ascii\s*$/.test(line)) {
+      asciiBuf = [];
+      activeField = null;
+      continue;
+    }
+
     const h = line.match(HEADING_RE);
     if (h) {
       flush();
@@ -48,6 +67,7 @@ function parseNotes(md) {
         result:      null,
         reading:     null,
         next:        null,
+        ascii:       null,
       };
       activeField = null;
       continue;

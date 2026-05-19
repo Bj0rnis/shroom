@@ -95,9 +95,32 @@ function IterCard({ entry }) {
           {entry.result     && <Field label="result"     body={entry.result} />}
           {entry.reading    && <Field label="reading"    body={entry.reading} />}
           {entry.next       && <Field label="next"       body={entry.next} accent />}
+          {entry.ascii      && <AsciiBlock ascii={entry.ascii} />}
         </details>
       </div>
     </DarkPanel>
+  );
+}
+
+function AsciiBlock({ ascii }) {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{
+        fontFamily: MONO, color: COL.dim, fontSize: 9,
+        letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 6,
+      }}>final shape</div>
+      <pre style={{
+        margin: 0, padding: '10px 12px',
+        background: 'rgba(0,0,0,0.4)',
+        border: `1px solid ${COL.faint}`,
+        borderRadius: 3,
+        overflowX: 'auto',
+        fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
+        fontSize: 10, lineHeight: 1.05,
+        color: COL.text,
+        whiteSpace: 'pre',
+      }}>{ascii}</pre>
+    </div>
   );
 }
 

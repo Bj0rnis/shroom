@@ -22,6 +22,11 @@ code-talk: "extend" → "grow", "aggregate pass-rate" → "how many seeds
 pass," "saturated" → "matted." See `PROCESS.md` "Voice" section for the
 full translation register. Keep it short — one sentence.
 
+After the entry's fields you may optionally include a fenced ```ascii```
+block — the 80-column grid from the most informative seed (usually the
+best-passing one). The dashboard renders it inline on the iter card so
+the maintainer can *see* the shape that came out, not just read about it.
+
 Tags: `[tweak]` (constant change), `[mechanic]` (new code path),
 `[rewrite]` (structural change), `[stuck]` (mechanic class abandoned),
 `[observe]` (no code change, just reading prior runs).
@@ -32,6 +37,28 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-17 · [mechanic]
+Agent: claude-opus-4-7
+Plain: Tried planting each spore on the richest spot of the log instead of dead center (Path 1 from the escalation). Didn't help the lean seeds — and a probe revealed why: the variance isn't substrate, it's **the genome itself**. Seeds 271 and 555 roll growth_rate genes of 0.68 and 0.67 (out of a 0.5-2.0 range) — they're genetically slow-growing mushrooms. No amount of fertile soil makes them grow fast.
+Hypothesis: Substrate-aware sow finds the richest log cell per seed; gives all 5 a fair start.
+Setup: lab.js sowOnLog now scans the log cells in each spore's column and picks the highest-nutrient one. Sim constants reverted to iter-13 best (LEADER_LIFESPAN=60, no starting reserves). EXTEND_COST=2, cap=1500, softness=1.
+Result: modestSize 1/5, branchedDensity 4/5, descended 2/5, multipleDescents 2/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 25, 495, 63, 3, 10. Aggregate ~same as iter-13.
+Reading: I probed the substrate to see why this didn't help. Every seed had log cells with nutrient=100 available — substrate isn't scarce. Then I checked the genomes: growth_rate gene per seed is 1.59 / 1.95 / 1.63 / **0.68** / **0.67**. The lean seeds (271, 555) rolled fundamentally slow genomes. Confirmed by a fixed-genome control: with growth_rate=1.5 pinned, lean seeds grow more (271: 3→17, 555: 10→34) but still don't hit modestSize. The variance has two layers: genome (dominant) and something else (substrate layout, log dimensions). The painting target implicitly assumes a "typical" growth_rate. The buffet entry "Genome variance" was already pointing at this: *some founders mat, some die fast — and that's fine*.
+Next: ESCALATE — see PR comment. Three new paths around how to handle genome variance.
+
+```ascii
+                                 =====1111111======
+                                =======111111=======
+                                ========11111=======
+                                ========11111=======
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~=======11111=======~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.....................................1111111....................................
+....................................11111111....................................
+...................................111111111....................................
+...................................11111........................................
+```
+(seed 1337, still the only 6/6 — 495 cells; substrate-aware sow shifted shape slightly but the lean seeds stayed lean)
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-16 · [tweak]
 Agent: claude-opus-4-7
 Plain: Tried giving every newborn colony a starting reserves boost of 100 (a spore-energy buffer for lean substrate founders). Didn't help — colonies blow the buffer on early aggressive extension, then settle back to the same substrate-limited size.
@@ -40,6 +67,21 @@ Setup: world.js sowAt initial reserves 0 → 100. EXTEND_COST back to 2. iter-14
 Result: modestSize 1/5, branchedDensity 3/5, descended 1/5, multipleDescents 1/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 11, 538, 109, 1, 29.
 Reading: Buffer gets spent immediately. 1337 grew more (421 → 538). 42 collapsed (28 → 11) and 314 dropped (120 → 109). The boost actually hurts medium seeds — early aggressive extension pushes them over what their absorption can sustain. Net regression.
 Next: ESCALATE — see iter-15 notes and the PR comment.
+
+```ascii
+                                 =======11=1111====
+                                ========1111111=====
+                                =====11=1111111=====
+                                ====11111111111=====
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~=111111111111=1====~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..................................11...111111111................................
+.......................................11.1111111...............................
+...........................................111111...............................
+...........................................11111................................
+............................................1111................................
+..............................................1.................................
+```
+(seed 1337, still 6/6 — 538 cells; bigger lump but same lump-on-log shape, not yet the painting's deep Y-branches)
 
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-15 · [tweak]
 Agent: claude-opus-4-7
@@ -67,6 +109,20 @@ Setup: NON_LEADER rates back to iter-5 values (0.012, 0.002). COLONY_CARRYING_CA
 Result: modestSize 1/5, branchedDensity 3/5, descended 2/5, multipleDescents 3/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 38, 421, 119, 3, 10. 4/6 scorers now pass the majority threshold (need 3/5). modestSize and descended are the holdouts, both caused by the lean seeds 271 and 555.
 Reading: First seed that fully matches the painting. The combination works — lead-cells concentrate, cap prevents mat. Remaining hurdle: lean substrate produces tiny founders that never reach modestSize range. Either give lead-cells more reach (longer LIFESPAN) or boost initial reserves on lean substrate. Variance is the enemy now, not the brake.
 Next: iter-14 — raise LEADER_LIFESPAN 60 → 200 so a single leader has more reach on lean substrate. Cap still holds for rich.
+
+```ascii
+                                 =====1111111======
+                                =======111111=======
+                                ========11111=======
+                                ========11111=======
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~=======11111=======~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.....................................1111111....................................
+....................................11111111....................................
+...................................111111111....................................
+...................................111111.1.....................................
+...................................11111........................................
+```
+(seed 1337, the 6/6 pass — 421 cells)
 
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-12 · [mechanic]
 Agent: claude-opus-4-7

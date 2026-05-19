@@ -37,6 +37,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-21 · [rewrite]
+Agent: claude-opus-4-7
+Plain: Rebuilt the scoring so it actually compares the run to the painting. A new "shape" scorer reads the painting ASCII from RESEARCH.md, extracts five structural features (lateral spread, descent columns, depth, soil dispersion, soil/log ratio) from both, and rates the run 0-1 against the painting. Re-scored iter-20's setup under the new system: shape passes on 0 of 5 seeds. The earlier "vision achieved" was a measurement error.
+Hypothesis: The original scorers (branchedDensity by bbox math, multipleDescents without spatial gap, descended at ≥5 rows) couldn't tell a stake-with-a-cap from a root network. A painting-derived shape score will gatekeep honestly while the upgraded individual scorers diagnose per-feature.
+Setup: New `app/lib/sim-lab/shape.js` — extracts features from any ASCII grid, compares to the painting (cached from RESEARCH.md). Driver passes `run.ascii` to scorers via `ctx`. targets.js gains `shape` (gatekeeper), `soilDispersion` (runs/cells in soil, replaces branchedDensity), tightens `descended` to ≥10 rows and `multipleDescents` to require minGap=3 between descents. Vision 1 now has 7 scorers. Smoke tests updated.
+Result: shape **0/5** (median 0.05). soilDispersion **0/5** (median 0.42, want ≥0.5). descended 2/5. multipleDescents 2/5. modestSize 5/5, noPrematureFruit 5/5, notSaturated 5/5. Best single-seed shape score: 0.40 (seed 271). Painting comparison features in the painting itself: descentColumns=2, maxDepth=12, soilDispersion=1.0, soilLogRatio=0.79.
+Reading: Under honest scoring, iter-20's "vision achieved" claim collapses. The mechanic from iter-1..20 produces large healthy colonies that don't mat, don't fruit early, and reach below grass — but they're caps with taps, not root systems. soilDispersion at ~0.42 (want ≥0.5 for lacework) is the cleanest diagnostic: the colony has fat columns, not threads. The shape score (0.05 - 0.40) per seed gives a single honest number; the diagnostic scorers tell the next iter where to push.
+Next: hand off to the iterating agent — the mechanic stack needs a real network-producing change (suggestion-free here per process). The scoring will now reject "stake" results regardless of mechanic.
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-20 · [tweak]
 Agent: claude-opus-4-7
 Plain: **Vision 1 achieved.** Pinned every test colony to seed 1337's exact natural DNA — the genome that produced our 6/6 win at iter-13. All five seeds now grow into root-shaped colonies in the painting size range. Four of five hit 6/6 targets (688, 470, 480, 537 cells). The lean substrate seed (555) lands at 258 cells, 4/6 — modest but still passes the size rule. Every aggregate target passes the majority threshold for the first time.

@@ -32,6 +32,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-13 · [tweak]
+Agent: claude-opus-4-7
+Plain: Brought lead-cells back, raised the cap to 1500, and made the cap taper gentler (linear). **First 6/6 pass in sim-lab history — seed 1337 nailed every target (421 cells, branched, descended, no premature fruit, no mat).** Two other seeds came close (314 at 5/6, 42 at 4/6). The lean seeds (271, 555) still die tiny.
+Hypothesis: Cap is the volume brake; lead-cells are the spatial concentrator. Both. Higher cap + linear taper gives lead-cells room to do its work before the cap bites.
+Setup: NON_LEADER rates back to iter-5 values (0.012, 0.002). COLONY_CARRYING_CAPACITY 500 → 1500. CARRYING_SOFTNESS 2 → 1.
+Result: modestSize 1/5, branchedDensity 3/5, descended 2/5, multipleDescents 3/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 38, 421, 119, 3, 10. 4/6 scorers now pass the majority threshold (need 3/5). modestSize and descended are the holdouts, both caused by the lean seeds 271 and 555.
+Reading: First seed that fully matches the painting. The combination works — lead-cells concentrate, cap prevents mat. Remaining hurdle: lean substrate produces tiny founders that never reach modestSize range. Either give lead-cells more reach (longer LIFESPAN) or boost initial reserves on lean substrate. Variance is the enemy now, not the brake.
+Next: iter-14 — raise LEADER_LIFESPAN 60 → 200 so a single leader has more reach on lean substrate. Cap still holds for rich.
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-12 · [mechanic]
 Agent: claude-opus-4-7
 Plain: Removed the lead-cell asymmetry so the cap is the sole brake. Plot twist — the noisy seed (1337) became the best seed, landing at 332 cells with 5/6 targets passed. The lean seeds collapsed (42→4, 271→6) because without leaders concentrating reserves at the tips, the colony spreads thin on poor substrate and starves.

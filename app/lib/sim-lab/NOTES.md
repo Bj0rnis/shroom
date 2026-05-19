@@ -32,6 +32,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-12 · [mechanic]
+Agent: claude-opus-4-7
+Plain: Removed the lead-cell asymmetry so the cap is the sole brake. Plot twist — the noisy seed (1337) became the best seed, landing at 332 cells with 5/6 targets passed. The lean seeds collapsed (42→4, 271→6) because without leaders concentrating reserves at the tips, the colony spreads thin on poor substrate and starves.
+Hypothesis: Cap is the brake, leaders aren't needed — set NON_LEADER rates = LEADER rates and let the soft cap shape colony size.
+Setup: NON_LEADER_EXTEND_PROB 0.012 → 0.12, NON_LEADER_EXTEND_JUNC 0.002 → 0.05. Bifurcation still leader-gated. Cap stays 500.
+Result: modestSize 1/5, branchedDensity 2/5, descended 1/5, multipleDescents 2/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 4, 332, 66, 6, 102. Seed 1337 hits 5/6 (332 cells, branched, descended, no fruit, no mat) — best single-seed result in the whole sim-lab so far.
+Reading: The cap *works* on rich substrate — for the first time seed 1337 lands in the painting's modestSize range without matting. But removing the leader mechanic was wrong for lean seeds: leaders concentrate reserves at a small frontier, which is exactly what a lean colony needs to maintain a growing tip. Without them, every cell rolls extension, reserves drain, and the lean founder dies. The result splits into rich-passes / lean-dies. Variance is now the enemy.
+Next: iter-13 — keep cap as the volume brake but bring back the leader spatial concentration. Higher cap (1500) to give all seeds room. Softer taper (linear instead of squared).
+
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-6-to-10-summary · [stuck]
 Agent: claude-opus-4-7
 Plain: Spent five iterations on lead-cells variants — fork tweaks, revival tweaks, growth-rate tweaks. None passed; the best result was the noisy seed at 97 cells with 4/6 targets. The lead-cells design space looks tapped out. Time to try a different mechanic class.

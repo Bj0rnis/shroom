@@ -69,8 +69,11 @@ const TIP_AGE_DECAY = 400;
 // encountered in growHyphae is promoted (lazy revival). Sim-lab iter-1.
 const LEADER_EXTEND_PROB      = 0.12;   // leader at freeCount >= 3
 const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (rare — leader squeezed)
-const NON_LEADER_EXTEND_PROB  = 0.012;  // any non-leader cell with freeCount >= 3
-const NON_LEADER_EXTEND_JUNC  = 0.002;  // any non-leader cell with freeCount = 2
+// Sim-lab iter-12: neutralize the lead-cell asymmetry. Non-leader rates
+// raised to leader rates so the carrying-cap is the sole brake on growth
+// volume. Bifurcation still gates on leaders (Y-fork pattern preserved).
+const NON_LEADER_EXTEND_PROB  = 0.12;   // = LEADER_EXTEND_PROB
+const NON_LEADER_EXTEND_JUNC  = 0.05;   // = LEADER_EXTEND_JUNCTION
 const MAX_LEADERS_PER_COLONY  = 3;
 // Leader senescence: a leader stops being a leader after this many extensions.
 // Real hyphal tips age out — their vigour decays as they age, and growth

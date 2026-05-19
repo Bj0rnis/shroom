@@ -74,9 +74,9 @@ process.stdout.write('sim determinism\n');
 process.stdout.write('baseline guards\n');
 {
   const BASELINES = [
-    { seed: 42,   ticks: 5000, cells: 253, fruits: 0, deaths: 0 },
-    { seed: 1337, ticks: 5000, cells: 174, fruits: 0, deaths: 0 },
-    { seed: 555,  ticks: 5000, cells: 126, fruits: 0, deaths: 0 },
+    { seed: 42,   ticks: 5000, cells: 444, fruits: 0, deaths: 0 },
+    { seed: 1337, ticks: 5000, cells: 452, fruits: 0, deaths: 0 },
+    { seed: 555,  ticks: 5000, cells: 380, fruits: 0, deaths: 0 },
   ];
   for (const b of BASELINES) {
     const w = createWorld(b.seed);

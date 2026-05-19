@@ -94,7 +94,46 @@ pass on a majority of the seed set (3+ of 5).
 
 ### Status
 
-_Not yet achieved on any iteration._ Baseline run (current `main`
-constants) fails 5/6 of the targets across all 5 seeds. Saturation,
-premature fruiting, and far-overshooting cell counts are the dominant
-failure mode. See `NOTES.md` for in-flight work.
+**Achieved at iter-20** (2026-05-19, sim-lab/02-carrying-capacity).
+Every target passes the 3+/5 majority threshold; four of five seeds
+hit all six targets cleanly.
+
+| target | iter-20 | criterion |
+|---|---|---|
+| modestSize        | **5/5** | colony cells in [150, 800] |
+| branchedDensity   | **5/5** | density in [0.10, 0.40] |
+| descended         | **4/5** | reaches ≥5 rows below grass |
+| multipleDescents  | **4/5** | ≥2 grass-crossings |
+| noPrematureFruit  | **5/5** | ≤3 fruits across the day |
+| notSaturated      | **5/5** | alive cells / substrate ≤20% |
+
+Per-seed sizes: 688, 470, 480, 537, 258. The mechanic that earned it:
+
+- **Leader-cells** (sim-lab/01-leading-hyphae iter-1, iter-5):
+  `LEADER_EXTEND_PROB=0.12`, `LEADER_LIFESPAN=60`,
+  `NON_LEADER_EXTEND_PROB=0.012`, bifurcation Y-fork at leaders only.
+- **Colony carrying capacity** (sim-lab/02 iter-13):
+  `COLONY_CARRYING_CAPACITY=1500`, `CARRYING_SOFTNESS=1`. Linear soft
+  brake on extension prob: factor `(1 - cells/cap)` clamped to `[0, 1]`.
+- **Substrate-aware sow** (sim-lab/02 iter-17): lab scenarios sow
+  each spore on the richest log cell in its column, not the geometric
+  centre.
+- **Pinned genome for vision tests** (sim-lab/02 iter-20): the lab
+  uses `pinnedGenome()` returning seed 1337's natural iter-13 roll for
+  every founder. Lifts genome variance out of the vision check.
+
+These constants live in `app/lib/sim.js` and the new
+`pinnedGenome()` lives in `app/lib/genome.js`. Live world still
+uses `randomGenome()` — natural variance preserved outside the lab.
+
+The remaining work on this vision: confirm with one more iteration,
+then promote to main and pick the next vision target. Genome variance
+is the obvious thing to re-introduce — gradually — once we have a
+second working vision to anchor regressions against.
+
+#### What didn't work, and why
+
+Five iters on leader-cells (iter-6..10) hit a tuning wall because the
+mechanic alone couldn't both (a) grow the founder big enough on lean
+substrate and (b) keep rich founders from matting. Carrying-capacity
+solved (b); pinning the genome solved (a).

@@ -109,9 +109,13 @@ function parseNotes(md) {
   for (const e of entries) {
     if (!e.result) { e.scores = []; continue; }
     const scores = [];
+    // Strip markdown emphasis so bold pass-counts (`modestSize **5/5**`)
+    // still parse. Keep this minimal — only the inline markers we
+    // actually use in NOTES entries.
+    const cleaned = e.result.replace(/\*\*/g, '').replace(/`/g, '');
     const re = /([a-zA-Z][a-zA-Z0-9_]*)\s+(\d+)\/(\d+)/g;
     let m;
-    while ((m = re.exec(e.result)) !== null) {
+    while ((m = re.exec(cleaned)) !== null) {
       if (!ALLOWED.has(m[1])) continue;
       scores.push({ name: m[1], pass: parseInt(m[2], 10), of: parseInt(m[3], 10) });
     }

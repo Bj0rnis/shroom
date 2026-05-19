@@ -34,7 +34,7 @@ async function runVisionTarget(vision, opts = {}) {
     const world = reconstructWorld(run);
     const scores = vision.scorers.map(s => ({
       name: s.name,
-      ...s.fn(world, s.opts || {}),
+      ...s.fn(world, s.opts || {}, { ascii: run.ascii }),
     }));
     const passed = scores.filter(s => s.ok).length;
     results.push({

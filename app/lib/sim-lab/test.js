@@ -130,40 +130,70 @@ function makeSyntheticWorld({ cells = [], lifetime = {} } = {}) {
   expect('modestSize rejects 2 cells', !r.ok, r.note);
 }
 {
-  // Sparse network: 50 cells over a 20×20 bbox → density 0.125
+  // Lacework — 50 single cells spread across 20 columns in soil.
+  // Each cell isolated within its row → runs/cells ratio = 1.
   const cells = [];
   for (let n = 0; n < 50; n++) cells.push([130 + (n * 3) % 20, 70 + Math.floor(n / 7)]);
   const w = makeSyntheticWorld({ cells });
-  const r = targets.branchedDensity(w, { min: 0.05, max: 0.40 });
-  expect('branchedDensity passes for sparse network', r.ok, r.note);
+  const r = targets.soilDispersion(w, { min: 0.50 });
+  expect('soilDispersion passes lacework', r.ok, r.note);
 }
 {
-  // Dense blob: every cell in a 10×10 → density 1.0
+  // Dense blob — every cell in a 10×10 below grass → runs ≈ 10, cells = 100,
+  // dispersion ≈ 0.1.
   const cells = [];
   for (let y = 70; y < 80; y++) for (let x = 130; x < 140; x++) cells.push([x, y]);
   const w = makeSyntheticWorld({ cells });
-  const r = targets.branchedDensity(w, { min: 0.05, max: 0.40 });
-  expect('branchedDensity rejects dense blob', !r.ok, r.note);
+  const r = targets.soilDispersion(w, { min: 0.50 });
+  expect('soilDispersion rejects dense blob', !r.ok, r.note);
 }
 {
-  // Two grass-crossings at x=140 and x=170
+  // Two grass-crossings far apart (x=140 and x=170, gap=29) → 2 distinct.
   const cells = [];
   for (let y = 60; y <= 70; y++) { cells.push([140, y]); cells.push([170, y]); }
   const w = makeSyntheticWorld({ cells });
-  const r = targets.multipleDescentPoints(w, { min: 2 });
-  expect('multipleDescentPoints counts 2 crossings', r.ok, `n=${r.value}`);
+  const r = targets.multipleDescentPoints(w, { min: 2, minGap: 3 });
+  expect('multipleDescents counts 2 separated crossings', r.ok, `n=${r.value}`);
 }
 {
-  // Cells only on log (y=55), none below grass
+  // Adjacent grass-crossings (cols 140-145, no gap) → 1 fat run, not multiple.
+  const cells = [];
+  for (let y = 60; y <= 70; y++) for (let x = 140; x <= 145; x++) cells.push([x, y]);
+  const w = makeSyntheticWorld({ cells });
+  const r = targets.multipleDescentPoints(w, { min: 2, minGap: 3 });
+  expect('multipleDescents rejects fat single run', !r.ok, `n=${r.value}`);
+}
+{
+  // Cells only on log (y=55), none below grass → fails ≥10.
   const cells = Array.from({ length: 30 }, (_, k) => [140 + k, 55]);
   const w = makeSyntheticWorld({ cells });
-  const r = targets.descended(w, { min: 5 });
+  const r = targets.descended(w, { min: 10 });
   expect('descended rejects log-only colony', !r.ok, r.note);
 }
 {
   const w = makeSyntheticWorld({ cells: [], lifetime: { fruitsTotal: 50 } });
   const r = targets.noPrematureFruit(w, { maxByEnd: 3 });
   expect('noPrematureFruit rejects 50 fruits', !r.ok, r.note);
+}
+
+// ── Shape (painting comparison) ─────────────────────────
+process.stdout.write('shape\n');
+{
+  const shape = require('./shape');
+  const painting = shape.paintingFeatures();
+  expect('painting features extract', painting.ok, painting.error);
+  expect('painting has 2 descent columns', painting.descentColumns === 2,
+    `got ${painting.descentColumns}`);
+  expect('painting soilDispersion ≈ 1', painting.soilDispersion > 0.9,
+    `got ${painting.soilDispersion}`);
+  // Run shape scorer with a deliberately blob-shaped ASCII through the
+  // context-passing interface — confirms the scorer uses ctx.ascii.
+  const blob = '\n\n\n\n\n' + '~'.repeat(80) + '\n' +
+    '..........' + '1'.repeat(20) + '..........\n'.repeat(8);
+  const r = targets.shape({}, { threshold: 0.6 }, { ascii: blob });
+  expect('shape rejects blob via ctx.ascii', !r.ok, r.note);
+  expect('shape errors when ascii missing',
+    !targets.shape({}, {}, {}).ok);
 }
 
 // ── Driver end-to-end ───────────────────────────────────

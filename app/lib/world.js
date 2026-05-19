@@ -246,7 +246,11 @@ function sowAt(world, x, y, genome) {
     cellCount: 1,
     fruitCount: 0,
     seasonsSurvived: 0,
-    reserves: 0,
+    // Sim-lab iter-16: starting reserves buffer so lean-substrate founders
+    // can build the early skeleton before they're forced to live on what
+    // they absorb tick-to-tick. Roughly 50 EXTEND_COST units = a 50-cell
+    // skeleton paid for by the spore's energy stores.
+    reserves: 100,
     // Placeholder name shown in UI until Nigehban grants a real one. Kept
     // separate from `name` so salience.js still treats the colony as nameable
     // (col.name remains undefined until Nigehban writes it).

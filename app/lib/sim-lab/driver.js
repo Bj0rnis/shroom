@@ -6,11 +6,30 @@
 
 const lab = require('../lab');
 
+// Seed personalities — observed regimes across iters 1-10 of sim-lab/01.
+// `nominal` produces a clean branched founder; `stress` saturates into mat;
+// `lean` tends to die or stay tiny; `branch` is the painting-shape outlier;
+// `edge` is the noisy boundary case. Used by the report to group results
+// by regime instead of by raw seed number.
+const SEED_PERSONALITIES = {
+  42:   'nominal',
+  1337: 'stress',
+  555:  'lean',
+  314:  'branch',
+  271:  'edge',
+};
+
+const DEFAULT_SEEDS = [42, 1337, 314, 271, 555];
+
 async function runVisionTarget(vision, opts = {}) {
-  const seeds = opts.seeds ?? [42, 1337, 314, 271, 555];
+  const seedSpec = opts.seeds ?? DEFAULT_SEEDS;
+  // Normalize: accept [42, 1337, …] or [{seed: 42, tag: 'nominal'}, …]
+  const seeds = seedSpec.map(s => typeof s === 'number'
+    ? { seed: s, tag: SEED_PERSONALITIES[s] || 'unknown' }
+    : { seed: s.seed, tag: s.tag || SEED_PERSONALITIES[s.seed] || 'unknown' });
   const results = [];
 
-  for (const seed of seeds) {
+  for (const { seed, tag } of seeds) {
     const run = await lab.runScenario(vision.scenarioId, { seed });
     const world = reconstructWorld(run);
     const scores = vision.scorers.map(s => ({
@@ -20,14 +39,13 @@ async function runVisionTarget(vision, opts = {}) {
     const passed = scores.filter(s => s.ok).length;
     results.push({
       seed,
+      tag,
       runId: run.id,
       ticks: run.metrics.tick,
       coloniesAlive: run.metrics.coloniesAlive,
       hyphaeCells: run.metrics.hyphaeCells,
       maxColonyCells: run.metrics.maxColonyCells,
-      fruitsTotal: run.metrics.births != null
-        ? (run.metrics.deathsTotal != null ? (world.meta.lifetime?.fruitsTotal || 0) : 0)
-        : 0,
+      fruitsTotal: world.meta.lifetime?.fruitsTotal ?? 0,
       ascii: run.ascii,
       scores,
       passedTargets: passed,
@@ -49,7 +67,7 @@ async function runVisionTarget(vision, opts = {}) {
     };
   }
 
-  return { vision, seeds, results, aggregate };
+  return { vision, seeds: seeds.map(s => s.seed), seedSpecs: seeds, results, aggregate };
 }
 
 // lab.runScenario returns a serialised run with the snapshot's kind+colony
@@ -77,4 +95,4 @@ function reconstructWorld(run) {
   };
 }
 
-module.exports = { runVisionTarget };
+module.exports = { runVisionTarget, SEED_PERSONALITIES, DEFAULT_SEEDS };

@@ -128,6 +128,27 @@ Winter suppresses growth significantly; spring amplifies it.
 
 ---
 
+## Sim lab
+
+The lab under `app/lib/sim-lab/` is where sim-tuning iterations happen. Three
+docs, three concerns:
+
+| File | What it is |
+|---|---|
+| `RESEARCH.md` | The paper — vision targets and the reasoning behind them. Update when a vision is achieved or retired. |
+| `NOTES.md` | The journal — one terse entry per iteration. Hypothesis, result, reading, next. |
+| `PROCESS.md` | The contract — how the loop runs, what the agent may decide alone, when to escalate. **Read before iterating.** |
+
+The lab is *semi-automated*: the agent runs the loop without checking in,
+but PRs to main are the surface where the maintainer sees the work. `PROCESS.md`
+defines escalation criteria — read it before assuming you need permission,
+and read it before assuming you don't.
+
+The active mechanic (leader-cells today) is a hypothesis, not a contract.
+`PROCESS.md` lists alternatives the agent is licensed to try.
+
+---
+
 ## Nigehban
 
 Nigehban is the jinn who observes the world and writes in the journal. He is

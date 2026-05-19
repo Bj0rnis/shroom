@@ -1,39 +1,39 @@
 # Shroom · Lab · Notes
 
 Private notebook. Terse — one entry per session. ~50–100 words each.
-For the *why* in prose, see `RESEARCH.md`.
+For the *why* in prose, see `RESEARCH.md`. For *how the loop runs*, see
+`PROCESS.md` — read it before iterating.
 
 Entry format:
 
 ```
-## YYYY-MM-DD · branch-or-config-name · [tag]
-Hypothesis: one sentence.
-Setup: scorer set, seeds, constants touched.
+## YYYY-MM-DD · branch-or-config-name · iter-N · [tag]
+Agent: claude-<model-id>
+Plain: one plain-English sentence for the maintainer — what we tried and what came out.
+Hypothesis: one sentence (technical OK).
+Setup: scorer set, seeds, constants touched, mechanic added/removed.
 Result: aggregate pass-counts + the surprising number.
 Reading: what I now think.
 Next: one move.
 ```
 
+`Plain:` is the line the /research dashboard shows first. Translate the
+code-talk: "extend" → "grow", "aggregate pass-rate" → "how many seeds
+pass," "saturated" → "matted." See `PROCESS.md` "Voice" section for the
+full translation register. Keep it short — one sentence.
+
 Tags: `[tweak]` (constant change), `[mechanic]` (new code path),
-`[rewrite]` (structural change).
+`[rewrite]` (structural change), `[stuck]` (mechanic class abandoned),
+`[observe]` (no code change, just reading prior runs).
 
-## License to rewrite
-
-Explicit permission from the maintainer (2026-05-18) — if a vision keeps failing
-because the *design space* is missing a mechanism, add it. Don't just
-sweep constants in a circle. Things he flagged as fair game:
-
-- Inter-colony pressure (colonies eating each other)
-- Genome competition / selective fitness (some genes outcompete others)
-- Anything else that closes a missing loop
-
-Process still applies: one change per iteration, tagged `[mechanic]` or
-`[rewrite]`, journal entry per try, PR to main (never push direct). The
-license is about *scope*, not *process*.
+The `Agent:` line records which model ran the iteration. Use the model
+ID (`claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5`). Future
+us will want to A/B model choices; this is the audit trail.
 
 ---
 
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-3 · [tweak]
+Plain: Slowed the lead cells way down. Too slow — colonies stayed tiny (some only 5 cells) and didn't reach into the soil.
 Hypothesis: leader extend rate is still too high. Three leaders extending at
 ~0.30/tick × growthRate produce ~1 cell/tick — far past the [150, 800] cell
 day-1 target. Cut LEADER_EXTEND_PROB 0.30 → 0.05, junction 0.10 → 0.02.
@@ -45,6 +45,7 @@ Reading: overshot — too slow. The fruit and saturation pressures are now off
 0.05 and 0.30. Try 0.12.
 
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-4 · [tweak]
+Plain: Split the difference at a middle growth rate. One seed came out beautiful (481 cells, branched), but the noisy seed still matted and the lean one still died.
 Hypothesis: split the difference. LEADER_EXTEND_PROB 0.05 → 0.12, junction
 0.02 → 0.05. ~2.4× faster than iter-3; should land founder ~150-800 cells.
 Setup: same seeds, only those two constants.
@@ -61,6 +62,7 @@ threshold it demotes. Caps the runaway and lets quiescent cells become new
 leaders only via lazy-promotion (which the leader-die path already triggers).
 
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-2 · [tweak]
+Plain: Raised the size needed before fruiting. Didn't help — colonies still grew past the gate inside day 1 on rich seeds and fruited anyway.
 Hypothesis: FRUIT_MIN_CELL_COUNT=300 is crossed inside day 1 by log-rich
 founders, releasing spores that mat the canvas. Raising to 800 (top of the
 modestSize range) puts fruiting outside the day-1 window for any founder
@@ -79,6 +81,7 @@ Next: cut LEADER_EXTEND_PROB 0.30 → 0.05 (and junction 0.10 → 0.02). Slows
 the founder enough that it cannot reach the fruit gate inside day 1.
 
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-5 · [mechanic]
+Plain: Made lead cells retire after 60 grows. Seed 42 came out lovely (255 cells, branched) — but bifurcation kept making fresh leads, so the colony never really slowed.
 Hypothesis: leaders never retire — leadership moves with the lineage but the
 lineage extends forever. Add LEADER_LIFESPAN (extensions count) per leader.
 After 60 extensions, leader is dropped (no replacement). Bifurcation-born
@@ -96,6 +99,7 @@ so total ~3 × 0.12 × 28800 = ~10k cells. The fix is in bifurcation: it must
 and after senescence the colony slows to non-leader rates (~10× less).
 
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-1 · [mechanic]
+Plain: First try with "lead cells" — a few tips grow fast, the rest crawl. Shape looked right (root-like on the median seed), but rich seeds still matted and colonies fruited too early.
 Hypothesis: every cell-with-a-free-neighbour rolls extension every tick → liquid mat.
 Constrain growth to a few "leader" tips per colony; non-leaders extend at ~10×
 lower probability. Leadership *moves* on extension; bifurcation can add a
@@ -114,6 +118,7 @@ of 300 cells is reachable inside a sim-day on log-rich substrate.
 Next: raise FRUIT_MIN_CELL_COUNT well past day-1 founder size (500+).
 
 ## 2026-05-18 · sim-lab/foundation · [mechanic]
+Plain: Baseline run on stock numbers. The world matted exactly the way we'd expect — that's the problem we're trying to solve. Lab pipeline itself works (same seed gives the same world every time).
 Foundation pass: seeded RNG (mulberry32) threaded through sim/world/genome/lab,
 lab scaffolding under `app/lib/sim-lab/`, two journals, vision 1 written into
 `RESEARCH.md`.

@@ -58,6 +58,7 @@ function EngineApp() {
           </div>
           <div style={{ fontFamily: SERIF_RUN, color: COL.text2, fontSize: 16, lineHeight: 1.45, fontStyle: 'italic', maxWidth: 740 }}>
             A field guide to the simulation behind <a href="/" style={{ color: COL.emberHi, textDecoration: 'none', borderBottom: `1px dotted ${COL.emberHi}` }}>the live page at /</a>.
+            Tuning notes and what we're trying next live at <a href="/research" style={{ color: COL.emberHi, textDecoration: 'none', borderBottom: `1px dotted ${COL.emberHi}` }}>/research</a>.
             Mycelium grows on a {w.W}×{w.H} grid, absorbs nutrients into a reserves
             pool, spends them to extend and to fruit, drifts spores. Saplings rise,
             mature, and fall into logs. Logs are eaten back to soil. Once a sim-year

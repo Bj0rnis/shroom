@@ -144,6 +144,7 @@ app.get('/lab', (req, res) => {
 // of truth stays in markdown; this is a view on it.
 const fs = require('fs');
 const { renderPage } = require('./lib/sim-lab/render');
+const labParser = require('./lib/sim-lab/notes-parser');
 function serveJournal(filename, title) {
   return (req, res) => {
     const p = path.join(__dirname, 'lib', 'sim-lab', filename);
@@ -152,8 +153,30 @@ function serveJournal(filename, title) {
     res.type('html').send(renderPage(title, md));
   };
 }
-app.get('/research', serveJournal('RESEARCH.md', 'research'));
-app.get('/notes',    serveJournal('NOTES.md',    'notes'));
+
+// /research = dashboard (kit-based React page). The raw RESEARCH.md
+// stays accessible at /research/paper for when you want the source view.
+app.get('/research', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'research.html'));
+});
+app.get('/research/paper', serveJournal('RESEARCH.md', 'research'));
+app.get('/notes',          serveJournal('NOTES.md',    'notes'));
+app.get('/process',        serveJournal('PROCESS.md', 'process'));
+
+// /api/research — structured view over the three sim-lab markdown files +
+// recent lab runs, for the /research dashboard.
+app.get('/api/research', (req, res) => {
+  const docs = labParser.readLabDocs();
+  const notes = labParser.parseNotes(docs.notes);
+  const hypotheses = labParser.parseHypotheses(docs.process, notes);
+  res.json({
+    research: docs.research,
+    process:  docs.process,
+    notes:    notes,
+    hypotheses,
+    runs:     lab.listRuns().slice(0, 12),
+  });
+});
 
 app.get('/api/engine-spec', (req, res) => {
   res.json({

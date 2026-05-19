@@ -64,6 +64,36 @@ process.stdout.write('sim determinism\n');
   expect('different seed → different cell count', a !== d);
 }
 
+// ── Baseline guards ─────────────────────────────────────
+// Snapshot of physics on current `main`. Each entry is a (seed, ticks) →
+// expected (cells, fruits, deaths) tuple. If you intentionally change a
+// sim constant or mechanic, re-run the probe and update these numbers in
+// the same PR. If they drift without intent, the change broke something.
+//
+// Probe: node -e "see app/lib/sim-lab/test.js BASELINES"
+process.stdout.write('baseline guards\n');
+{
+  const BASELINES = [
+    { seed: 42,   ticks: 5000, cells: 624,  fruits: 0,  deaths: 0 },
+    { seed: 1337, ticks: 5000, cells: 1071, fruits: 10, deaths: 0 },
+    { seed: 555,  ticks: 5000, cells: 160,  fruits: 0,  deaths: 0 },
+  ];
+  for (const b of BASELINES) {
+    const w = createWorld(b.seed);
+    sowAt(w, 150, 50, randomGenome(w.rng));
+    for (let i = 0; i < b.ticks; i++) tick(w);
+    const cells = Object.values(w.colonies).reduce((s, c) => s + (c.cellCount || 0), 0);
+    const fruits = w.meta?.lifetime?.fruitsTotal || 0;
+    const deaths = Object.values(w.meta?.lifetime?.deathsByCause || {}).reduce((s, n) => s + n, 0);
+    expect(`seed ${b.seed} @ ${b.ticks} ticks: ${b.cells} cells`,
+      cells === b.cells, `got ${cells}`);
+    expect(`seed ${b.seed} @ ${b.ticks} ticks: ${b.fruits} fruits`,
+      fruits === b.fruits, `got ${fruits}`);
+    expect(`seed ${b.seed} @ ${b.ticks} ticks: ${b.deaths} deaths`,
+      deaths === b.deaths, `got ${deaths}`);
+  }
+}
+
 // ── Scorers on synthetic worlds ─────────────────────────
 process.stdout.write('scorers\n');
 function makeSyntheticWorld({ cells = [], lifetime = {} } = {}) {
@@ -152,9 +182,22 @@ process.stdout.write('driver pipeline\n');
   expect('driver returns 2 results for 2 seeds', outcome.results.length === 2);
   expect('aggregate has both scorers',
     Object.keys(outcome.aggregate).length === 2);
+  expect('seed 42 tagged nominal',
+    outcome.results.find(r => r.seed === 42).tag === 'nominal');
+  expect('seed 99 tagged unknown',
+    outcome.results.find(r => r.seed === 99).tag === 'unknown');
   const md = renderReport(outcome, { label: 'test' });
   expect('report includes target table', md.includes('| target | pass'));
   expect('report includes ASCII final shape', md.includes('## final shape'));
+  expect('report includes regime column', md.includes('| seed | regime |'));
+
+  // Compare mode: re-run, render with prior, expect delta columns
+  const outcome2 = await driver.runVisionTarget(tinyVision, { seeds: [42, 99] });
+  const md2 = renderReport(outcome2, { label: 'test2', prior: outcome, priorLabel: 'test' });
+  expect('compare adds ∆pass column', md2.includes('∆pass'));
+  expect('compare adds ∆median column', md2.includes('∆median'));
+  expect('compare shows · for identical run',
+    md2.match(/\| [^|]+ \| 0\/2 \| · \|/) || md2.match(/\| ·/));
 
   // ── Markdown renderer ────────────────────────────────
   process.stdout.write('render\n');

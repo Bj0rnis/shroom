@@ -84,6 +84,22 @@ const MAX_LEADERS_PER_COLONY  = 3;
 // senesced cells eventually dies. Sim-lab iter-5.
 const LEADER_LIFESPAN          = 60;
 
+// ── Colony carrying capacity ────────────────────────────
+// A soft cap on colony size — the brake the leader mechanic alone couldn't
+// reliably provide. Extension probability is multiplied by (1 - cells/cap)²
+// when below cap and zero at or above it. Same idea as logistic growth in
+// ecology: a colony slows as it approaches its limit, regardless of how
+// rich the substrate is. Sim-lab iter-11.
+//
+// The cap is fixed for now — the painting-target ("modest size: 150-800
+// cells") is consistent regardless of seed, so the cap should be too.
+// Substrate-derived variants are on the buffet if a fixed cap proves too
+// crude. CARRYING_SOFTNESS controls how sharply the brake bites: 1 = linear
+// drop-off, 2 = (1-x)² (gentle for most of the range, hard near the cap),
+// higher = sharper.
+const COLONY_CARRYING_CAPACITY = 500;
+const CARRYING_SOFTNESS        = 2;
+
 // ── Substrate slow regeneration ─────────────────────────
 // Decomposer microbes and rainfall slowly restore substrate richness between
 // colony pulses. nutrient is Uint8Array so regen works as integer pulses:
@@ -527,6 +543,12 @@ function growHyphae(world) {
       // control is the leader mechanic above. See sim-lab iter-1 notes.
       const ageFactor = Math.exp(-age[i] / TIP_AGE_DECAY);
       baseExtend *= ageFactor;
+      // Carrying-capacity soft brake. Multiplier eases extension toward zero
+      // as the colony approaches CAP. Below cap: smooth taper; at or above:
+      // zero. Same factor applied to bifurcation below.
+      const capFill = (col.cellCount || 0) / COLONY_CARRYING_CAPACITY;
+      const capFactor = capFill >= 1 ? 0 : Math.pow(1 - capFill, CARRYING_SOFTNESS);
+      baseExtend *= capFactor;
       if (rng() <= baseExtend) {
         let r = rng() * totalW;
         let chosen = candidates[0].j;
@@ -556,7 +578,7 @@ function growHyphae(world) {
         // MAX_LEADERS_PER_COLONY; otherwise it joins the static network. A
         // young fork inherits the frontier when the parent leader senesces.
         if (isLeader && freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
-          if (rng() < TIP_BIFURCATION_PROB) {
+          if (rng() < TIP_BIFURCATION_PROB * capFactor) {
             const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
             if (others.length > 0) {
               const ow = others.reduce((s, c) => s + c.w, 0);
@@ -1304,6 +1326,7 @@ const CONSTANTS = {
   LEADER_EXTEND_PROB, LEADER_EXTEND_JUNCTION,
   NON_LEADER_EXTEND_PROB, NON_LEADER_EXTEND_JUNC,
   MAX_LEADERS_PER_COLONY, LEADER_LIFESPAN,
+  COLONY_CARRYING_CAPACITY, CARRYING_SOFTNESS,
   FRUIT_COST, FRUIT_COST_FLOOR, FRUIT_DISCOUNT_PER_FRUIT,
   FRUIT_MATURE_TICKS, FRUIT_CAP_DECAY_TICKS, FRUIT_MIN_X_SPACING,
   FRUIT_SUBSTRATE_MULT_LOG, FRUIT_SUBSTRATE_MULT_GRASS, FRUIT_SUBSTRATE_MULT_SOIL,

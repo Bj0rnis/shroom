@@ -32,6 +32,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-11 · [mechanic]
+Agent: claude-opus-4-7
+Plain: First try with a colony-wide soft cap (500 cells, on top of lead cells). The brake works — no matting and no early fruiting on any seed — but cap-plus-lead-cells is too much braking. Colonies came out as small lumps (1-94 cells) and didn't reach down into the soil at all. Next move is to try the cap on its own, without lead cells underneath.
+Hypothesis: A colony-wide soft cap (factor `(1 - cells/cap)²` on extension prob, cap=500) is the brake that leader-cells couldn't reliably provide. Layered on top of current leader-cells, the cap should bound size while leader-cells continues to shape the front.
+Setup: New COLONY_CARRYING_CAPACITY=500, CARRYING_SOFTNESS=2 in sim.js. Soft-cap factor applied to baseExtend and to bifurcation prob. Leader-cells stack left intact.
+Result: modestSize 0/5, branchedDensity 3/5, descended 0/5, multipleDescents 1/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed cells: 13, 94, 61, 1, 63. notSaturated and noPrematureFruit clean across the seed set — the cap removes the runaway tail.
+Reading: The mechanic works as designed — the cap removes the matting failure mode entirely. But stacked on top of leader-cells, it double-brakes: leader-cells already gates *which cells* grow, and the soft cap further damps the *rate* they grow at. The colony never gets big enough to descend. Two paths forward: (a) lift cap to 800-1000 so leader-cells can do its lateral spread before the cap bites, (b) remove leader-cells so the cap is the sole brake — a cleaner test of the carrying-cap class.
+Next: iter-12 — disable leader-cells entirely (set NON_LEADER == LEADER rates), keep cap at 500. Tests whether the cap alone produces the painting shape.
+
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-3 · [tweak]
 Plain: Slowed the lead cells way down. Too slow — colonies stayed tiny (some only 5 cells) and didn't reach into the soil.
 Hypothesis: leader extend rate is still too high. Three leaders extending at

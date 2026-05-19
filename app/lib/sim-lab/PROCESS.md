@@ -79,6 +79,8 @@ The point is to keep the design space open.
 | **Genome variance** | Push growth-rate gene variance way up. Some founders mat, some die fast — and that's fine. Selection across seeds, not within. |
 | **Diffusion-limited aggregation** | Bias extension toward strongest local nutrient gradient. Sharpens fronts, naturally branched. |
 
+Tried: Carrying capacity
+
 The agent picks one per iteration. The agent may also pick "no mechanism
 yet — first observe" if the prior iteration's failure mode is unclear.
 Reading carefully is a valid move.

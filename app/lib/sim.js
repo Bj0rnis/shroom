@@ -85,7 +85,9 @@ const MAX_LEADERS_PER_COLONY  = 3;
 // inherit the frontier. When all leaders senesce, growth halts until a new
 // frontier cell is lazily promoted — which only happens after one of the
 // senesced cells eventually dies. Sim-lab iter-5.
-const LEADER_LIFESPAN          = 60;
+// Sim-lab iter-14: lifespan tripled to give lean-substrate colonies more
+// reach. Cap still holds rich seeds at the upper end.
+const LEADER_LIFESPAN          = 200;
 
 // ── Colony carrying capacity ────────────────────────────
 // A soft cap on colony size — the brake the leader mechanic alone couldn't

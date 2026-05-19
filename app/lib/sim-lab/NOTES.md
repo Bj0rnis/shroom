@@ -32,6 +32,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-14 · [tweak]
+Agent: claude-opus-4-7
+Plain: Tripled the lead-cell lifespan (60 → 200). Mixed — one lean seed grew a lot (555: 10 → 104) but another seed went the wrong way (42: 38 → 28). The noisy seed kept its 6/6 win. Net: branchedDensity up, multipleDescents down, no breakthrough.
+Hypothesis: Longer leader lifespan gives lean colonies more reach.
+Setup: LEADER_LIFESPAN 60 → 200. iter-13 settings otherwise.
+Result: modestSize 1/5, branchedDensity 4/5, descended 2/5, multipleDescents 2/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 28, 357, 120, 6, 104.
+Reading: Lifespan tuning is fiddly — helps some seeds, hurts others. The lean seeds (271=6, 555=104) are still limited by reserves, not by leader reach. EXTEND_COST is the real lever for substrate-limited founders.
+Next: iter-15 — EXTEND_COST 2 → 1. Halves the reserves-per-cell so lean founders can build a network on thin substrate.
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-13 · [tweak]
 Agent: claude-opus-4-7
 Plain: Brought lead-cells back, raised the cap to 1500, and made the cap taper gentler (linear). **First 6/6 pass in sim-lab history — seed 1337 nailed every target (421 cells, branched, descended, no premature fruit, no mat).** Two other seeds came close (314 at 5/6, 42 at 4/6). The lean seeds (271, 555) still die tiny.

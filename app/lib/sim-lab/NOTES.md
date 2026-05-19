@@ -32,6 +32,24 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-16 · [tweak]
+Agent: claude-opus-4-7
+Plain: Tried giving every newborn colony a starting reserves boost of 100 (a spore-energy buffer for lean substrate founders). Didn't help — colonies blow the buffer on early aggressive extension, then settle back to the same substrate-limited size.
+Hypothesis: Lean founders die because they have no buffer to build a skeleton before living tick-to-tick on absorption. Initial reserves at sow = 100 (~50 cells worth) gives them runway.
+Setup: world.js sowAt initial reserves 0 → 100. EXTEND_COST back to 2. iter-14 settings otherwise (cap=1500, softness=1, LIFESPAN=200).
+Result: modestSize 1/5, branchedDensity 3/5, descended 1/5, multipleDescents 1/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 11, 538, 109, 1, 29.
+Reading: Buffer gets spent immediately. 1337 grew more (421 → 538). 42 collapsed (28 → 11) and 314 dropped (120 → 109). The boost actually hurts medium seeds — early aggressive extension pushes them over what their absorption can sustain. Net regression.
+Next: ESCALATE — see iter-15 notes and the PR comment.
+
+## 2026-05-19 · sim-lab/02-carrying-capacity · iter-15 · [tweak]
+Agent: claude-opus-4-7
+Plain: Halved the per-cell cost of growing (EXTEND_COST 2 → 1) hoping lean colonies could afford a network on thin substrate. Backfired — with each cell so cheap, colonies bloomed faster than absorption could keep up. Lean seeds collapsed.
+Hypothesis: Lean colonies are reserves-limited. Halving EXTEND_COST doubles their reach for the same absorption.
+Setup: EXTEND_COST 2 → 1. iter-14 settings otherwise.
+Result: modestSize 1/5, branchedDensity 3/5, descended 1/5, multipleDescents 1/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 7, 538, 109, 1, 29.
+Reading: Cheap extensions create too many cells in early ticks; the network outruns its absorbable footprint, then starvation kicks in. Rich seeds grew more (1337: 357 → 538) but lean seeds collapsed (42: 28 → 7, 555: 104 → 29). This is the wrong lever.
+Next: try initial reserves at sow instead (iter-16) — same goal (founder phase), different mechanism.
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-14 · [tweak]
 Agent: claude-opus-4-7
 Plain: Tripled the lead-cell lifespan (60 → 200). Mixed — one lean seed grew a lot (555: 10 → 104) but another seed went the wrong way (42: 38 → 28). The noisy seed kept its 6/6 win. Net: branchedDensity up, multipleDescents down, no breakthrough.

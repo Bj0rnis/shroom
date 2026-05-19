@@ -102,6 +102,53 @@ function IterCard({ entry }) {
   );
 }
 
+// Group iter cards by branch (thread). Each group gets a thin header strip
+// with the branch name and the per-thread iter count, so threads are visually
+// separated without rearranging the newest-first order.
+function Timeline({ notes }) {
+  const groups = [];
+  let cur = null;
+  for (const e of notes) {
+    if (!cur || cur.branch !== e.branch) {
+      cur = { branch: e.branch, entries: [] };
+      groups.push(cur);
+    }
+    cur.entries.push(e);
+  }
+  return (
+    <div>
+      {groups.map((g, gi) => (
+        <div key={gi} style={{ marginBottom: gi < groups.length - 1 ? 18 : 0 }}>
+          <BranchHeader branch={g.branch} count={g.entries.length} />
+          {g.entries.map((e, ei) => <IterCard key={ei} entry={e} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BranchHeader({ branch, count }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'baseline', gap: 10,
+      padding: '8px 4px 6px',
+      borderBottom: `1px solid ${COL.faint}`,
+      marginBottom: 10, marginTop: 6,
+    }}>
+      <span style={{
+        fontFamily: MONO, color: COL.hyphaHi, fontSize: 10,
+        letterSpacing: '0.22em', textTransform: 'uppercase',
+      }}>thread</span>
+      <span style={{
+        fontFamily: SERIF, color: COL.textHi, fontSize: 15,
+      }}>{branch}</span>
+      <span style={{
+        fontFamily: MONO, color: COL.dim, fontSize: 10,
+      }}>· {count} {count === 1 ? 'entry' : 'entries'}</span>
+    </div>
+  );
+}
+
 function AsciiBlock({ ascii }) {
   return (
     <div style={{ marginTop: 14 }}>
@@ -333,11 +380,11 @@ function ResearchApp() {
           <StatusMatrix entries={data.notes} />
         </Section>
 
-        {/* Iteration timeline */}
+        {/* Iteration timeline — grouped by branch (the thread / mechanic class) */}
         <Section seed={23} num="03" kicker="story so far" glyph="substrate" accent={COL.ember}
           title="what we tried, and what came out"
-          sub="Newest at the top. Each card is one move — a short summary, the per-check pass-rates, and (if you want the detail) the agent's own notes underneath.">
-          {data.notes.map((e, idx) => <IterCard key={idx} entry={e} />)}
+          sub="Newest at the top. Each card is one move — a short summary, the per-check pass-rates, and (if you want the detail) the agent's own notes underneath. Cards group by thread (the branch they ran on).">
+          <Timeline notes={data.notes} />
         </Section>
 
         {/* Recent runs */}

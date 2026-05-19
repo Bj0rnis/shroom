@@ -11,7 +11,10 @@ const path = require('path');
 
 // Match heading like:  ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-5 · [mechanic]
 // or the older form:   ## 2026-05-18 · sim-lab/foundation · [mechanic]
-const HEADING_RE = /^##\s+(\d{4}-\d{2}-\d{2})\s*·\s*([^·]+?)(?:\s*·\s*(iter-\d+))?\s*·\s*\[([^\]]+)\]\s*$/;
+// or session summary:  ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-6-to-10-summary · [stuck]
+// The third dot-segment is captured as the "iter" label but its shape is
+// permissive — it accepts session-summary forms, not just `iter-N`.
+const HEADING_RE = /^##\s+(\d{4}-\d{2}-\d{2})\s*·\s*([^·]+?)(?:\s*·\s*(iter-[^·\[]+?))?\s*·\s*\[([^\]]+)\]\s*$/;
 
 // In-body field lines: `Field: value`. Capital-led word(s) up to the
 // first colon. Permissive on what comes before the colon so unknown

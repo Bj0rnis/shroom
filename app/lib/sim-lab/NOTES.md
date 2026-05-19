@@ -32,6 +32,60 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-6-to-10-summary · [stuck]
+Agent: claude-opus-4-7
+Plain: Spent five iterations on lead-cells variants — fork tweaks, revival tweaks, growth-rate tweaks. None passed; the best result was the noisy seed at 97 cells with 4/6 targets. The lead-cells design space looks tapped out. Time to try a different mechanic class.
+Hypothesis: (recap) five iters across lead-cells variants exhausted the design space.
+Setup: iter-6 made bifurcation children non-leaders; iter-7 removed lazy revival; iter-8 cut non-leader rates 10x; iter-9 raised LEADER_LIFESPAN to 400; iter-10 gated revival on a retirement quota.
+Result: Best per-seed across the thread: 4/6 (seed 1337 at iter-9, 97 cells, sparse). modestSize never passed.
+Reading: The leader-mechanic isn't the right brake. Tweaks oscillated between "still mats" and "dies tiny" — the mechanic's tuning bandwidth doesn't cover the painting's modestSize range. The fix lives elsewhere: a colony-level cap (carrying-capacity), or a different shape-driver entirely.
+Next: New branch sim-lab/02-carrying-capacity. Try a colony-wide soft cap as the brake.
+
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-10 · [mechanic]
+Agent: claude-opus-4-7
+Plain: Gated lazy revival on a retirement counter — accidental cell death revives a leader, but senescence (the planned retirement) doesn't. Same tiny size as iter-9 (max 97 cells). Lazy-revive promotes whatever cell shows up first, which is often a stuck interior cell that never extends.
+Hypothesis: lazy-init should revive a dead leader (accidental cell-death) but not a senesced one — gate revival on a per-colony retirement quota.
+Setup: leadersRetired counter, increments only on senescence, gates lazy revival. Lifespan 400 → 150.
+Result: modestSize 0/5, branchedDensity 2/5, descended 1/5, multipleDescents 0/5, noPrematureFruit 5/5, notSaturated 5/5. maxCol still 97.
+Reading: Lazy-revive promotes the first encountered alive cell, which may have freeCount=0 (a deep-interior cell). That "leader" sits without ever extending — so the leader budget is wasted on stuck-leader slots. Real fix: pick a frontier cell, or cap COLONY-level extensions instead of per-leader.
+Next: pivot. Colony-level cap (carrying-capacity).
+
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-9 · [tweak]
+Agent: claude-opus-4-7
+Plain: Raised the lead-cell lifespan from 60 grows to 400 so a single leader has more reach. Colonies still tiny (max 97 cells) — the leader dies to random cell-death before it gets to spend its bigger budget.
+Hypothesis: with bifurcation no longer refilling leaders and no lazy revival, LEADER_LIFESPAN=60 is too short for a single leader.
+Setup: only LEADER_LIFESPAN 60 → 400. iter-6,7,8 changes intact.
+Result: modestSize 0/5 (3-97 cells), branchedDensity 3/5, descended 1/5, multipleDescents 1/5, noPrematureFruit 5/5, notSaturated 5/5. Best seed 1337 hits 97 cells, 4/6.
+Reading: Founder doesn't reach 400 extensions because the leader cell dies first (random cell-death) and no revival mechanism exists. iter-7's removal of lazy-init was too aggressive.
+Next: gate lazy-revival on a retirement counter (only senescence consumes budget; accidental cell-death doesn't).
+
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-8 · [tweak]
+Agent: claude-opus-4-7
+Plain: Cut the non-leader growth rate 10x. Way overshot — colonies now depend entirely on the single leader's 60 grows × bifurcation, capping at ~80-100 cells. Too small.
+Hypothesis: with iter-6+7 in place, NON_LEADER_EXTEND_PROB is the matting source. Cut 0.012 → 0.001.
+Setup: only non-leader rates changed.
+Result: modestSize 0/5 (4-49 cells), branchedDensity 1/5, descended 1/5, multipleDescents 0/5, noPrematureFruit 5/5, notSaturated 5/5.
+Reading: With non-leader rate ~zero, the colony depends entirely on the single leader's 60-extension lifespan. The leader-life cap is sized for a 3-leader colony; with iter-6 there's only ever 1. Search is bracketed: between iter-7 (mats) and iter-8 (dies).
+Next: raise LEADER_LIFESPAN 60 → 400 so the single-leader colony can extend deep enough.
+
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-7 · [mechanic]
+Agent: claude-opus-4-7
+Plain: Removed lazy-revival of leaders. Hoped that would let the colony halt after leaders age out. Instead the noisy seed matted *more* — non-leader growth rate is the matting source, not revival.
+Hypothesis: removing lazy-init revival lets the colony actually halt after all original leaders senesce.
+Setup: founder gets a one-time leader promotion at first tick; no later revivals. iter-6 bifurcation-non-leader still in place.
+Result: modestSize 0/5 (regressed), branchedDensity 3/5, descended 3/5, multipleDescents 2/5, noPrematureFruit 2/5, notSaturated 4/5. Seed 1337 mats *more* (17906, up from 15800).
+Reading: lazy-init wasn't the matting source. By the time the founder's leader has bifurcated 60 times the network has ~1000 non-leaders; even at 0.012 rate × 28800 ticks that's plenty to mat. Non-leader rate is the matting cause.
+Next: cut NON_LEADER_EXTEND_PROB an order of magnitude (0.012 → 0.001).
+
+## 2026-05-18 · sim-lab/01-leading-hyphae · iter-6 · [mechanic]
+Agent: claude-opus-4-7
+Plain: Made the second cell from a fork a non-leader instead of a new leader. Killed the Y-fork pattern (multipleDescents 3/5 → 1/5) and the noisy seed still matted. Two regressions for no progress.
+Hypothesis: bifurcation refilling leader slots is what lets seed 1337 mat. Make the second bifurcation child a non-leader.
+Setup: only bifurcation change. Lazy-init left intact.
+Result: modestSize 1/5, branchedDensity 3/5, descended 3/5, multipleDescents 1/5, noPrematureFruit 2/5, notSaturated 4/5. Seeds 271 and 555 collapsed to 5 and 23 cells. Seed 1337 still mats (10463, down from 13866).
+Reading: non-leader-bifurcation kills the Y-fork signal — multipleDescents dropped 3/5 → 1/5. And the lazy-init path still revives leaders forever, so 1337 mats anyway.
+Next: remove lazy-init revival entirely (iter-7).
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-11 · [mechanic]
 Agent: claude-opus-4-7
 Plain: First try with a colony-wide soft cap (500 cells, on top of lead cells). The brake works — no matting and no early fruiting on any seed — but cap-plus-lead-cells is too much braking. Colonies came out as small lumps (1-94 cells) and didn't reach down into the soil at all. Next move is to try the cap on its own, without lead cells underneath.

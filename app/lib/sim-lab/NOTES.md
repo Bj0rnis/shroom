@@ -37,6 +37,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-20 · sim-lab/02-carrying-capacity · iter-24 · [tweak]
+Agent: claude-opus-4-7
+Plain: Made leaders grow faster (chance per tick up from 12% to 20%) thinking more growth would mean bigger colonies. Seed 42 reached 6/7 targets for the first time — but the other four seeds shrank because faster leaders burn through their 60-extension lifespan sooner, so the colonies died younger overall.
+Hypothesis: iter-23's THICKNESS_MAX=2 was structurally right but undershot cell volume. Raising LEADER_EXTEND_PROB 0.12→0.20 (and JUNCTION 0.05→0.08) gives more growth per tick, which should compensate for the narrower candidate pool under =2.
+Setup: LEADER_EXTEND_PROB 0.12→0.20, LEADER_EXTEND_JUNCTION 0.05→0.08 in sim.js. THICKNESS_MAX held at 2. Vision 1's 7 scorers. Test.js baselines updated (303/161/137 — note 1337 and 555 shrank vs iter-23).
+Result: shape **0/5** (median 0.071, max 0.139 — regression vs iter-23's 0.156 median). soilDispersion **2/5** (median 0.00, max 0.565 — most seeds dropped to zero). modestSize 1/5 (cells 287, 48, 52, 29, 130 — lean seeds collapsed). descended 2/5, multipleDescents 1/5. **Seed 42 hit 6/7 — first time on this branch** (cells=287, soilDispersion=0.565, depth=13).
+Reading: Raising the per-tick growth probability accelerates the LEADER_LIFESPAN=60 budget burn-down. Each leader still gets only 60 extensions; doubling the probability means those extensions happen in half the ticks, after which the leader senesces and the colony stops growing. Rich-substrate seeds (42) can produce 287 cells before exhaustion. Lean seeds (1337, 271, 555) can't — they reach the senescence wall before their leaders find soil. Wrong lever pulled. The right lever is LEADER_LIFESPAN, not extension probability.
+Next: iter-25 — revert LEADER_EXTEND_PROB to 0.12 and 0.05, raise LEADER_LIFESPAN 60 → 120. Predicted: each leader gets twice the reach, lean seeds get enough leader-budget to descend into soil, all five seeds should approach the volume range seed 42 hit this iter.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-23 · [tweak]
 Agent: claude-opus-4-7
 Plain: Loosened the no-thickening rule by one notch — a hypha may now grow into a cell that has the source plus one other already-grown cell beside it. Two seeds came out genuinely thread-shaped (5/7 targets each) and the average lacework score crossed the threshold for the first time. Total shape match still below the gate, but the trajectory is clear: density gating at this strictness is the right ballpark.

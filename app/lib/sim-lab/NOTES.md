@@ -37,6 +37,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-20 · sim-lab/02-carrying-capacity · iter-25 · [tweak]
+Agent: claude-opus-4-7
+Plain: Reverted iter-24's faster-leaders change and instead gave each leader twice the lifespan (120 grows instead of 60). The leaders now drill deep — three of five seeds reach more than 10 rows below grass, the best so far. But colonies are still small (40-80 cells) and only ever produce one descent point, not the two the painting wants.
+Hypothesis: iter-24 burned the leader budget too fast. Holding the per-tick prob at iter-23's setting and doubling LEADER_LIFESPAN to 120 should give each leader twice the reach, letting lean seeds find soil and descend.
+Setup: LEADER_EXTEND_PROB and JUNCTION reverted to 0.12 and 0.05. LEADER_LIFESPAN 60 → 120 in sim.js. THICKNESS_MAX held at 2. Test.js baselines updated.
+Result: shape **0/5** (median 0.110, max 0.216). soilDispersion **2/5** (median 0.48, max 0.56 — holding from iter-23). **descended 3/5** (median 16, max 29 — strongest depth result so far). modestSize 0/5 (cells 82, 44, 44, 64, 43 — colonies stayed small). **multipleDescents 0/5** (median 0, max 0 — every colony produces ONE thread, not two). noPrematureFruit 5/5, notSaturated 5/5. Seed 271 and 555 hit 4/7.
+Reading: LEADER_LIFESPAN=120 is the right correction — leaders now reach the painting's depth (max 29 rows is actually OVERSHOOT). Combined with THICKNESS_MAX=2, threads are forming. But the colony has at most ONE descending thread because leaders don't bifurcate often enough to spawn the second descent column the painting wants. Each leader drills straight down; without lateral forks, soilDispersion plateaus around 0.5 and multipleDescents stays at 1. The next step is more bifurcation, not more growth.
+Next: iter-26 — raise TIP_BIFURCATION_PROB from 0.20 to 0.40. Each leader doubles its forking rate, producing more concurrent threads from a single founder. Predicted: multipleDescents starts passing on rich seeds, soilDispersion approaches the 0.6+ band the painting features sit at, shape median crosses 0.20.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-24 · [tweak]
 Agent: claude-opus-4-7
 Plain: Made leaders grow faster (chance per tick up from 12% to 20%) thinking more growth would mean bigger colonies. Seed 42 reached 6/7 targets for the first time — but the other four seeds shrank because faster leaders burn through their 60-extension lifespan sooner, so the colonies died younger overall.

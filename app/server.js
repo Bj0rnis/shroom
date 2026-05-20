@@ -163,18 +163,53 @@ app.get('/research/paper', serveJournal('RESEARCH.md', 'research'));
 app.get('/notes',          serveJournal('NOTES.md',    'notes'));
 app.get('/process',        serveJournal('PROCESS.md', 'process'));
 
+// Live-version read: parse BUILD_INFO (written by deploy) or fall back to
+// spawning git locally. Two lines: commit hash, then commit subject. The
+// subject's "iter-N" + "branch · iter-N" tags let the dashboard match the
+// live commit to an iter card in the timeline.
+function readLiveVersion() {
+  let raw = null;
+  try { raw = fs.readFileSync(path.join(__dirname, 'BUILD_INFO'), 'utf8'); } catch {}
+  if (!raw) {
+    try {
+      const { execSync } = require('child_process');
+      raw = execSync('git log -1 --format=%H%n%s', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+    } catch { return null; }
+  }
+  const [commit, subject = ''] = raw.split('\n');
+  if (!commit) return null;
+  const iterMatch = subject.match(/iter-(\d+)/);
+  const branchMatch = subject.match(/sim-lab\/[^\s:·]+/);
+  return {
+    commit,
+    commitShort: commit.slice(0, 7),
+    subject: subject.trim(),
+    iter: iterMatch ? `iter-${iterMatch[1]}` : null,
+    branch: branchMatch ? branchMatch[0] : null,
+  };
+}
+
 // /api/research — structured view over the three sim-lab markdown files +
 // recent lab runs, for the /research dashboard.
 app.get('/api/research', (req, res) => {
   const docs = labParser.readLabDocs();
   const notes = labParser.parseNotes(docs.notes);
   const hypotheses = labParser.parseHypotheses(docs.process, notes);
+  const version = readLiveVersion();
   res.json({
     research: docs.research,
     process:  docs.process,
     notes:    notes,
     hypotheses,
     runs:     lab.listRuns().slice(0, 12),
+    live: version && {
+      ...version,
+      tick:    world.meta.tick,
+      day:     +(world.meta.tick / TICKS_PER_SIM_DAY).toFixed(2),
+      season:  world.meta.season,
+      seed:    world.meta.seed,
+      volume:  world.meta.volume,
+    },
   });
 });
 

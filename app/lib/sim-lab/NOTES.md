@@ -37,6 +37,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
+Agent: claude-opus-4-7
+Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.
+Hypothesis: iter-25 showed each colony produces only ONE descending thread. Doubling TIP_BIFURCATION_PROB (0.20 → 0.40) should spawn more concurrent leader threads, giving the second descent column the painting wants.
+Setup: TIP_BIFURCATION_PROB 0.20 → 0.40 in sim.js. Everything else held from iter-25. Vision 1's 7 scorers. Test.js baselines updated.
+Result: shape **0/5** (median 0.100, max 0.162 — flat). soilDispersion 2/5 (median 0.00, max 1.00). **descended 0/5** (median 0, max 1 — collapse from iter-25's 3/5). multipleDescents 0/5. modestSize 0/5 (cells 80, 19, 62, 19, 122). noPrematureFruit 5/5, notSaturated 5/5.
+Reading: Higher bifurcation makes leaders fork laterally before they commit to a deep descent. The bifurcated children both get leader status but neither inherits the original's accumulated path-direction commitment — they spread sideways. With MAX_LEADERS_PER_COLONY=3 cap, the colony quickly fills its leader slots laterally and has nothing left to push downward. The mechanic stack (THICKNESS_MAX=2, LEADER_LIFESPAN=120) at iter-25's settings is the current local optimum. The second-descent-column problem isn't a bifurcation problem — it's a lateral-vs-vertical commitment problem that bifurcation alone can't solve.
+Next: end of this 5-iter batch. Park config at iter-25's settings (revert TIP_BIFURCATION_PROB to 0.20) in a small follow-up commit. The standing hypothesis for iter-27+ is that the lateral-vs-vertical commitment needs a different mechanic class — apical dominance (inhibitor field around tips, encouraging spacing between concurrent descents) is the next thing to try from the buffet. Could also try MAX_LEADERS_PER_COLONY 3 → 5 first (smaller change, gives more concurrent threads without changing leader behaviour).
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-25 · [tweak]
 Agent: claude-opus-4-7
 Plain: Reverted iter-24's faster-leaders change and instead gave each leader twice the lifespan (120 grows instead of 60). The leaders now drill deep — three of five seeds reach more than 10 rows below grass, the best so far. But colonies are still small (40-80 cells) and only ever produce one descent point, not the two the painting wants.

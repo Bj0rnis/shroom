@@ -8,6 +8,26 @@ the iteration shape looks like.
 
 ---
 
+## Running the lab
+
+Two commands carry the loop:
+
+```bash
+node app/cli/lab.js baseline                    # run vision 1 against the seed set, prints report
+node app/cli/lab.js baseline --label "iter-N"   # same, with a label in the report header
+node app/lib/sim-lab/test.js                    # smoke tests (scorers, driver, baseline guards)
+```
+
+The lab driver lives in `driver.js`; configs (which vision, which seeds)
+live in `configs/baseline.js`. Constants are read from `sim.js` at run time —
+the lab runs whatever physics is currently committed.
+
+If you change a sim constant, `test.js` will fail the baseline-guard
+assertions. Re-run with `node app/lib/sim-lab/test.js` to see the new cell
+counts, then update the `BASELINES` array in the same PR.
+
+---
+
 ## The loop
 
 One iteration is one move:

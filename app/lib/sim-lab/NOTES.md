@@ -37,6 +37,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-20 · sim-lab/02-carrying-capacity · iter-22 · [tweak]
+Agent: claude-opus-4-7
+Plain: Forbade hyphae from growing into any cell that's already next to another hypha — pure thread mode, no thickening. The whole colony starved (4-35 cells across seeds) but one seed (271) for the first time grew the painting's shape — perfect lacework, shape score 0.61, soil dispersion 1.0. Proof-of-concept that the density-gating idea is the right class, just dialled in too hard.
+Hypothesis: The fat-column failure of iter-21 is caused by THICKNESS_MAX=3 allowing infill. Drop to 1 — destination cell may have at most 1 occupied 3×3 neighbour (the source). Linear extension still works (parent's parent is 2 cells away); parallel-strand thickening, blob filling, and tight Y-convergence are blocked. Tests whether *any* thickness-allowance is what causes the cap shape.
+Setup: THICKNESS_MAX 3 → 1 in sim.js. All other constants unchanged. Vision 1's 7 scorers. Test.js baselines updated for the new cell counts.
+Result: shape **1/5** (median 0.020, max 0.607 — seed 271 PASSES). soilDispersion **1/5** (median 0.00, max 1.00 — seed 271 perfect lacework). modestSize 0/5 (cells 4, 6, 14, 35, 22 — all far below the 150 floor). descended 1/5, multipleDescents 0/5, noPrematureFruit 5/5, notSaturated 5/5. Seed 271 hit 5/7 — its single line of growth happened to reach soil and disperse there.
+Reading: Density gating is the right mechanic class. THICKNESS_MAX=1 is too strict — the founder strangles itself before any volume accumulates, and growth needs ~20 ticks of cap-building before a leader breaks through to soil. But where growth does occur under THICKNESS_MAX=1, it is exactly what the painting wants: threads, not blobs. The challenge for iter-23 is to find a thickness setting that allows enough early bulk for the colony to survive while still suppressing the lateral fattening that produces caps.
+Next: iter-23 — THICKNESS_MAX=2. Allows one neighbour beyond the source (so a thread can run alongside another thread one row away, or converge at a Y-branch), but not the dense-blob infill. Predicted: cell counts in the 100-300 range, soilDispersion 0.5-0.8, shape 0.3-0.6.
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-21 · [rewrite]
 Agent: claude-opus-4-7
 Plain: Rebuilt the scoring so it actually compares the run to the painting. A new "shape" scorer reads the painting ASCII from RESEARCH.md, extracts five structural features (lateral spread, descent columns, depth, soil dispersion, soil/log ratio) from both, and rates the run 0-1 against the painting. Re-scored iter-20's setup under the new system: shape passes on 0 of 5 seeds. The earlier "vision achieved" was a measurement error.

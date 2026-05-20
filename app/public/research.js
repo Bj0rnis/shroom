@@ -36,7 +36,7 @@ function hypoStatusColor(status) {
 
 // ── Iteration timeline card ──────────────────────────────────────────────
 
-function IterCard({ entry }) {
+function IterCard({ entry, live }) {
   const headerLeft = (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
       <span style={{ fontFamily: MONO, color: COL.emberHi, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
@@ -52,6 +52,16 @@ function IterCard({ entry }) {
       {entry.agent && (
         <span style={{ fontFamily: MONO, color: COL.dim, fontSize: 10 }}>
           · {entry.agent}
+        </span>
+      )}
+      {live && (
+        <span title={`commit ${live.commitShort} · tick ${live.tick} · seed ${live.seed}`} style={{
+          fontFamily: MONO, fontSize: 10,
+          color: '#0a0908', background: COL.hyphaHi || '#9dc488',
+          padding: '2px 8px', borderRadius: 2,
+          letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600,
+        }}>
+          live · day {live.day} · {live.season}
         </span>
       )}
     </div>
@@ -105,7 +115,7 @@ function IterCard({ entry }) {
 // Group iter cards by branch (thread). Each group gets a thin header strip
 // with the branch name and the per-thread iter count, so threads are visually
 // separated without rearranging the newest-first order.
-function Timeline({ notes }) {
+function Timeline({ notes, live }) {
   const groups = [];
   let cur = null;
   for (const e of notes) {
@@ -115,12 +125,16 @@ function Timeline({ notes }) {
     }
     cur.entries.push(e);
   }
+  const liveMatches = (e) => live && live.iter === e.iter &&
+    (!live.branch || live.branch === e.branch || e.branch?.includes(live.branch));
   return (
     <div>
       {groups.map((g, gi) => (
         <div key={gi} style={{ marginBottom: gi < groups.length - 1 ? 18 : 0 }}>
           <BranchHeader branch={g.branch} count={g.entries.length} />
-          {g.entries.map((e, ei) => <IterCard key={ei} entry={e} />)}
+          {g.entries.map((e, ei) => (
+            <IterCard key={ei} entry={e} live={liveMatches(e) ? live : null} />
+          ))}
         </div>
       ))}
     </div>
@@ -363,6 +377,11 @@ function ResearchApp() {
             <Stat label="ideas explored" v={`${tried + 1}/${data.hypotheses.length}`} />
             <Stat label="trying now" v={current ? current.name.toLowerCase() : '—'} />
             <Stat label="last move" v={data.notes[0]?.date || '—'} />
+            {data.live && (
+              <Stat label="live"
+                v={`${data.live.iter || data.live.commitShort} · day ${data.live.day} · ${data.live.season}`}
+              />
+            )}
           </div>
         </DarkPanel>
 
@@ -384,7 +403,7 @@ function ResearchApp() {
         <Section seed={23} num="03" kicker="story so far" glyph="substrate" accent={COL.ember}
           title="what we tried, and what came out"
           sub="Newest at the top. Each card is one move — a short summary, the per-check pass-rates, and (if you want the detail) the agent's own notes underneath. Cards group by thread (the branch they ran on).">
-          <Timeline notes={data.notes} />
+          <Timeline notes={data.notes} live={data.live} />
         </Section>
 
         {/* Recent runs */}

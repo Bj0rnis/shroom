@@ -32,13 +32,18 @@ The repo lives at `/opt/home-server/shroom`, owned by the `agent` user.
 Pull and rebuild as:
 
 ```bash
-ssh agent@shroom-server 'cd /opt/home-server/shroom && git pull && docker compose up -d --build shroom'
+ssh agent@shroom-server 'cd /opt/home-server/shroom && git pull && git log -1 --format=%H%n%s > app/BUILD_INFO && docker compose up -d --build shroom'
 ```
 
 The Dockerfile bakes the code into the image (`COPY . .`) — the container
 has no bind mount for `/app`. Any change to `app/public/` or `app/lib/`
 requires a rebuild, not just a restart. `docker compose restart shroom`
 will look like it worked but actually serves the previous image.
+
+The `git log > app/BUILD_INFO` step records the live commit + subject so
+`/api/research` can surface a LIVE badge on the matching iter card in the
+`/research` dashboard. The file is gitignored — it's a build artifact,
+written fresh on every deploy.
 
 Data persists at `/opt/shroom/data/shroom` (the repo path `/opt/home-server/...`
 is unrelated). Bind-mounted into the container at `/app/data`. Never touch

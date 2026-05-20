@@ -28,7 +28,7 @@ const NUTRIENT_CONSUMPTION   = 1;
 const SIDE_ABSORPTION        = 1;
 const SIDE_ABSORPTION_FLOOR  = 10;   // lowered from 20 — frontier cells can
 const THICKNESS_BOX_RADIUS   = 1;    // 3×3 density check; see BALANCE.md 2026-05-17
-const THICKNESS_MAX          = 1;    // sim-lab iter-22: pure-thread mode (was 3, fat-column-producing)
+const THICKNESS_MAX          = 2;    // sim-lab iter-23: one neighbour beyond source (1 was too strict, 3 fattened)
 const NUTRIENT_MAX           = 100;  // soft cap matching world.js generators
 
 // ── Decay-feeds-substrate ───────────────────────────────

@@ -6,8 +6,8 @@ pieces; some are mocks that don't survive contact with the live sim;
 some are spots where the design Claude clearly ran out of context.
 
 Add to this file as we hit issues during the implementation slices. We
-spin issues off the list into the kanban (or back to design-Claude) once
-a slice lands.
+spin issues off the list into the [kanban](docs/design/REVIEW.md) (or
+back to design-Claude) once a slice lands.
 
 ---
 

@@ -35,7 +35,7 @@ function EngineApp() {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <PageWallpaper />
-        <span style={{ fontFamily: MONO, color: COL.dim, fontSize: 12 }}>awakening…</span>
+        <LoadingPassage />
       </div>
     );
   }

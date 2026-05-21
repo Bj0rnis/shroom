@@ -28,27 +28,36 @@ function TopColony({ snapshot, onOpenDev }) {
         {top.length === 0 ? (
           <div style={{ fontFamily: mono, color: '#5a5240', fontSize: 10, fontStyle: 'italic' }}>none</div>
         ) : (
-          <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {top.map((c, i) => {
               const displayName = c.name || c.placeholderName || `colony ${c.key}`;
               const ageDays = Math.floor((c.age || 0) / TICKS_PER_DAY);
+              const ageLabel = ageDays >= 1 ? `${ageDays}d` : 'today';
+              // HallMushroom expects snake_case keys; the snapshot ships
+              // camelCase. Adapt inline rather than touching the kit.
+              const entry = {
+                cap_hue:     c.capHue,
+                cap_shape:   c.capShape,
+                cap_size:    c.capSize,
+                stem_length: c.stemLength,
+              };
               return (
                 <li key={c.key || i} style={{
                   display: 'grid',
-                  gridTemplateColumns: '14px 1fr auto',
-                  alignItems: 'baseline',
-                  gap: 10,
+                  gridTemplateColumns: '14px 24px 1fr',
+                  alignItems: 'center',
+                  gap: 8,
                   fontFamily: mono, fontSize: 10,
                 }}>
                   <span style={{ color: '#5a5240' }}>{i + 1}.</span>
-                  <span style={{ fontFamily: serif, fontSize: 13, color: c.name ? '#e8dfc8' : '#7a7060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {displayName}
-                  </span>
-                  <span style={{ color: '#d4cdb8' }}>
-                    <span style={{ color: '#5a5240', marginRight: 4 }}>
-                      {ageDays > 0 ? `${ageDays}d ·` : ''}hyphae
+                  <HallMushroom entry={entry} size={24} glow={false} />
+                  <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span style={{ fontFamily: serif, fontSize: 13, color: c.name ? '#e8dfc8' : '#7a7060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.1 }}>
+                      {displayName}
                     </span>
-                    {c.cellCount || 0}
+                    <span style={{ color: '#5a5240', fontSize: 9, letterSpacing: '0.04em', marginTop: 2 }}>
+                      {ageLabel} · {c.cellCount || 0} hyphae
+                    </span>
                   </span>
                 </li>
               );

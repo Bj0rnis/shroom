@@ -255,7 +255,7 @@ function PreviewApp() {
     fetch('/api/engine-spec').then(r => r.json()).then(setSpec).catch(() => {});
   }, []);
 
-  const { SectionGlyph, StageGlyph, DarkPanel, KV, Subhead, Aside, Stat,
+  const { SectionGlyph, StageGlyph, DarkPanel, KV, Subhead, Aside, LoadingPassage, Stat,
           TweaksPanel, TweakSection, TweakSlider, TweakRadio,
           Section, ReservesFlow, PageWallpaper } = window;
 
@@ -306,7 +306,7 @@ function PreviewApp() {
         </DCSection>
 
         {/* ── 03 Primitives ─────────────────────────────────────── */}
-        <DCSection id="primitives" title="Primitives" subtitle="DarkPanel · Section · KV · Subhead · Aside · Stat">
+        <DCSection id="primitives" title="Primitives" subtitle="DarkPanel · Section · KV · Subhead · Aside · LoadingPassage · Stat">
           <DCArtboard id="DarkPanel" label="DarkPanel" width={320} height={200} style={{ background: DARK }}>
             <DarkPanel seed={7} style={{ margin: 20, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ position: 'relative', zIndex: 1, fontFamily: MONO, fontSize: 10, color: COL.dim, padding: 12 }}>
@@ -325,6 +325,11 @@ function PreviewApp() {
               <Aside accent={COL.cool}>
                 Why one a year? Earlier builds tied toofan to consumption pressure. The Poisson rewrite decouples it entirely.
               </Aside>
+            </div>
+          </DCArtboard>
+          <DCArtboard id="LoadingPassage" label="LoadingPassage" width={400} height={120} style={{ background: DARK }}>
+            <div style={{ padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 80 }}>
+              <LoadingPassage />
             </div>
           </DCArtboard>
           <DCArtboard id="Stat" label="Stat" width={360} height={100} style={{ background: DARK }}>

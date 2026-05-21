@@ -44,7 +44,7 @@ function HallMark() {
   );
 }
 
-function HallMushroom({ entry, size = 84 }) {
+function HallMushroom({ entry, size = 84, pixelScale, glow = true }) {
   const ref = React.useRef(null);
   React.useEffect(() => {
     const c = ref.current;
@@ -52,12 +52,14 @@ function HallMushroom({ entry, size = 84 }) {
     const ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
 
-    const grd = ctx.createRadialGradient(c.width / 2, c.height * 0.45, 4,
-                                          c.width / 2, c.height * 0.45, c.height * 0.55);
-    grd.addColorStop(0, 'rgba(232, 220, 180, 0.22)');
-    grd.addColorStop(1, 'rgba(232, 220, 180, 0)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, c.width, c.height);
+    if (glow) {
+      const grd = ctx.createRadialGradient(c.width / 2, c.height * 0.45, 4,
+                                            c.width / 2, c.height * 0.45, c.height * 0.55);
+      grd.addColorStop(0, 'rgba(232, 220, 180, 0.22)');
+      grd.addColorStop(1, 'rgba(232, 220, 180, 0)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
 
     const sw = 22, sh = 26;
     const off = document.createElement('canvas');
@@ -147,8 +149,15 @@ function HallMushroom({ entry, size = 84 }) {
       }
     }
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(off, (c.width - sw * 3) / 2, 6, sw * 3, sh * 3);
-  }, [entry, size]);
+    // pixelScale lets callers shrink the render for inline use (rail). Default
+    // keeps the historic 3× draw used by Hall cards. Auto-fit when omitted on
+    // smaller canvases so size=24 doesn't overflow.
+    const scale = pixelScale ?? Math.max(1, Math.min(3, Math.floor((c.width - 2) / sw)));
+    const drawW = sw * scale;
+    const drawH = sh * scale;
+    const padTop = Math.max(1, Math.min(6, Math.floor(c.height - drawH - 1)));
+    ctx.drawImage(off, (c.width - drawW) / 2, padTop, drawW, drawH);
+  }, [entry, size, pixelScale, glow]);
   return <canvas ref={ref} width={size} height={Math.round(size * 1.2)}
     style={{ display: 'block', imageRendering: 'pixelated' }} />;
 }
@@ -619,6 +628,7 @@ function LabPageTrigger() {
   );
 }
 
+window.HallMushroom       = HallMushroom;
 window.HallTrigger        = HallTrigger;
 window.HallModal          = HallModal;
 window.HallDetail         = HallDetail;

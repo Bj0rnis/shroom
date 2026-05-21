@@ -369,9 +369,25 @@ function PreviewApp() {
         <ChartsSection spec={spec} />
 
         {/* ── 06 Overlays ───────────────────────────────────────── */}
-        <DCSection id="overlays" title="Overlays" subtitle="HallModal · HallDetail · DevDashboard — window.Hall* / DevDashboard*">
+        <DCSection id="overlays" title="Overlays" subtitle="HallModal · HallDetail · DevDashboard · HallMushroom — window.Hall* / DevDashboard*">
           <DCArtboard id="triggers" label="Triggers" width={280} height={100} style={{ background: DARK }}>
             <OverlayTriggers />
+          </DCArtboard>
+          <DCArtboard id="HallMushroom-sizes" label="HallMushroom · sizes" width={420} height={180} style={{ background: DARK }}>
+            <div style={{ padding: 16, display: 'flex', alignItems: 'flex-end', gap: 18 }}>
+              {[
+                { size: 24, label: 'rail · 24', glow: false },
+                { size: 48, label: 'medium · 48', glow: true },
+                { size: 84, label: 'hall · 84', glow: true },
+              ].map(({ size, label, glow }) => (
+                <div key={size} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  {window.HallMushroom
+                    ? <window.HallMushroom entry={{ cap_hue: 28, cap_shape: 0, cap_size: 1.2, stem_length: 1.1 }} size={size} glow={glow} />
+                    : null}
+                  <span style={{ fontFamily: MONO, fontSize: 9, color: COL.dim }}>{label}</span>
+                </div>
+              ))}
+            </div>
           </DCArtboard>
         </DCSection>
 

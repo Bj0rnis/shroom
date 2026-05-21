@@ -131,6 +131,21 @@ function Aside({ children, accent }) {
   );
 }
 
+// ── LoadingPassage ────────────────────────────────────────────────────────
+// Centered italic-serif line for pre-snapshot states. Used by /index and
+// /engine while world or spec is loading. Voice register: an unhurried
+// observation, not a UI label. See docs/design/REVIEW.md #09.
+function LoadingPassage({ message = 'the world stirs.' }) {
+  return (
+    <span style={{
+      fontFamily: SERIF_RUN, fontStyle: 'italic',
+      color: COL.text2, fontSize: 15, letterSpacing: '0.01em',
+    }}>
+      {message}
+    </span>
+  );
+}
+
 // ── Stat ──────────────────────────────────────────────────────────────────
 // Inline label + value chip used in status strips.
 function Stat({ label, v, warn }) {
@@ -147,6 +162,7 @@ window.Section   = Section;
 window.KV        = KV;
 window.Subhead   = Subhead;
 window.Aside     = Aside;
+window.LoadingPassage = LoadingPassage;
 window.Stat      = Stat;
 
 })();

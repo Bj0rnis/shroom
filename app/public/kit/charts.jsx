@@ -314,9 +314,9 @@ function FirstDayLedger({ c }) {
 function FruitDecisions({ c }) {
   const cost = n => Math.max(c.FRUIT_COST_FLOOR, Math.floor(c.FRUIT_COST * Math.pow(c.FRUIT_DISCOUNT_PER_FRUIT, n)));
   const colonies = [
-    { name: 'Wigglecap',   cells: 5,  fruits: 0, res: 487, glyph: '◯' },
-    { name: 'Bramblewort', cells: 40, fruits: 4, res: 280, glyph: '◉' },
-    { name: 'Plumpsigh',   cells: 82, fruits: 7, res: 612, glyph: '◍' },
+    { name: 'Pale Bell',       cells: 5,  fruits: 0, res: 487, glyph: '◯' },
+    { name: 'Wormwood Throne', cells: 40, fruits: 4, res: 280, glyph: '◉' },
+    { name: 'Bone Saint',      cells: 82, fruits: 7, res: 612, glyph: '◍' },
   ];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>

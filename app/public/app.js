@@ -105,9 +105,9 @@ function App() {
     return (
       <div style={{ height: '100dvh', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <PageWallpaper />
-        <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 12, color: '#7a7060' }}>
-          {err ? `error: ${err}` : 'awakening…'}
-        </span>
+        {err
+          ? <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 12, color: '#7a7060' }}>error: {err}</span>
+          : <LoadingPassage />}
       </div>
     );
   }

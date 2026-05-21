@@ -241,7 +241,7 @@ function EngineApp() {
         {/* 08 — Nigehban */}
         <Section seed={27} num="08" kicker="the narrator" glyph="nigehban" accent={COL.glow}
           title="nigehban"
-          sub="A Claude-backed pass that wakes once a sim-day, reads the recent events, and writes a journal entry for the Chronicle. Bestows real names on standout colonies; otherwise they keep their placeholder name (Wigglecap, Bramblewort, etc.) until they earn one — or die.">
+          sub="A Claude-backed pass that wakes once a sim-day, reads the recent events, and writes a journal entry for the Chronicle. Bestows real names on standout colonies; otherwise they keep their placeholder name (Pale Bell, Wormwood Throne, etc.) until they earn one — or die.">
           <KV accent={COL.glow} rows={[
             ['wake cadence', 'once per sim-day',           'capped by NIGEHBAN_DAILY_CAP env'],
             ['inputs',       'last events + colony stats', 'see lib/nigehban.js'],

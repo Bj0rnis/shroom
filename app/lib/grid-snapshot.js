@@ -47,6 +47,8 @@ function buildGridSnapshot(world) {
       name:       c.name || null,
       placeholderName: c.placeholderName || null,
       alive:      !!c.alive,
+      // age in ticks since founding — TopColony renders this in days.
+      age:        (c.foundedTick != null) ? (world.meta.tick - c.foundedTick) : 0,
       bbox:       b ? { minX: b.minX, minY: b.minY, maxX: b.maxX, maxY: b.maxY } : null,
       cellCount:  b ? b.count : 0,
     };

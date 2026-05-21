@@ -4,24 +4,28 @@
 const { randomGenome } = require('./genome');
 const { createRng } = require('./rng');
 
-// Playful made-up mushroom-y names for unnamed colonies. Shown in the UI as
-// "Wigglecap", "Glomwhisker", etc. until Nigehban gets around to bestowing a
-// real name. Combinatorial (25 × 16 = 400) so collisions are rare.
+// Placeholder names for colonies until Nigehban bestows a real one. The
+// register is the made-up psilocybin-cultivar register — atmospheric
+// adjective + archetypal noun, spaced, capitalised. Examples produced:
+// "Pale Bell", "Hollow Teacher", "Ember Witness", "Wormwood Throne".
+// All made up — no real cultivar names. Combinatorial (25 × 16 = 400) so
+// collisions are rare. See docs/design/REVIEW.md #11.
 const NAME_PREFIXES = [
-  'Wiggle', 'Bobble', 'Snorzel', 'Glim', 'Fizz', 'Snuffle', 'Pixie', 'Cobble',
-  'Quaggle', 'Plump', 'Wobble', 'Squidge', 'Whisper', 'Trumpet', 'Murmur',
-  'Hush', 'Glint', 'Tatter', 'Dizzy', 'Velvet', 'Bramble', 'Dew', 'Bumble',
-  'Mumble', 'Sniffle',
+  'Pale', 'Hollow', 'Ember', 'Briar', 'Marrow', 'Mourner', 'Quiet', 'Vow',
+  'Bone', 'Ash', 'Tallow', 'Sundown', 'Wormwood', 'Wither', 'Salt', 'Iron',
+  'Owl', 'Husk', 'Tinder', 'Stone', 'Velvet', 'Cinder', 'Bramble', 'Dusk',
+  'Hush',
 ];
 const NAME_SUFFIXES = [
-  'cap', 'stem', 'gill', 'foot', 'spore', 'throat', 'noodle', 'sprout',
-  'moss', 'bloom', 'whisker', 'snore', 'sigh', 'bath', 'wort', 'bell',
+  'Bell', 'Teacher', 'Witness', 'Mother', 'Mantle', 'Prophet', 'Cap',
+  'Crown', 'Saint', 'Lantern', 'Throne', 'Hour', 'Hood', 'Wake', 'Coast',
+  'Reach',
 ];
 function pickPlaceholderName(rng) {
   const r = rng || Math.random;
   const a = NAME_PREFIXES[Math.floor(r() * NAME_PREFIXES.length)];
   const b = NAME_SUFFIXES[Math.floor(r() * NAME_SUFFIXES.length)];
-  return a + b;
+  return a + ' ' + b;
 }
 
 const W = 320;

@@ -44,7 +44,7 @@ const DECAY_NEIGHBOR_DEPOSIT = 4;
 // extension roll (~30% at a tip) this yields an effective fork rate of
 // ~12%/tick — first Y-branch by cell ~8 on a healthy colony. Tuned for
 // "roots, not worms" with THICKNESS_MAX still capping mature density.
-const TIP_BIFURCATION_PROB = 0.20;
+const TIP_BIFURCATION_PROB = 0.30;   // sim-lab iter-28: was 0.20, milder bump than iter-26's 0.40 paired with cap=5
 
 // Extension probability decays with cell age. Real mycelium has a small
 // number of *leading* hyphal tips that explore outward — once a tip has

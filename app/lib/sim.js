@@ -67,7 +67,7 @@ const TIP_AGE_DECAY = 400;
 // the cap — so a young colony's leader count ramps from 1 to MAX as the
 // network forks out. When all leaders of a colony die, the next alive cell
 // encountered in growHyphae is promoted (lazy revival). Sim-lab iter-1.
-const LEADER_EXTEND_PROB      = 0.12;   // leader at freeCount >= 3 (sim-lab iter-25: reverted from iter-24's 0.20)
+const LEADER_EXTEND_PROB      = 0.15;   // sim-lab iter-34: was 0.12, compensate for forced separation under dominance radius=15
 const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (sim-lab iter-25: reverted from iter-24's 0.08)
 // Sim-lab iter-13: restored lead-cell asymmetry (back to iter-5 values).
 // Leaders concentrate reserves at the frontier; non-leaders crawl. Cap

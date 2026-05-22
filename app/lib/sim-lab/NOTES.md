@@ -91,6 +91,15 @@ Result: **shape max 0.440** (was 0.343 — record). median 0.175 (was 0.114). mo
 Reading: The mechanic class is right. Radius=15 produces the painting on rich substrate (1337). The painting *is* reachable from here. But lean seeds (555 at 32, 314 at 115) can't sustain enough threads under the separation pressure — leader rate is the limit. Next move: keep the separation, raise the per-leader extension rate so lean seeds grow more on each available thread.
 Next: iter-34 — LEADER_EXTEND_PROB 0.12 → 0.15. Compensates for fewer concurrent leaders by letting each one grow faster.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-34 · [tweak]
+Agent: claude-opus-4-7
+Plain: Bumped the per-leader growth rate from 0.12 to 0.15. The two-column geometry started landing — three out of five seeds now produce two or more distinct descents (was one). Shape match peaks at 0.446 and the median climbs above 0.20 for the first time. Soil dispersion hits a perfect 1.0 on one seed. Best aggregate of the branch so far at 14/35. Descent depth dropped though — leaders burn their budget on lateral spread instead of going deep.
+Hypothesis: under separation pressure each leader needs more grow-per-tick to reach the soil.
+Setup: LEADER_EXTEND_PROB 0.12 → 0.15. APICAL_DOMINANCE_RADIUS=15, MAX_LEADERS_PER_COLONY=5, bif=0.30, lifespan=120 held.
+Result: shape 0/5 (median **0.205**, max **0.446** — both records). modestSize 1/5 (1337 at 285). soilDispersion **3/5** (median 0.509, max **1.000**). descended 2/5 (max 19 — depth lost). **multipleDescents 3/5** (median 2, max 3 — biggest jump of the branch). noPrematureFruit 5/5, notSaturated 5/5. Aggregate **14/35**. Per-seed: 1337=5/7, 271=5/7, 314=4/7, 42=3/7, 555=2/7.
+Reading: The dominance-radius + faster-growth combination delivered the painting's two-column signature on three seeds. The mechanic class is now clearly correct. modestSize lags because lean seeds (42 at 24 cells, 555 at 99) still can't sustain growth on poor substrate. Depth lost (max 38 → 19) because faster threads exhaust their LIFESPAN budget laterally before reaching deep soil. Next move: restore depth budget per thread.
+Next: iter-35 — LEADER_LIFESPAN 120 → 200. Each thread keeps the faster growth rate but lives longer, so descent can reach the soil before senescence.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

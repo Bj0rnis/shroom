@@ -100,6 +100,15 @@ Result: shape 0/5 (median **0.205**, max **0.446** — both records). modestSize
 Reading: The dominance-radius + faster-growth combination delivered the painting's two-column signature on three seeds. The mechanic class is now clearly correct. modestSize lags because lean seeds (42 at 24 cells, 555 at 99) still can't sustain growth on poor substrate. Depth lost (max 38 → 19) because faster threads exhaust their LIFESPAN budget laterally before reaching deep soil. Next move: restore depth budget per thread.
 Next: iter-35 — LEADER_LIFESPAN 120 → 200. Each thread keeps the faster growth rate but lives longer, so descent can reach the soil before senescence.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-35 · [tweak] · [observe]
+Agent: claude-opus-4-7
+Plain: Raised the per-leader extension budget from 120 to 200 grows. Result was identical to iter-34 — bit-for-bit same per-seed cell counts and scorer outputs. Leaders never reach 120 extensions inside the 28800-tick sim-day, so widening the cap changes nothing. The depth limit on lean seeds comes from somewhere else.
+Hypothesis: longer leader life → deeper descent on lean seeds.
+Setup: LEADER_LIFESPAN 120 → 200. Everything else from iter-34.
+Result: identical numbers to iter-34 in every cell of the report. shape 0/5 (median 0.205, max 0.446). modestSize 1/5. soilDispersion 3/5. descended 2/5. multipleDescents 3/5. Aggregate 14/35.
+Reading: LIFESPAN is not the active brake — at growthRate × bifurcation × freeCount gating × season, a leader does well under 120 extensions per sim-day. The depth scorer fails on lean seeds (42=24 cells, 555=99 cells, 271=91 cells) because the *colony* never gets big enough to push deep, not because leaders senesce early. Reserves are the next suspect — lean seeds have less substrate so EXTEND_COST=2 may starve them.
+Next: iter-36 — EXTEND_COST 2 → 1. Halves the reserve cost per new cell. Lean seeds should grow larger and reach soil.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

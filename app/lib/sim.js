@@ -88,7 +88,7 @@ const APICAL_DOMINANCE_RADIUS = 15;  // sim-lab iter-33: was 5, aggressive separ
 // inherit the frontier. When all leaders senesce, growth halts until a new
 // frontier cell is lazily promoted — which only happens after one of the
 // senesced cells eventually dies. Sim-lab iter-5.
-const LEADER_LIFESPAN          = 120;   // sim-lab iter-25: was 60, give leaders more reach under THICKNESS_MAX=2
+const LEADER_LIFESPAN          = 200;   // sim-lab iter-35: was 120, restore depth budget under faster extension rate
 
 // ── Colony carrying capacity ────────────────────────────
 // A soft cap on colony size — the brake the leader mechanic alone couldn't

@@ -74,7 +74,10 @@ const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (sim-lab iter
 // shapes the volume; leaders shape the spatial concentration.
 const NON_LEADER_EXTEND_PROB  = 0.012;
 const NON_LEADER_EXTEND_JUNC  = 0.002;
-const MAX_LEADERS_PER_COLONY  = 7;   // sim-lab iter-29: was 5, give bif-children more breathing room
+const MAX_LEADERS_PER_COLONY  = 5;   // sim-lab iter-30: reverted to iter-27/28 sweet spot
+// Apical dominance — a new bif-born leader cannot be added within this many
+// cells of an existing leader. Forces spatial separation between active threads.
+const APICAL_DOMINANCE_RADIUS = 8;   // sim-lab iter-30: new mechanic
 // Leader senescence: a leader stops being a leader after this many extensions.
 // Real hyphal tips age out — their vigour decays as they age, and growth
 // passes to younger forks. Without this cap the leader-mechanic still
@@ -592,8 +595,22 @@ function growHyphae(world) {
               age[chosen2] = 0;
               col.reserves -= EXTEND_COST;
               if (col.leaders.length < MAX_LEADERS_PER_COLONY) {
-                col.leaders.push(chosen2);
-                col.leaderExt.push(0);
+                // Apical dominance: skip leader promotion if too close to an
+                // existing leader. Cell still grows; it just doesn't become a
+                // new leader thread.
+                const cx = chosen2 % W, cy = (chosen2 / W) | 0;
+                let tooClose = false;
+                for (let li = 0; li < col.leaders.length; li++) {
+                  const lj = col.leaders[li];
+                  const dx = (lj % W) - cx, dy = ((lj / W) | 0) - cy;
+                  if (dx * dx + dy * dy < APICAL_DOMINANCE_RADIUS * APICAL_DOMINANCE_RADIUS) {
+                    tooClose = true; break;
+                  }
+                }
+                if (!tooClose) {
+                  col.leaders.push(chosen2);
+                  col.leaderExt.push(0);
+                }
               }
             }
           }

@@ -64,6 +64,15 @@ Result: shape 0/5 (median 0.080 — worst since iter-22). modestSize 1/5 (still 
 Reading: Cap is past its sweet spot. With 7 slots, bif-children consume leader budget faster than survivors can drill down. Same failure mode as iter-26 (bif=0.40, cap=3), just milder. Across iter-25→27→28→29 the cap-bif knob produced +1, +1, -3 — the lever is exhausted. Seed 271 is the only seed earning ≥4/7 in this whole batch; the other four sit stuck. The geometry needs an anti-clumping force, not more leaders.
 Next: iter-30 — revert cap to 5, **pivot to apical dominance** from the buffet. Minimal version: a bif-born leader can only be added if no existing leader is within APICAL_DOMINANCE_RADIUS cells. Forces spatial separation between active threads. If 4+ seeds start producing two distinct descents, the mechanic class is right.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-30 · [mechanic]
+Agent: claude-opus-4-7
+Plain: New mechanic — apical dominance. A new branch can only become a leader-thread if no other leader-thread is within 8 cells. This forces the threads to spread out instead of clumping into one bundle. The headline number is shape, which hit 0.343 on one seed — the best match to the painting ever recorded. And the stress seed (1337) finally produced a real network instead of matting.
+Hypothesis: cap-mechanic is exhausted (iter-29 confirmed). The geometry needs an anti-clumping force. A radius-8 dominance field around each leader blocks bif-born leaders from spawning inside it — leaders that do spawn are forced ≥8 cells apart.
+Setup: APICAL_DOMINANCE_RADIUS = 8 (new constant). MAX_LEADERS_PER_COLONY reverted to 5. bif=0.30, lifespan=120, THICKNESS_MAX=2. The check runs in the bifurcation branch; cell still grows, just doesn't get promoted to leader.
+Result: shape 0/5 but **max 0.343** (was 0.271 — best ever). modestSize 0/5 (max 116 — colonies smaller). soilDispersion 1/5. descended **3/5** (back to iter-25 best). multipleDescents 1/5 (max 3). noPrematureFruit 5/5, notSaturated 5/5. Stress seed 1337 hit 4/7 (was historically matting; this is the first batch where it produces a real shape). Aggregate 10/35.
+Reading: The mechanic does the right thing — forces spatial separation, shape jumps on one seed, 1337 stops matting. But radius=8 blocks too many bifurcations on lean seeds; colonies stay small (median 85 cells). The lever is real; it just needs calibration. Shape max 0.343 across the seeds suggests the painting is reachable from this mechanic class.
+Next: iter-31 — APICAL_DOMINANCE_RADIUS 8 → 5. Let more bifurcations through, keep some separation pressure. Expect colony sizes to recover toward 150+ while shape median creeps up.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

@@ -118,6 +118,15 @@ Result: shape 0/5 (median 0.177, max 0.423). modestSize 0/5 (was 1/5). soilDispe
 Reading: EXTEND_COST is not a free parameter — it's tuned against absorption rate. Halving it doesn't grow bigger networks, it grows faster networks that then starve. Same dynamic as the early "liquid mat" baseline runs: high extension, no substrate management, then a starvation crash. The non-trivial lesson: 1337's 285 cells under iter-34 weren't substrate-limited. Whatever caps lean-seed colony size lives upstream of reserves.
 Next: revert to iter-34's config. Pivot to a substrate-side lever (THICKNESS_MAX, initial reserves, or source-sink transport) next batch.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-37 · [tweak] · [park]
+Agent: claude-opus-4-7
+Plain: Reverted iter-36's cheaper-cell change and iter-35's longer-leader-life change (the latter was a no-op anyway). Re-ran to confirm — bit-identical to iter-34's breakthrough numbers. Parking the branch here. Best config of the loop: separation pressure + slightly faster leaders + everything else inherited.
+Hypothesis: this is end-of-batch. Confirm the parked config reproduces iter-34's numbers exactly.
+Setup: Revert EXTEND_COST 1 → 2. Revert LEADER_LIFESPAN 200 → 120 (left iter-35 comment for future agents — "no-op, bump to 200 had zero effect").
+Result: identical to iter-34. shape 0/5 (median 0.205, max 0.446). modestSize 1/5. soilDispersion 3/5 (max 1.000). descended 2/5. **multipleDescents 3/5**. Aggregate **14/35**. Per-seed: 1337=5/7, 271=5/7, 314=4/7, 42=3/7, 555=2/7.
+Reading: The parked config has the strongest results of the entire branch. The painting's two-column geometry now lands on 60% of seeds; one seed (1337) reaches 71% on the visual scorer. Vision 1 is not achieved (shape median 0.205 vs threshold 0.60; modestSize and descended still failing on most seeds) but the mechanic class is correct. The remaining gap is between "geometry lands" and "shape match passes" — likely the lean-seed colony-size problem.
+Next: hand off to the maintainer. Possible next moves: (a) lower THICKNESS_MAX 2→3 to fatten mature density and grow modestSize on lean seeds, (b) initial-reserves bump (lean seeds start richer), (c) source-sink transport from the buffet to break the founder-cell substrate bottleneck.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

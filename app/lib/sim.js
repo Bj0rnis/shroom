@@ -88,7 +88,7 @@ const APICAL_DOMINANCE_RADIUS = 15;  // sim-lab iter-33: was 5, aggressive separ
 // inherit the frontier. When all leaders senesce, growth halts until a new
 // frontier cell is lazily promoted — which only happens after one of the
 // senesced cells eventually dies. Sim-lab iter-5.
-const LEADER_LIFESPAN          = 200;   // sim-lab iter-35: was 120, restore depth budget under faster extension rate
+const LEADER_LIFESPAN          = 120;   // sim-lab iter-25: was 60, give leaders more reach under THICKNESS_MAX=2 (iter-35 no-op: bump to 200 had zero effect)
 
 // ── Colony carrying capacity ────────────────────────────
 // A soft cap on colony size — the brake the leader mechanic alone couldn't
@@ -178,7 +178,7 @@ const FRUIT_MIN_CELL_COUNT   = 800;
 //   • FRUIT_COST: base cost of a fruit body. Discounted by col.fruitCount
 //     (handleFruiting) so a colony that's already invested in a fruiting
 //     network gets cheaper subsequent fruits — rewards specialization.
-const EXTEND_COST            = 1;   // sim-lab iter-36: was 2, help lean seeds reach soil
+const EXTEND_COST            = 2;
 const FRUIT_COST             = 500;
 const FRUIT_COST_FLOOR       = 300;  // raised from 80; see BALANCE.md 2026-05-17
 const FRUIT_DISCOUNT_PER_FRUIT = 0.8;   // multiplicative: 500, 400, 320, 256, …

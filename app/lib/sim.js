@@ -77,7 +77,7 @@ const NON_LEADER_EXTEND_JUNC  = 0.002;
 const MAX_LEADERS_PER_COLONY  = 5;   // sim-lab iter-30: reverted to iter-27/28 sweet spot
 // Apical dominance — a new bif-born leader cannot be added within this many
 // cells of an existing leader. Forces spatial separation between active threads.
-const APICAL_DOMINANCE_RADIUS = 5;   // sim-lab iter-31: was 8, let more bifurcations through (no-op pending sibling-exemption fix in iter-32)
+const APICAL_DOMINANCE_RADIUS = 15;  // sim-lab iter-33: was 5, aggressive separation now that sibling-exemption fix is in
 // Leader senescence: a leader stops being a leader after this many extensions.
 // Real hyphal tips age out — their vigour decays as they age, and growth
 // passes to younger forks. Without this cap the leader-mechanic still

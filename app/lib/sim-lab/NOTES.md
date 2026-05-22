@@ -73,6 +73,15 @@ Result: shape 0/5 but **max 0.343** (was 0.271 — best ever). modestSize 0/5 (m
 Reading: The mechanic does the right thing — forces spatial separation, shape jumps on one seed, 1337 stops matting. But radius=8 blocks too many bifurcations on lean seeds; colonies stay small (median 85 cells). The lever is real; it just needs calibration. Shape max 0.343 across the seeds suggests the painting is reachable from this mechanic class.
 Next: iter-31 — APICAL_DOMINANCE_RADIUS 8 → 5. Let more bifurcations through, keep some separation pressure. Expect colony sizes to recover toward 150+ while shape median creeps up.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-32 · [tweak]
+Agent: claude-opus-4-7
+Plain: Found a bug in iter-30's apical dominance — the check was blocking *every* new branch from becoming its own thread because the parent thread (just one cell away) always counted as "too close." Adding a sibling exemption and dropping the radius to 5 returned the results to the iter-28 baseline. Need to push the radius higher now that the mechanic actually works.
+Hypothesis: iter-30 and iter-31 produced identical numbers despite a radius change — the dominance check was blocking everything via the just-moved parent.
+Setup: Added `if (lj === chosen) continue` in the dominance loop (sibling/parent exemption). APICAL_DOMINANCE_RADIUS 8 → 5 (will widen next iter now that the lever is real).
+Result: shape 0/5 (median 0.114, max 0.227). modestSize 1/5 (271 at 241). soilDispersion 3/5 (max 0.618 — best so far). descended 2/5. multipleDescents 1/5 (271 at 3). noPrematureFruit 5/5, notSaturated 5/5. Aggregate 12/35 — same as iter-28 (no-apical baseline). 1337 dropped 86 → 44 cells (lost the non-matting gain).
+Reading: Sibling exemption is correct — without it the mechanic was effectively MAX_LEADERS_PER_COLONY=1 (which is what gave 1337 the non-matting behaviour in iter-30 — accidentally good). The real test starts now: with the check working but radius=5 effectively a no-op, push radius up to see if forced separation moves shape median above 0.20.
+Next: iter-33 — APICAL_DOMINANCE_RADIUS 5 → 15. Aggressive separation. Expect shape median to climb, modestSize to drop, multipleDescents to fire on 2+ seeds if the mechanic class is right.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

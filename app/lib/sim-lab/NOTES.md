@@ -82,6 +82,15 @@ Result: shape 0/5 (median 0.114, max 0.227). modestSize 1/5 (271 at 241). soilDi
 Reading: Sibling exemption is correct — without it the mechanic was effectively MAX_LEADERS_PER_COLONY=1 (which is what gave 1337 the non-matting behaviour in iter-30 — accidentally good). The real test starts now: with the check working but radius=5 effectively a no-op, push radius up to see if forced separation moves shape median above 0.20.
 Next: iter-33 — APICAL_DOMINANCE_RADIUS 5 → 15. Aggressive separation. Expect shape median to climb, modestSize to drop, multipleDescents to fire on 2+ seeds if the mechanic class is right.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-33 · [tweak]
+Agent: claude-opus-4-7
+Plain: Widened the apical-dominance radius from 5 to 15. One seed (1337) produced 5/7 — the best stress-seed result ever recorded — and the shape match hit 0.44 on that seed, also a record. The lean seeds (555 at 32 cells) starved though; with leaders forced 15 cells apart, lean substrate can't sustain enough threads. Need to compensate by letting threads grow a bit faster.
+Hypothesis: with sibling exemption working (iter-32), bigger radius should force the painting's two-column geometry.
+Setup: APICAL_DOMINANCE_RADIUS 5 → 15. Everything else from iter-32.
+Result: **shape max 0.440** (was 0.343 — record). median 0.175 (was 0.114). modestSize 1/5 (1337 at 285 cells — finally producing a real network). soilDispersion 2/5 (max 0.667 — record). descended 2/5 (max **38** — record). multipleDescents 1/5 (max 2). Aggregate 11/35. **Seed 1337 hit 5/7** — first time the stress seed is a top performer.
+Reading: The mechanic class is right. Radius=15 produces the painting on rich substrate (1337). The painting *is* reachable from here. But lean seeds (555 at 32, 314 at 115) can't sustain enough threads under the separation pressure — leader rate is the limit. Next move: keep the separation, raise the per-leader extension rate so lean seeds grow more on each available thread.
+Next: iter-34 — LEADER_EXTEND_PROB 0.12 → 0.15. Compensates for fewer concurrent leaders by letting each one grow faster.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

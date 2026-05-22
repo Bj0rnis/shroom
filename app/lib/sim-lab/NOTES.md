@@ -37,6 +37,15 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-27 · [tweak]
+Agent: claude-opus-4-7
+Plain: Raised the leader-slot cap from 3 to 5, hoping more concurrent threads would give the second descent column the painting wants. It barely moved the needle — one extra seed passes modestSize, one extra passes soilDispersion, and the worst seed (1337) finally hit 267 cells. But descended slipped from three seeds to two, and multipleDescents still fails on every seed. More leaders, same single descent column.
+Hypothesis: iter-26 showed bifurcation alone fills lateral leader slots before any descend. With 5 slots instead of 3, bifurcation has more room and multipleDescents might start passing.
+Setup: MAX_LEADERS_PER_COLONY 3 → 5 in sim.js. Everything else held from iter-25 (LEADER_LIFESPAN=120, THICKNESS_MAX=2, TIP_BIFURCATION_PROB=0.20). Vision 1's 7 scorers. Test.js baselines untouched (5000-tick probe pre-dates leader plumbing).
+Result: shape 0/5 (median 0.182, max 0.271 — up from 0.110/0.216). modestSize **1/5** (seed 1337: 267 cells — first one in range). soilDispersion **3/5** (up from 2/5). descended **2/5** (down from 3/5; median 7, max 27). multipleDescents 0/5 (median 1, max 1 — never reaches the ≥2 threshold). noPrematureFruit 5/5, notSaturated 5/5. Aggregate 11/35 vs iter-25's 10/35.
+Reading: Cap bump is a positive but tiny lever. The seed-42 final shape shows the failure mode clearly: 5 leaders all converge into a single wide bundle dropping straight down. Two leaders may bifurcate sideways but they're spatially adjacent — they form one thick column, not two separated columns. The painting's signature is *separation* between descents (~30 cells of gap). Counting leaders doesn't buy separation; bifurcation alone doesn't either (iter-26). The geometry has no horizontal anti-clumping force.
+Next: iter-28 — combine the larger leader pool (5) with iter-26's bifurcation hike (0.20 → 0.30, milder than iter-26's 0.40). With 5 slots, the extra bif-children won't immediately starve descent. If multipleDescents still pins at median 1, the next class is apical dominance — a repulsion field between active leaders so they actually spread before descending.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

@@ -109,6 +109,15 @@ Result: identical numbers to iter-34 in every cell of the report. shape 0/5 (med
 Reading: LIFESPAN is not the active brake — at growthRate × bifurcation × freeCount gating × season, a leader does well under 120 extensions per sim-day. The depth scorer fails on lean seeds (42=24 cells, 555=99 cells, 271=91 cells) because the *colony* never gets big enough to push deep, not because leaders senesce early. Reserves are the next suspect — lean seeds have less substrate so EXTEND_COST=2 may starve them.
 Next: iter-36 — EXTEND_COST 2 → 1. Halves the reserve cost per new cell. Lean seeds should grow larger and reach soil.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-36 · [tweak]
+Agent: claude-opus-4-7
+Plain: Halved the per-cell reserve cost (2 → 1) hoping lean seeds would build bigger networks. The opposite happened: 1337 collapsed from 285 cells to 23, multipleDescents fell from three seeds to zero, aggregate fell from 14 to 10. Cheaper extension drained substrate faster than absorption could replenish, so colonies grew fast then starved hard.
+Hypothesis: EXTEND_COST is the brake on lean-seed colony size.
+Setup: EXTEND_COST 2 → 1. Everything else from iter-34.
+Result: shape 0/5 (median 0.177, max 0.423). modestSize 0/5 (was 1/5). soilDispersion 3/5. descended 1/5 (was 2/5). **multipleDescents 0/5** (was 3/5 — collapse). noPrematureFruit 5/5, notSaturated 5/5. Aggregate **10/35** (was 14/35).
+Reading: EXTEND_COST is not a free parameter — it's tuned against absorption rate. Halving it doesn't grow bigger networks, it grows faster networks that then starve. Same dynamic as the early "liquid mat" baseline runs: high extension, no substrate management, then a starvation crash. The non-trivial lesson: 1337's 285 cells under iter-34 weren't substrate-limited. Whatever caps lean-seed colony size lives upstream of reserves.
+Next: revert to iter-34's config. Pivot to a substrate-side lever (THICKNESS_MAX, initial reserves, or source-sink transport) next batch.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

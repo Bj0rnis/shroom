@@ -178,7 +178,7 @@ const FRUIT_MIN_CELL_COUNT   = 800;
 //   • FRUIT_COST: base cost of a fruit body. Discounted by col.fruitCount
 //     (handleFruiting) so a colony that's already invested in a fruiting
 //     network gets cheaper subsequent fruits — rewards specialization.
-const EXTEND_COST            = 2;
+const EXTEND_COST            = 1;   // sim-lab iter-36: was 2, help lean seeds reach soil
 const FRUIT_COST             = 500;
 const FRUIT_COST_FLOOR       = 300;  // raised from 80; see BALANCE.md 2026-05-17
 const FRUIT_DISCOUNT_PER_FRUIT = 0.8;   // multiplicative: 500, 400, 320, 256, …

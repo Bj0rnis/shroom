@@ -74,7 +74,7 @@ const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (sim-lab iter
 // shapes the volume; leaders shape the spatial concentration.
 const NON_LEADER_EXTEND_PROB  = 0.012;
 const NON_LEADER_EXTEND_JUNC  = 0.002;
-const MAX_LEADERS_PER_COLONY  = 5;   // sim-lab iter-27: was 3, try more concurrent threads (multipleDescents)
+const MAX_LEADERS_PER_COLONY  = 7;   // sim-lab iter-29: was 5, give bif-children more breathing room
 // Leader senescence: a leader stops being a leader after this many extensions.
 // Real hyphal tips age out — their vigour decays as they age, and growth
 // passes to younger forks. Without this cap the leader-mechanic still

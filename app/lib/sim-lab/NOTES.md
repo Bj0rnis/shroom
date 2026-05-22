@@ -55,6 +55,15 @@ Result: shape 0/5 (median 0.110, max 0.227). modestSize 1/5 (271: 241 cells). so
 Reading: The cap+bif combination does what iter-26 alone couldn't — 271 produced three separated descents from one founder. But 1337 lost cells (267 → 44) — more bif-children that senesce before reaching the soil. The mechanic is real but seed-fragile. The painting's signature is repeatable separation, not lucky 1-in-5 separation.
 Next: iter-29 — hold cap=5, bif=0.30. Bump MAX_LEADERS_PER_COLONY to 7 to give bif-children even more breathing room. If 271's 3-descent pattern starts repeating on other seeds, the geometry is right. If not, pivot to apical dominance.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-29 · [tweak] · [stuck]
+Agent: claude-opus-4-7
+Plain: Tried even more leader slots (cap 5 → 7). It went the wrong way: descent collapsed from two seeds to zero, soilDispersion dropped from three to one, and the aggregate fell from 12 to 9 of 35. The cap mechanic is now hurting more than helping. Time to stop sweeping it.
+Hypothesis: more slots → more parallel threads → more chances at multipleDescents.
+Setup: MAX_LEADERS_PER_COLONY 5 → 7. bif=0.30, lifespan=120, THICKNESS_MAX=2 held.
+Result: shape 0/5 (median 0.080 — worst since iter-22). modestSize 1/5 (still only 271). soilDispersion 1/5 (was 3/5). descended **0/5** (max 8). multipleDescents 1/5 (271 again). noPrematureFruit 5/5, notSaturated 5/5. Aggregate **9/35** — lost ground.
+Reading: Cap is past its sweet spot. With 7 slots, bif-children consume leader budget faster than survivors can drill down. Same failure mode as iter-26 (bif=0.40, cap=3), just milder. Across iter-25→27→28→29 the cap-bif knob produced +1, +1, -3 — the lever is exhausted. Seed 271 is the only seed earning ≥4/7 in this whole batch; the other four sit stuck. The geometry needs an anti-clumping force, not more leaders.
+Next: iter-30 — revert cap to 5, **pivot to apical dominance** from the buffet. Minimal version: a bif-born leader can only be added if no existing leader is within APICAL_DOMINANCE_RADIUS cells. Forces spatial separation between active threads. If 4+ seeds start producing two distinct descents, the mechanic class is right.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

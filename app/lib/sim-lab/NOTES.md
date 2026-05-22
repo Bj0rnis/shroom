@@ -46,6 +46,15 @@ Result: shape 0/5 (median 0.182, max 0.271 — up from 0.110/0.216). modestSize 
 Reading: Cap bump is a positive but tiny lever. The seed-42 final shape shows the failure mode clearly: 5 leaders all converge into a single wide bundle dropping straight down. Two leaders may bifurcate sideways but they're spatially adjacent — they form one thick column, not two separated columns. The painting's signature is *separation* between descents (~30 cells of gap). Counting leaders doesn't buy separation; bifurcation alone doesn't either (iter-26). The geometry has no horizontal anti-clumping force.
 Next: iter-28 — combine the larger leader pool (5) with iter-26's bifurcation hike (0.20 → 0.30, milder than iter-26's 0.40). With 5 slots, the extra bif-children won't immediately starve descent. If multipleDescents still pins at median 1, the next class is apical dominance — a repulsion field between active leaders so they actually spread before descending.
 
+## 2026-05-23 · sim-lab/02-carrying-capacity · iter-28 · [tweak]
+Agent: claude-opus-4-7
+Plain: With the bigger leader pool from iter-27, raised how often leaders split into Y-branches (TIP_BIFURCATION_PROB 0.20 → 0.30). For the first time multipleDescents passed on a seed (271 hit 3 distinct descents, 5/7 — the strongest single-seed result yet). But the other seeds didn't follow, and aggregate only moved by one.
+Hypothesis: iter-26 paired bif=0.40 with cap=3 and lateral-saturated the colony. With cap=5 there's room to absorb more bif-children without starving the descent.
+Setup: TIP_BIFURCATION_PROB 0.20 → 0.30. MAX_LEADERS_PER_COLONY held at 5. Everything else from iter-27.
+Result: shape 0/5 (median 0.110, max 0.227). modestSize 1/5 (271: 241 cells). soilDispersion 3/5. descended 2/5 (max 33 — depth still there). **multipleDescents 1/5** (seed 271: 3 descents — first pass on this scorer in the whole branch). noPrematureFruit 5/5, notSaturated 5/5. Seed 271 hits 5/7 — the best single-seed score so far. Aggregate 12/35.
+Reading: The cap+bif combination does what iter-26 alone couldn't — 271 produced three separated descents from one founder. But 1337 lost cells (267 → 44) — more bif-children that senesce before reaching the soil. The mechanic is real but seed-fragile. The painting's signature is repeatable separation, not lucky 1-in-5 separation.
+Next: iter-29 — hold cap=5, bif=0.30. Bump MAX_LEADERS_PER_COLONY to 7 to give bif-children even more breathing room. If 271's 3-descent pattern starts repeating on other seeds, the geometry is right. If not, pivot to apical dominance.
+
 ## 2026-05-20 · sim-lab/02-carrying-capacity · iter-26 · [tweak]
 Agent: claude-opus-4-7
 Plain: Doubled how often leaders split into Y-branches, hoping to make two-thread descents into soil. It went the wrong way — leaders forked sideways instead of drilling down, and the descent-depth result collapsed from three seeds reaching deep to zero. Bifurcation isn't the lever for the missing second descent column either.

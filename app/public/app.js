@@ -13,15 +13,15 @@ function TopColony({ snapshot, onHoverColony, hoveredColonyId }) {
   const serif = '"IM Fell DW Pica SC", serif';
 
   return (
-    <DarkPanel seed={9} elevation={2} style={{ color: '#d4cdb8', flexShrink: 0 }}>
+    <DarkPanel seed={9} elevation={2} style={{ color: COL.text, flexShrink: 0 }}>
       <div style={{ position: 'relative', padding: '10px 14px 12px' }}>
         <div style={{ marginBottom: 8 }}>
-          <span style={{ fontFamily: mono, color: '#7a7060', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: mono, color: COL.dim, fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             top colony
           </span>
         </div>
         {top.length === 0 ? (
-          <div style={{ fontFamily: mono, color: '#5a5240', fontSize: 10, fontStyle: 'italic' }}>none</div>
+          <div style={{ fontFamily: mono, color: COL.dimLo, fontSize: 10, fontStyle: 'italic' }}>none</div>
         ) : (
           <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {top.map((c, i) => {
@@ -54,18 +54,18 @@ function TopColony({ snapshot, onHoverColony, hoveredColonyId }) {
                     transition: 'background 120ms ease',
                     margin: '0 -6px', padding: '2px 6px',
                   }}>
-                  <span style={{ color: '#5a5240' }}>{i + 1}.</span>
+                  <span style={{ color: COL.dimLo }}>{i + 1}.</span>
                   <HallMushroom entry={entry} size={24} glow={false} />
                   <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <span style={{
                       fontFamily: serif, fontSize: 13,
-                      color: isHovered ? '#c89058' : (c.name ? '#e8dfc8' : '#7a7060'),
+                      color: isHovered ? COL.ember : (c.name ? COL.textHi : COL.dim),
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.1,
                       transition: 'color 120ms ease',
                     }}>
                       {displayName}
                     </span>
-                    <span style={{ color: '#5a5240', fontSize: 9, letterSpacing: '0.04em', marginTop: 2 }}>
+                    <span style={{ color: COL.dimLo, fontSize: 9, letterSpacing: '0.04em', marginTop: 2 }}>
                       {ageLabel} · {c.cellCount || 0} hyphae
                     </span>
                   </span>
@@ -129,7 +129,7 @@ function App() {
       <div style={{ height: '100dvh', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <PageWallpaper />
         {err
-          ? <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 12, color: '#7a7060' }}>error: {err}</span>
+          ? <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 12, color: COL.dim }}>error: {err}</span>
           : <LoadingPassage />}
       </div>
     );

@@ -127,31 +127,49 @@ starting point for the next iter cycle.
 Live world still uses `randomGenome()` — natural variance preserved
 outside the lab.
 
-#### Latest park (sim-lab/03 iter-10)
+#### Latest park (sim-lab/04 iter-8)
 
-Founder gets a 50-reserve head start at sow (was 0) — solves the
+Substrate-aware bifurcation: `TIP_BIFURCATION_PROB_SOIL=0.55` (vs base
+0.30 above grass), and the bif-child in soil prefers perpendicular
+neighbors (4× weight). Above grass keeps the original behaviour. The
+two mechanics together produce L-shape lateral spread in soil that
+generates the painting's lattice signature — shape median jumps from
+0.165 to **0.258** (+56%), the biggest single-branch shape gain in the
+research arc.
+
+| scorer | iter-37 | iter-10 | iter-8 (sim-lab/04) |
+|---|---|---|---|
+| shape | 0/5 (med 0.205, max 0.446) | 0/5 (med 0.165, max 0.191) | 0/5 (med **0.258**, max **0.370**) |
+| modestSize | 1/5 | **4/5** | 4/5 |
+| soilDispersion | 3/5 | 3/5 | 2/5 |
+| descended | 2/5 | 3/5 | **4/5** |
+| multipleDescents | 3/5 | 3/5 | 2/5 |
+| noPrematureFruit | 5/5 | 4/5 | **5/5** |
+| notSaturated | 5/5 | 5/5 | 5/5 |
+
+Aggregate **22/35** (same pass-count as iter-10, but shape median +56%).
+Per-seed: 42=4/7, 1337=4/7, 314=5/7, 271=6/7, 555=3/7.
+
+Vision 1 is **not yet achieved** — shape median 0.258 vs threshold 0.60.
+But the gatekeeper scorer that's been stuck has finally moved by a
+non-trivial amount; the curve has the right sign for the first time on
+this arc. Open problems:
+- Shape median 0.258 vs 0.60 — gap closed ~25%, needs a third mechanism
+  class (genome variance, DLA, source-sink) to close the rest.
+- Lean seed 555 stuck at 67 cells — bif-boost doesn't help lean
+  substrate, absorption rate is the bottleneck there.
+- Shape vs multipleDescents tension (perp=4× vs ≥6×) suggests another
+  mechanism could pick up multipleDescents without disrupting shape.
+
+#### Earlier park (sim-lab/03 iter-10 · merged via PR #38)
+
+Founder gets a 50-reserve head start at sow (was 0) — solved the
 lean-seed bootstrap stall. Combined with the iter-4 frontier-revival
 bugfix (renewal of leaders when the cohort senesces), the day-1 painting
-now lands at painting volume on 4 of 5 seeds. Aggregate **22/35** (up
-from 14-19/35 at iter-37).
-
-| scorer | iter-37 | iter-10 |
-|---|---|---|
-| shape | 0/5 (med 0.205, max 0.446) | 0/5 (med 0.165, max 0.191) |
-| modestSize | 1/5 | **4/5** |
-| soilDispersion | 3/5 | 3/5 |
-| descended | 2/5 | 3/5 |
-| multipleDescents | 3/5 | 3/5 |
-| noPrematureFruit | 5/5 | 4/5 |
-| notSaturated | 5/5 | 5/5 |
-
-Per-seed: 42=5/7 (was 3/7), 1337=3/7 (was 5/7), 314=**6/7** (best-ever
-on the branch), 271=5/7, 555=3/7.
-
-Vision 1 is **not yet achieved** — shape median 0.165 vs threshold 0.60.
-The colonies are now painting-sized but still single-bundle in geometry,
-not the painting's two-column root system. Mechanic class is correct;
-the remaining gap is structural (lateral spread), not volumetric.
+landed at painting volume on 4 of 5 seeds. Aggregate **22/35** (up from
+14-19/35 at iter-37); shape median 0.165, max 0.191. Colonies were
+painting-sized but still single-bundle — that's the gap sim-lab/04
+attacks.
 
 #### Earlier park (sim-lab/02 iter-37 · merged via PR #36)
 

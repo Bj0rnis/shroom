@@ -37,6 +37,80 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-8 · [park]
+Agent: claude-sonnet-4-6
+Plain: Reverted to iter-4's exact config and confirmed it reproduces (bit-identical results: shape median 0.258, aggregate 22/35). Parking the branch here. Best config of the loop: substrate-aware bifurcation (boost in soil) + perpendicular bias for the bif-child in soil (4× weight). Two new constants in `sim.js`. The shape gatekeeper scorer moved +56% in one branch — the biggest single-branch shape gain in the whole arc.
+Hypothesis: confirm iter-4 reproduces with current sim.js state.
+Setup: `TIP_BIFURCATION_PROB_SOIL = 0.55`. Perpendicular weight 4× in soil. No dominance changes (back to uniform 15).
+Result: identical to iter-4. shape 0/5 median **0.258**, max **0.370**. modestSize 4/5. soilDispersion 2/5 (median 0.495). descended 4/5 median 25. multipleDescents 2/5. noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=4/7, 1337=4/7, 314=5/7, 271=6/7, 555=3/7. **Aggregate 22/35** (same count as parked iter-10, but shape median +56% from 0.165).
+Reading: this is the parking point. Vision 1 still not achieved (shape median 0.258 vs threshold 0.60; modestSize and several others fail on individual seeds). But the mechanic class is now clearly correct — the painting-similarity scorer is the most-improved scorer of the entire research arc and the increase is structural (perpendicular L-shapes in soil), not lucky. Diminishing returns from continued tuning of bif rate / bias weight — both levers are exhausted in this branch.
+Next: hand off to the maintainer. Open Vision 1 problems still: (a) shape median 0.258 vs 0.60 — gap closed by ~25% of remaining distance, still significant; need a third mechanism class (genome variance, DLA, source-sink) to close the rest. (b) lean seed 555 stuck at 67 cells — same as parked iter-10, the bif-boost doesn't help lean substrate because absorption rate is the bottleneck there. (c) Shape vs multipleDescents tension (perp=4× vs ≥6×) suggests *another* mechanism could pick up multipleDescents without disrupting shape.
+
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-7 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Tried lowering the bif rate in soil from 0.55 to 0.35 (close to the base 0.30) and keeping the perpendicular bias at 4×. Total collapse — modestSize fell to 1/5 (only 271 above floor), multipleDescents went to 0/5, aggregate crashed to 16/35. The 0.55 bif boost is load-bearing; cutting it removes the bifurcation events that perpendicular bias needs as raw material.
+Hypothesis: bif rate is too high — let the bias do the heavy lifting at base rate.
+Setup: `TIP_BIFURCATION_PROB_SOIL` 0.55 → 0.35, perpendicular weight 6× → 4×.
+Result: shape 0/5 median 0.165 (back to baseline), modestSize 1/5, soilDispersion 2/5, descended 3/5, multipleDescents 0/5. Aggregate **16/35** — worst yet.
+Reading: confirmed — the bif boost AND the perpendicular bias are both load-bearing. The two-mechanic stack is the new local optimum; can't reduce either lever without losing the rest.
+Next: iter-8 — revert to iter-4's exact config (bif soil 0.55, perp 4×). PR that as the shape unlock for sim-lab/04. The shape-vs-multipleDescents tension between 4× and 6×/8× wants a separate solution — a third mechanism — and that's a fresh iter after we ship the unlock.
+
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-6 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Tried perp weight 6× (between iter-4's 4× and iter-5's 8×) plus a milder bif rate (0.45 vs 0.55). Aggregate identical to iter-5 (23/35), shape median identical to iter-5 (0.172) — no recovery toward iter-4's 0.258. There's no smooth gradient between the two regimes; 4× is the lattice basin, ≥6× is the diverged-columns basin.
+Hypothesis: perp=6× would interpolate between iter-4 (shape) and iter-5 (multipleDescents).
+Setup: perp weight 6, `TIP_BIFURCATION_PROB_SOIL` 0.45.
+Result: shape median 0.172, modestSize 4/5, multipleDescents 3/5. Per-seed identical to iter-5: 42=5/7, 1337=4/7, 314=5/7, 271=6/7, 555=3/7. **Aggregate 23/35**.
+Reading: the shape and multipleDescents scorers are reading two different basins of geometry. 4× perp produces connected-lattice (high shape); ≥6× produces separated-columns (high multipleDescents). Splitting the difference doesn't blend them. To get both, we'd need a *second* mechanism that adds separation without disrupting the lattice connectivity.
+Next: iter-7 — try lower bif rate (0.35) with original 4× bias. Hypothesis: bias is the structural mechanism, bif rate is just supplying events.
+
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-5 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Doubled the perpendicular weight (4× → 8×) hoping to push the shape median up further. Mixed result: aggregate gained one pass (multipleDescents picked up another seed, going 2/5 → 3/5), but the shape median REGRESSED from 0.258 back to 0.172. The stronger bias makes branches diverge MORE — clearly distinct columns — but the painting's signature is connected diagonal lattice, not separated columns. 4× was actually the sweet spot for shape; 8× is sweet spot for column-count.
+Hypothesis: bigger perpendicular weight → cleaner L-shapes → higher shape match.
+Setup: `c.w * 4` → `c.w * 8` in the bifurcation block at `sim.js:627`. Updated test guard: 555 @ 5000 → 348 cells (was 427).
+Result: shape median **0.172** (DOWN from 0.258), max 0.372 (~same). modestSize 4/5. soilDispersion 2/5. descended 4/5 (max 52 — record). **multipleDescents 3/5** (up from 2/5). Per-seed: 42=5/7 (up), 1337=4/7, 314=5/7, 271=6/7, 555=3/7. **Aggregate 23/35** (+1).
+Reading: shape and multipleDescents are in tension under perpendicular bias. 4× yields connected lattice (high shape, lower column-count); 8× yields disconnected columns (high column-count, lower lattice match). Vision 1 requires shape ≥0.60, so shape is the gatekeeper. Need to find an in-between, OR add a separate mechanism that gives column-count without sacrificing connectedness.
+Next: iter-6 — try perp weight=6× (split the difference) and reduce `TIP_BIFURCATION_PROB_SOIL` from 0.55 → 0.45. Hypothesis: bias is doing the heavy lifting now, so less bif rate is fine. May recover shape while keeping multipleDescents progress.
+
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-4 · [mechanic] · [BREAKTHROUGH]
+Agent: claude-sonnet-4-6
+Plain: Made bifurcating tips in soil prefer to branch sideways instead of going the same direction as their parent (4× weight to perpendicular neighbors). The shape match — the painting-similarity score that's been stuck around 0.16 — jumped to 0.26 median and 0.37 max. Depth median climbed from 15 to 25 rows. Aggregate didn't move (still 22/35 passing) but the gatekeeper scorer that was blocking Vision 1 is finally moving. Stress seed (1337) recovered from iter-2/3's collapse and is back to 346 cells.
+Hypothesis: bifurcation in soil should prefer perpendicular direction to produce the painting's L-shapes / lattice spread. Currently bif-children pick by chemotaxis weight only, which tends to favor similar direction → fat bundle.
+Setup: Reverted iter-2/3 dominance changes (back to uniform `APICAL_DOMINANCE_RADIUS=15`). Kept iter-1's `TIP_BIFURCATION_PROB_SOIL=0.55`. In the bifurcation block at `sim.js:610`, when `kind[i] === SOIL` and there are 2+ candidate neighbors, map the `others` list multiplying perpendicular-to-parent neighbors' weight by 4. "Perpendicular" = the candidate is vertical iff parent's move was horizontal, and vice versa.
+Result: shape 0/5 but **median 0.258** (record from 0.165, +56%), **max 0.370** (was 0.191, +94%). modestSize 4/5 (back to baseline). soilDispersion 2/5 (median 0.495, just below 0.5 threshold). **descended 4/5** (up from 3/5, median 25 from 15). multipleDescents 2/5. noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=4/7, 1337=4/7, 314=5/7, 271=6/7, 555=3/7. **Aggregate 22/35** (flat in count, but the painting-match scorer just unlocked).
+Reading: the mechanic class is correct. Perpendicular bias produces the L-shape geometry the painting requires *without* spawning extra leader threads that would drain reserves on rich seeds. Shape median 0.26 is still far from the 0.60 threshold, but the curve has the right sign for the first time in this branch. soilDispersion regressed slightly (lateral spread reduces the per-cell run density), but that's a measurement artifact of bigger colonies — the value scale climbed too.
+Next: iter-5 — push the perpendicular weight from 4× to 8×. If shape median jumps another 50%, the lever is monotonic; if it plateaus, the next move is to combine it with milder bif boost (0.55 → 0.45) since the bias is doing the heavy lifting now.
+
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-3 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Tried a softer version of iter-2 — keep apical-dominance separation in soil but at a smaller radius (5 instead of 15) instead of disabling it. Shape median dropped back to baseline (0.165) and aggregate went down another step to 20/35. The milder lever didn't help: 1337 still collapsed to 50 cells, and now the smaller seeds also lost ground. Reverting the dominance changes for iter-4 and trying a different mechanic class.
+Hypothesis: full free-for-all dominance in soil (iter-2) was too aggressive for 1337. A milder radius preserves separation while letting bif-children promote.
+Setup: new constant `APICAL_DOMINANCE_RADIUS_SOIL = 5`. Bifurcation block at `sim.js:626` reads the substrate of the extending cell and picks the radius (`kind[i] === SOIL ? 5 : 15`). Kept iter-1's `TIP_BIFURCATION_PROB_SOIL = 0.55`. Updated test guard: seed 555 @ 5000 → 269 cells.
+Result: shape 0/5 median **0.165** (back to baseline, was 0.185 in iter-2), max 0.227 (down from 0.282). modestSize **2/5** (down from 3/5 — 42 dropped to 120, 1337 still at 50). soilDispersion **4/5** (up from 3/5). descended 3/5 (median 10). multipleDescents 1/5 (worst yet). noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=4/7, 1337=2/7, 314=5/7, 271=6/7, 555=3/7. **Aggregate 20/35**.
+Reading: dominance radius isn't the right lever. The 1337 collapse persists at radius=5 same as radius=0 — the issue isn't dominance, it's the bifurcation boost itself draining 1337's reserves. The shape median gain from iter-2 came from something subtler that radius=5 lost. Both iter-2 and iter-3 produce worse aggregate than the parked baseline; the dominance-relax lever is exhausted.
+Next: iter-4 — revert iter-2/3 dominance changes (back to uniform radius 15). Keep iter-1's soil bif-boost. Add a *directional* mechanism: in soil, bias bif-children perpendicular to the parent's extension direction. This produces L-shapes that spread laterally, generating the painting's lattice without spawning new leaders that drain reserves.
+
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-2 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Turned off apical dominance entirely for in-soil bifurcations so bif-children can become new leader threads even close to siblings. Shape median climbed from 0.165 to 0.185 (best ever on this branch) and depth median from 11 to 20 — clear signal the lattice is forming. But the stress seed (1337) collapsed to 50 cells: the cascade of new leaders drained its reserves before the network could establish. Aggregate slipped to 21/35.
+Hypothesis: bif-children need to follow up divergent paths to build lacework. The 15-cell dominance radius was tuned for log-band column separation; it shouldn't apply in soil.
+Setup: bifurcation block at `sim.js:622` reads `kind[i] === SOIL`. When true, skip the dominance check entirely (bif-child promotes if leader pool isn't full). Kept iter-1's bif boost.
+Result: shape 0/5 median **0.185** (record from 0.165), max **0.282** (record). modestSize 3/5 (1337 collapsed). soilDispersion 3/5. descended 3/5 median **20** (up from 11), max **50** (record). multipleDescents 2/5. noPrematureFruit **5/5** (1337 stopped fruiting entirely). notSaturated 5/5. Per-seed: 42=5/7, 1337=2/7 (collapse), 314=5/7, 271=6/7, 555=3/7. **Aggregate 21/35**.
+Reading: mechanism is real — shape median +12%, depth median +82%. But unbounded leader promotion in soil burns rich-substrate seeds (1337 drops 285→50). The dominance check served a real purpose; can't just remove it. Either dial it back gradually (iter-3) or find a way to promote bif-children without spawning concurrent leaders (e.g. perpendicular extension preference instead).
+Next: iter-3 — try APICAL_DOMINANCE_RADIUS_SOIL = 5 (milder than the 0-radius free-for-all of iter-2). Preserves some separation pressure but should let lattice form.
+
+## 2026-05-23 · sim-lab/04-shape-geometry · iter-1 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Boosted how often growing tips split into Y-branches, but only when they're already underground in soil (kept the cleaner above-ground growth alone). Aggregate stayed put at 22 of 35, but the shape-match peak climbed to its best-ever value of 0.25, and one seed reached 38 rows down — also a record. The stress seed stopped overshooting and finally hit 6/7 targets without fruiting too early. Trade-off: the branch seed regressed because over-branching depleted reserves before the network could spread properly.
+Hypothesis: the painting's lattice signature comes from frequent branching in soil specifically — log-band growth should stay clean. Substrate-aware `TIP_BIFURCATION_PROB` should move shape without hurting the rest.
+Setup: new constant `TIP_BIFURCATION_PROB_SOIL = 0.55` (vs base 0.30). Bifurcation roll at `sim.js:606` reads the substrate of the extending cell (`kind[i] === SOIL ? 0.55 : 0.30`). Updated test.js baseline guard: seed 555 @ 5000 ticks bumped 381 → 450 cells.
+Result: shape **max 0.254** (record from 0.191), median 0.165 (flat). modestSize 4/5. soilDispersion 3/5 (max 0.667, was 1.000 — but max was a fluke). **descended max 38** (record from 17). multipleDescents 2/5 (was 3/5 — regression). noPrematureFruit 4/5. notSaturated 5/5. Per-seed: 42=4/7 (was 5/7), **1337=6/7** (was 3/7), 314=3/7 (was 6/7 — over-branching regression), 271=6/7 (was 5/7), 555=3/7 (flat). **Aggregate 22/35**.
+Reading: the mechanic class is right — shape peak +33% and depth record both signal lattice formation is starting. But aggregate is flat because (a) over-branching depletes reserves on the branch seed (314), and (b) bifurcation children get blocked by apical dominance (radius 15) from becoming new leader threads, so the bifurcated path goes static immediately and the colony bundles back together. The lattice doesn't propagate.
+Next: iter-2 — drop apical dominance check for in-soil bifurcations. Let bif-children become leaders even close to existing leaders when they're in soil. The dominance check was tuned for log-band leader separation; in soil we want bif-children to follow up the divergent path.
+
+---
+
 ## 2026-05-23 · sim-lab/03-persistence · iter-1 · [rewrite]
 Agent: claude-opus-4-7
 Plain: Wired up Vision 2 — the week-long-persistence vision. Added four scorers (does the founder live to day 7, is it still a meaningful size, does the painting still look right, did the auto-bootstrap safety net fire), and a tracking counter for auto-bootstrap events. Aligned the cheap probe with the lab's sowing so probe day-1 numbers match what the full sweep will see.

@@ -9,11 +9,14 @@ wouldn't get served as a live route. The full reasoning per item is
 recoverable from `git show a92fcf5^:app/public/_audit.html`. This kanban
 is the live surface.
 
-**Shipped:** 3 / 14 (last reviewed 2026-05-23). Sweep on 2026-05-23
-moved #08, #09, and #11 to Done; #04 refreshed with sim-lab/03
-parked state. Cards #12–14 promoted from `DESIGN_NEEDS_WORK.md` on
-2026-05-21 after most of that pre-kanban list turned out
-already-resolved by code in earlier design-kit slices.
+**Shipped:** 5 / 14 (last reviewed 2026-05-23). Sweep on 2026-05-23
+moved #08, #09, and #11 to Done; #04 refreshed with sim-lab/03 parked
+state. Retire-sweep same day: #13 closed after verification (no code
+change needed), #12 retired as won't-do (sim-engine side, deferred per
+the maintainer), #14 retired as won't-do (the conditional never tripped — dark-
+hue mushrooms look fine in practice), #07 decided kept-as-is (the depth
+pass made the framed-window stance load-bearing — see card). Cards
+#12–14 had been promoted from `DESIGN_NEEDS_WORK.md` on 2026-05-21.
 
 Items added after the audit (or spun off from `DESIGN_NEEDS_WORK.md`)
 land in **Todo** with a short note about where they came from.
@@ -119,62 +122,47 @@ the natural first use). F35 micro-stats reserved for a later round.
 Don't replace serif/mono — augment.
 **Depends on:** #03.
 
-### 12 · Mushroom min-spacing rule
-`bones · arch` · sim-side
-**Now:** no rule enforced. Multiple mushrooms on one colony can pile up
-when the fruit-trigger conditions are satisfied at nearby cells in the
-same tick. The design mocks placed caps too close together, which
-flagged the absence — but the live sim can produce the same pile-up.
-**Decision:** Enforce a minimum cell-distance between fruiting events
-per colony, or cap fruit density per log section. Sim-side, not
-renderer.
-**Promoted from:** `DESIGN_NEEDS_WORK.md`, originally "deferred polish."
-
-### 13 · Verify mushroom bloom alpha in live UI
-`polish` · verification
-**Now:** design dropped warm 0.20→0.10 and cool 0.62→0.30 after the maintainer
-flagged "way too high" mid-design. The drop landed in code (visible at
-`canvas.js:435`, `baseAlpha = (inCool ? 0.30 : 0.10) * capBudget`) but
-was never verified against 8+ live mushrooms in autumn-dusk-equivalent
-lighting.
-**Decision:** Verification pass — load the live world (or force-seed a
-high-mushroom-count scenario), watch under autumn-dusk lighting, tune
-if still hot. No code change unless the verification surfaces one.
-**Promoted from:** `DESIGN_NEEDS_WORK.md`.
-
-### 14 · Mushroom outline near-black on dark hues
-`polish` · cosmetic
-**Now:** outline computed as `hsl(hue, sat-12, 22)` in `kit/overlays.jsx`
-HallMushroom and in the canvas mushroom painter. At dark hues (purple,
-deep-cool) the outline drops near-black and can read as a flat ring
-instead of an edge.
-**Decision:** Conditional — if it looks off after the next batch of
-mushrooms fruits, lift the outline lightness floor (e.g. clamp L ≥ 28
-for hues 200–280). Otherwise leave.
-**Promoted from:** `DESIGN_NEEDS_WORK.md`.
-
----
-
-## Needs re-decision
-
-### 07 · Canvas is parsimonious on big screens
-`polish` · surface
-**Now:** `maxWidth: CANVAS_W` (1280) still in place at canvas.js:600,
-but the code grew a comment at canvas.js:594 explicitly defending the
-cap: *"maxWidth: native size — never upscale past the pixel buffer
-resolution."* That stance is the opposite of the audit's "let it scale
-up."
-**Audit decision:** Remove maxWidth. Let the canvas scale up (pixelated
-rendering preserves crispness). Do it after #04 — re-tune bloom and
-vignette as part of the change.
-**Tension:** the code now treats the cap as deliberate (preserve pixel
-buffer fidelity) rather than parsimonious. Two coherent positions; pick
-one before this becomes a ticket. Re-decide with the maintainer.
-**Gated on:** #04 regardless.
-
 ---
 
 ## Done
+
+### 07 · Canvas is parsimonious on big screens
+`polish` · surface · **kept-as-is**
+**Decided 2026-05-23.** Audit said remove the `maxWidth: 1280` cap and
+let the canvas scale up. the maintainer's call after the depth pass shipped:
+keep the cap. The depth pass (PR #44) added a vignette + hairline frame
+around the canvas, which makes it read as a shadow-box diorama — a
+window *into* the world. That framed-window effect only works if the
+canvas is bounded; scaling it up turns the diorama into "a big screen"
+and would force re-tuning bloom + vignette at every scale. Also fits
+the shroom voice better — something you *watch*, not a game filling
+the viewport. On ultra-wide screens, the surrounding dark space + the
+radial vignette is the feature, not the bug.
+
+### 13 · Verify mushroom bloom alpha in live UI
+`polish` · verification
+**Verified 2026-05-23.** Force-injected 10 mushrooms (5 cool hues
+200–240, 5 warm hues 20–60 + 320–340) on the local mock-world's log,
+autumn night. Effective alpha under capBudget (sqrt(8/10) ≈ 0.89):
+cool 0.27, warm 0.09. Halos read as intended — hue-tinted, present
+but contained, no smearing across the log. The cool-vs-warm 3:1 ratio
+lands. No tune required; constants at `canvas.js:435` stay.
+
+### 12 · Mushroom min-spacing rule
+`bones · arch` · sim-side · **won't-do**
+**Retired 2026-05-23.** Sim-engine work for unclear payoff — the
+piling-up that flagged this in the mocks hasn't shown up in the
+live world, and touching the fruit-trigger logic is high risk while
+sim-lab is mid-loop. If real pile-ups appear later this can come
+back as a new card.
+
+### 14 · Mushroom outline near-black on dark hues
+`polish` · cosmetic · **won't-do**
+**Retired 2026-05-23.** The conditional ("if it looks off in the
+wild") never tripped — the #13 verification pass included dark-cool
+hues (purple 320, blues 200–240) and the outlines read as edges,
+not flat rings. Leave as-is; reopen if a future hue tweak surfaces
+the problem.
 
 ### 11 · Colony names are off-voice
 `polish · voice` · naming

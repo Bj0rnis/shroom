@@ -45,6 +45,11 @@ const DECAY_NEIGHBOR_DEPOSIT = 4;
 // ~12%/tick — first Y-branch by cell ~8 on a healthy colony. Tuned for
 // "roots, not worms" with THICKNESS_MAX still capping mature density.
 const TIP_BIFURCATION_PROB = 0.30;   // sim-lab iter-28: was 0.20, milder bump than iter-26's 0.40 paired with cap=5
+// Soil-specific bifurcation boost. The painting's lattice signature comes from
+// frequent branching IN SOIL; above grass (log/grass) keeps the cleaner stem.
+// When the extending cell is in SOIL, bifurcation rolls at the boosted rate.
+// sim-lab/04 iter-1: was uniform 0.30, soil 0.55.
+const TIP_BIFURCATION_PROB_SOIL = 0.55;
 
 // Extension probability decays with cell age. Real mycelium has a small
 // number of *leading* hyphal tips that explore outward — once a tip has
@@ -603,8 +608,25 @@ function growHyphae(world) {
         // MAX_LEADERS_PER_COLONY; otherwise it joins the static network. A
         // young fork inherits the frontier when the parent leader senesces.
         if (isLeader && freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
-          if (rng() < TIP_BIFURCATION_PROB * capFactor) {
-            const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
+          const bifProb = kind[i] === SOIL ? TIP_BIFURCATION_PROB_SOIL : TIP_BIFURCATION_PROB;
+          if (rng() < bifProb * capFactor) {
+            let others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
+            // sim-lab/04 iter-4: in soil, prefer the bif-child to go
+            // perpendicular to the parent's extension. If `chosen` was a
+            // vertical move (down/up), favor horizontal candidates; if
+            // horizontal, favor vertical. Boosts the candidate weight 4×
+            // for perpendicular neighbors. Produces L-shapes in soil that
+            // spread laterally instead of bundling. No effect above grass.
+            if (kind[i] === SOIL && others.length > 1) {
+              const parentDx = (chosen % W) - (i % W);
+              const parentVertical = parentDx === 0;
+              others = others.map(c => {
+                const dx = (c.j % W) - (i % W);
+                const candVertical = dx === 0;
+                const perpendicular = (parentVertical !== candVertical);
+                return perpendicular ? { j: c.j, w: c.w * 4 } : c;
+              });
+            }
             if (others.length > 0) {
               const ow = others.reduce((s, c) => s + c.w, 0);
               let r2 = rng() * ow;

@@ -526,15 +526,20 @@ function DevDashboardTrigger({ onOpen }) {
     return () => window.removeEventListener('keydown', h);
   }, [onOpen]);
 
+  const c = hover ? '#c89058' : '#7a7060';
   return (
     <button onClick={onOpen}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       title="dev tools · ⌘."
-      style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex' }}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '3px 6px',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+      }}
     >
       {window.PIX ? (
-        <window.PIX.PixelStage w={9} h={9} scale={3}
+        <window.PIX.PixelStage w={9} h={9} scale={2}
           deps={[hover]}
           draw={(pb) => {
             const C = window.PIX.C;
@@ -548,30 +553,49 @@ function DevDashboardTrigger({ onOpen }) {
             pb.set(4, 4, C.inkLo);
           }}
         />
-      ) : <span style={{ color: '#7a7060', fontSize: 14 }}>⚙</span>}
+      ) : <span style={{ color: c, fontSize: 14 }}>⚙</span>}
+      <span style={{
+        fontFamily: '"IBM Plex Mono", monospace', fontSize: 10,
+        color: c, letterSpacing: '0.06em',
+      }}>
+        dev
+      </span>
     </button>
   );
 }
 
-// ── Page nav triggers (engine / lab) ─────────────────────────────────────
-// Small pixel-art anchors that sit alongside DevDashboardTrigger in the
-// TopColony header. Use real <a href> so middle-click / cmd-click open in
-// a new tab — the lab page is the one you keep open in a second tab while
-// the live world ticks here.
-function NavLinkTrigger({ href, title, draw }) {
+// ── Page nav triggers (engine / lab / research) ──────────────────────────
+// Labeled chips that live in StatusLeft's nav row (kanban #02). The chip
+// is glyph + mono label — small enough that four fit in the 300px right
+// panel, labeled so the IA is legible without hover-divining. Uses real
+// <a href> so middle-click / cmd-click open in a new tab.
+function NavLinkTrigger({ href, title, label, draw }) {
   const [hover, setHover] = React.useState(false);
+  const c = hover ? '#c89058' : '#7a7060'; // ember on hover, dim default
   return (
     <a href={href} title={title}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{ display: 'inline-flex', textDecoration: 'none', cursor: 'pointer' }}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '3px 6px',
+        textDecoration: 'none', cursor: 'pointer',
+      }}
     >
       {window.PIX ? (
-        <window.PIX.PixelStage w={9} h={9} scale={3}
+        <window.PIX.PixelStage w={9} h={9} scale={2}
           deps={[hover]}
           draw={(pb) => draw(pb, window.PIX.C, hover)}
         />
-      ) : <span style={{ color: '#7a7060', fontSize: 12 }}>·</span>}
+      ) : <span style={{ color: c, fontSize: 12 }}>·</span>}
+      {label && (
+        <span style={{
+          fontFamily: '"IBM Plex Mono", monospace', fontSize: 10,
+          color: c, letterSpacing: '0.06em',
+        }}>
+          {label}
+        </span>
+      )}
     </a>
   );
 }
@@ -582,6 +606,7 @@ function EnginePageTrigger() {
     <NavLinkTrigger
       href="/engine"
       title="engine — field guide"
+      label="engine"
       draw={(pb, C, hover) => {
         window.PIX.panel(pb, 0, 0, 9, 9, { surface: 'dark', seed: 4 });
         const c = hover ? C.ember : C.text2;
@@ -607,6 +632,7 @@ function LabPageTrigger() {
     <NavLinkTrigger
       href="/lab"
       title="lab — scenario sandbox"
+      label="lab"
       draw={(pb, C, hover) => {
         window.PIX.panel(pb, 0, 0, 9, 9, { surface: 'dark', seed: 5 });
         const c = hover ? C.ember : C.text2;
@@ -628,6 +654,32 @@ function LabPageTrigger() {
   );
 }
 
+// Magnifying-glass glyph for /research — the sim-lab research dashboard.
+function ResearchPageTrigger() {
+  return (
+    <NavLinkTrigger
+      href="/research"
+      title="research — sim-lab dashboard"
+      label="research"
+      draw={(pb, C, hover) => {
+        window.PIX.panel(pb, 0, 0, 9, 9, { surface: 'dark', seed: 6 });
+        const c = hover ? C.ember : C.text2;
+        // Magnifying glass — circular lens (5×5) at top-left, diagonal handle.
+        // Lens ring: cells at the perimeter of a 5×5 centered at (3,3).
+        pb.set(2, 1, c); pb.set(3, 1, c); pb.set(4, 1, c);
+        pb.set(1, 2, c); pb.set(5, 2, c);
+        pb.set(1, 3, c); pb.set(5, 3, c);
+        pb.set(1, 4, c); pb.set(5, 4, c);
+        pb.set(2, 5, c); pb.set(3, 5, c); pb.set(4, 5, c);
+        // Faint pip inside the lens — gives it a focus.
+        pb.set(3, 3, hover ? C.glow : C.textFaint);
+        // Diagonal handle from lower-right of lens.
+        pb.set(6, 6, c); pb.set(7, 7, c);
+      }}
+    />
+  );
+}
+
 window.HallMushroom       = HallMushroom;
 window.HallTrigger        = HallTrigger;
 window.HallModal          = HallModal;
@@ -637,5 +689,6 @@ window.DevDashboardTrigger = DevDashboardTrigger;
 window.NavLinkTrigger     = NavLinkTrigger;
 window.EnginePageTrigger  = EnginePageTrigger;
 window.LabPageTrigger     = LabPageTrigger;
+window.ResearchPageTrigger = ResearchPageTrigger;
 
 })();

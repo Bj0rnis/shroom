@@ -169,12 +169,20 @@ function OverlayTriggers() {
   const [hallOpen, setHallOpen] = useState(false);
   const [devOpen,  setDevOpen]  = useState(false);
   const [hallSel,  setHallSel]  = useState(null);
-  const { HallTrigger, HallModal, HallDetail, DevDashboard, DevDashboardTrigger } = window;
+  const { HallTrigger, HallModal, HallDetail, DevDashboard,
+          DevDashboardTrigger, EnginePageTrigger, LabPageTrigger,
+          ResearchPageTrigger } = window;
   return (
     <>
-      <div style={{ display: 'flex', gap: 16, padding: '12px 16px', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 16, padding: '12px 16px', alignItems: 'center', flexWrap: 'wrap' }}>
         <HallTrigger entries={[]} onOpen={() => setHallOpen(true)} />
-        <DevDashboardTrigger onOpen={() => setDevOpen(true)} />
+        <div style={{ display: 'inline-flex', gap: 2, padding: '4px 8px',
+          background: 'rgba(0,0,0,0.2)', borderRadius: 2 }}>
+          <EnginePageTrigger />
+          <LabPageTrigger />
+          <ResearchPageTrigger />
+          <DevDashboardTrigger onOpen={() => setDevOpen(true)} />
+        </div>
       </div>
       <HallModal open={hallOpen} entries={[]} onClose={() => setHallOpen(false)} onSelect={setHallSel} />
       <HallDetail entry={hallSel} onClose={() => setHallSel(null)} />
@@ -186,7 +194,8 @@ function OverlayTriggers() {
 // ── 07 Screens ────────────────────────────────────────────────────────────────
 
 function HomeStub() {
-  const { StatusLeft, StatusRight } = window;
+  const { StatusLeft, StatusRight, EnginePageTrigger, LabPageTrigger,
+          ResearchPageTrigger, DevDashboardTrigger } = window;
   const stubSnap = {
     meta: { tick: 345600, volume: 1, season: 'spring', weather: 'clear', toofanPressure: 0.12 },
     colonies: {},
@@ -204,7 +213,14 @@ function HomeStub() {
             fontFamily: MONO, fontSize: 10, color: COL.dim }}>
             sim canvas
           </div>
-          <StatusLeft snapshot={stubSnap} />
+          <StatusLeft snapshot={stubSnap}
+            nav={<>
+              <EnginePageTrigger />
+              <LabPageTrigger />
+              <ResearchPageTrigger />
+              <DevDashboardTrigger onOpen={() => {}} />
+            </>}
+          />
         </div>
         {/* right */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

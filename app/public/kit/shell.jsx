@@ -41,7 +41,7 @@ function StatusLeft({ snapshot, nav }) {
   if (!snapshot) return null;
   const m = snapshot.meta;
   return (
-    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: SANS }}>
+    <DarkPanel seed={7} elevation={1} style={{ color: '#d4cdb8', fontFamily: SANS }}>
       <div style={{
         position: 'relative',
         padding: '10px 16px',
@@ -92,7 +92,7 @@ function StatusRight({ snapshot }) {
   const mSrc = 30;
 
   return (
-    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: SANS }}>
+    <DarkPanel seed={7} elevation={1} style={{ color: '#d4cdb8', fontFamily: SANS }}>
       <div style={{
         position: 'relative',
         padding: '10px 14px',

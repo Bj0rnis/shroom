@@ -5,7 +5,7 @@
 const { C, COL, MONO, SERIF, SERIF_RUN, SERIF_BODY, SANS, rgba, mulberry, F57, F35 } = window.SHROOM_TOKENS;
 const { useEffect, useState, useMemo } = React;
 
-const DARK = '#1a1612';
+const DARK = COL.ink;
 const TWEAK_DEFAULTS = { seed: 5, fontScale: 1.0 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────

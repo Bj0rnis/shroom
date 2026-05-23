@@ -12,9 +12,9 @@ const { PageWallpaper, DarkPanel, Section, KV, Subhead, Aside } = window;
 function tagColor(tag) {
   switch (tag) {
     case 'mechanic': return COL.glow || '#e8c98a';
-    case 'tweak':    return COL.hyphaHi || '#9dc488';
+    case 'tweak':    return COL.hyphaHi || COL.grassHi;
     case 'rewrite':  return COL.ember || '#C84B3D';
-    case 'stuck':    return '#c89058';
+    case 'stuck':    return COL.ember;
     case 'observe':  return COL.dim;
     default:         return COL.dim;
   }
@@ -23,13 +23,13 @@ function tagColor(tag) {
 function passColor(pass, of) {
   if (!of) return COL.dim;
   const r = pass / of;
-  if (r >= 0.8) return COL.hyphaHi || '#9dc488';
+  if (r >= 0.8) return COL.hyphaHi || COL.grassHi;
   if (r >= 0.4) return COL.glow || '#e8c98a';
-  return '#c89058';
+  return COL.ember;
 }
 
 function hypoStatusColor(status) {
-  if (status === 'current') return COL.hyphaHi || '#9dc488';
+  if (status === 'current') return COL.hyphaHi || COL.grassHi;
   if (status === 'tried')   return COL.glow || '#e8c98a';
   return COL.dim;
 }
@@ -57,7 +57,7 @@ function IterCard({ entry, live }) {
       {live && (
         <span title={`commit ${live.commitShort} · tick ${live.tick} · seed ${live.seed}`} style={{
           fontFamily: MONO, fontSize: 10,
-          color: '#0a0908', background: COL.hyphaHi || '#9dc488',
+          color: COL.inkDeep, background: COL.hyphaHi || COL.grassHi,
           padding: '2px 8px', borderRadius: 2,
           letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600,
         }}>
@@ -75,7 +75,7 @@ function IterCard({ entry, live }) {
           <div style={{
             marginTop: 10, padding: '8px 12px',
             background: 'rgba(232,200,132,0.06)',
-            borderLeft: `2px solid ${COL.glow || '#e8c884'}`,
+            borderLeft: `2px solid ${COL.glow || COL.glow}`,
             fontFamily: SERIF, fontSize: 14, color: COL.textHi, lineHeight: 1.45,
           }}>
             {entry.plain}

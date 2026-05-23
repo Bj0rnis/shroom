@@ -32,8 +32,12 @@ function _statusVitals(snapshot) {
   };
 }
 
-// ── StatusLeft — vol / era / day strip ───────────────────────────────────
-function StatusLeft({ snapshot }) {
+// ── StatusLeft — vol / era / day strip + optional nav chip row ───────────
+// `nav` is a React node (typically a fragment of nav triggers). When
+// provided, it renders as a second row beneath the vol/era/day line.
+// Keeps StatusLeft kit-pure: it doesn't know which routes exist, the
+// caller wires them. See kanban #02.
+function StatusLeft({ snapshot, nav }) {
   if (!snapshot) return null;
   const m = snapshot.meta;
   return (
@@ -41,18 +45,30 @@ function StatusLeft({ snapshot }) {
       <div style={{
         position: 'relative',
         padding: '10px 16px',
-        display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap',
+        display: 'flex', flexDirection: 'column', gap: 6,
       }}>
-        <span style={{ fontFamily: SERIF, fontSize: 18, color: '#e8dfc8', letterSpacing: '0.04em' }}>
-          vol&nbsp;{String(m.volume || 1).padStart(2, '0')}
-        </span>
-        <span style={{ width: 1, height: 12, background: '#3a342a', alignSelf: 'center' }} />
-        <span style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 14, color: '#c8c1ad' }}>
-          {eraName(m.volume)}
-        </span>
-        <span style={{ fontFamily: MONO, fontSize: 10, color: '#7a7060', letterSpacing: '0.08em' }}>
-          {dayText(m)}
-        </span>
+        <div style={{
+          display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontFamily: SERIF, fontSize: 18, color: '#e8dfc8', letterSpacing: '0.04em' }}>
+            vol&nbsp;{String(m.volume || 1).padStart(2, '0')}
+          </span>
+          <span style={{ width: 1, height: 12, background: '#3a342a', alignSelf: 'center' }} />
+          <span style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 14, color: '#c8c1ad' }}>
+            {eraName(m.volume)}
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: '#7a7060', letterSpacing: '0.08em' }}>
+            {dayText(m)}
+          </span>
+        </div>
+        {nav && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
+            marginLeft: -6,  // bleed the chip's 6px padding back to the panel edge
+          }}>
+            {nav}
+          </div>
+        )}
       </div>
     </DarkPanel>
   );

@@ -6,15 +6,12 @@
 //   2. A short ember-colored bar in the left gutter of the latest entry.
 //   3. A small pixel-art eye sigil next to "kept by Nigehbān" — he watches.
 
-const _chSerif   = '"IM Fell English", serif';
-const _chSerifSC = '"IM Fell DW Pica SC", serif';
-
-// Inks tuned for dark background.
-const _CH_TITLE = '#e8dfc8';
-const _CH_BODY  = '#c8c1ad';
-const _CH_FAINT = '#7a7060';
-const _CH_DIM   = '#3a342a';
-const _CH_EMBER = '#c89058';
+// Inks + fonts come from the kit (window.SHROOM_TOKENS). The old
+// _CH_TITLE / _CH_BODY / _CH_FAINT / _CH_DIM / _CH_EMBER aliases were
+// retired in the #05 sweep — read straight from COL.* now.
+const { COL, SERIF_BODY, SERIF } = window.SHROOM_TOKENS;
+const _chSerif   = SERIF_BODY;
+const _chSerifSC = SERIF;
 
 // Roman lowercase day numbers (1 → "i", 12 → "xii", etc). Day 0 shows
 // as "0" so dawn entries on a fresh world don't render as bare "day".
@@ -72,8 +69,8 @@ function NigehbanEye() {
     <PIX.PixelStage w={7} h={5} scale={2}
       deps={[]}
       draw={(pb) => {
-        const ink = _CH_FAINT;
-        const pup = _CH_EMBER;
+        const ink = COL.dim;
+        const pup = COL.ember;
         // Outline (almond shape)
         pb.rect(1, 0, 5, 1, ink);
         pb.rect(0, 1, 7, 1, ink);
@@ -98,7 +95,7 @@ function ChronicleCursor() {
       display: 'inline-block',
       width: '0.5em', height: '1em',
       marginLeft: 2, verticalAlign: '-0.15em',
-      background: _CH_EMBER,
+      background: COL.ember,
       animation: 'chronicle-blink 1.05s steps(2, end) infinite',
     }} />
   );
@@ -111,7 +108,7 @@ if (typeof document !== 'undefined' && !document.getElementById('chronicle-style
   s.textContent = `
     @keyframes chronicle-blink { 0%, 50% { opacity: 1 } 50.01%, 100% { opacity: 0 } }
     .chronicle-body::-webkit-scrollbar { width: 6px }
-    .chronicle-body::-webkit-scrollbar-thumb { background: ${_CH_DIM}; border-radius: 3px }
+    .chronicle-body::-webkit-scrollbar-thumb { background: ${COL.divider}; border-radius: 3px }
     .chronicle-body::-webkit-scrollbar-track { background: transparent }
   `;
   document.head.appendChild(s);
@@ -121,7 +118,7 @@ function Chronicle({ entries }) {
   if (!entries) {
     return (
       <DarkPanel seed={11} elevation={3} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-        <div style={{ position: 'relative', padding: 24, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 14, color: _CH_FAINT }}>
+        <div style={{ position: 'relative', padding: 24, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 14, color: COL.dim }}>
           loading…
         </div>
       </DarkPanel>
@@ -130,7 +127,7 @@ function Chronicle({ entries }) {
   if (entries.length === 0) {
     return (
       <DarkPanel seed={11} elevation={3} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-        <div style={{ position: 'relative', padding: 24, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 15, color: _CH_BODY }}>
+        <div style={{ position: 'relative', padding: 24, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 15, color: COL.textMid }}>
           khaamoshi <span style={{ fontFamily: '"Noto Nastaliq Urdu", serif', fontSize: 18 }}>خاموشی</span> — he has not yet written.
           <ChronicleCursor />
         </div>
@@ -143,20 +140,20 @@ function Chronicle({ entries }) {
     <DarkPanel seed={11} elevation={3} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
       <div className="chronicle-body" style={{
         position: 'relative', padding: '16px 18px 14px', height: '100%', overflowY: 'auto',
-        fontFamily: _chSerif, color: _CH_BODY,
+        fontFamily: _chSerif, color: COL.textMid,
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-          <h2 style={{ fontFamily: _chSerifSC, fontSize: 18, margin: 0, color: _CH_TITLE, letterSpacing: '0.04em', fontWeight: 'normal' }}>
+          <h2 style={{ fontFamily: _chSerifSC, fontSize: 18, margin: 0, color: COL.textHi, letterSpacing: '0.04em', fontWeight: 'normal' }}>
             Chronicle
           </h2>
-          <span style={{ fontFamily: _chSerif, fontSize: 11, fontStyle: 'italic', color: _CH_FAINT, display: 'inline-flex', alignItems: 'center' }}>
+          <span style={{ fontFamily: _chSerif, fontSize: 11, fontStyle: 'italic', color: COL.dim, display: 'inline-flex', alignItems: 'center' }}>
             <NigehbanEye />
             kept by Nigehbān
           </span>
         </div>
         <div style={{
           height: 1, margin: '8px 0 14px',
-          background: `linear-gradient(to right, transparent, ${_CH_DIM} 20%, ${_CH_DIM} 80%, transparent)`,
+          background: `linear-gradient(to right, transparent, ${COL.divider} 20%, ${COL.divider} 80%, transparent)`,
         }} />
 
         {ordered.map((e, i) => {
@@ -166,15 +163,15 @@ function Chronicle({ entries }) {
               {isLatest && (
                 <span style={{
                   position: 'absolute', left: 0, top: 4, bottom: 4,
-                  width: 2, background: _CH_EMBER, opacity: 0.55,
+                  width: 2, background: COL.ember, opacity: 0.55,
                 }} />
               )}
-              <div style={{ fontFamily: _chSerifSC, fontSize: 10, color: isLatest ? _CH_EMBER : _CH_FAINT, letterSpacing: '0.16em', marginBottom: 3 }}>
+              <div style={{ fontFamily: _chSerifSC, fontSize: 10, color: isLatest ? COL.ember : COL.dim, letterSpacing: '0.16em', marginBottom: 3 }}>
                 day {roman(e.day)}
                 {(() => { const h = hourOfSimDay(e.tick); return h != null ? ` · ${h}h` : ''; })()}
                 {e.reason && e.reason !== 'periodic' ? ` · ${e.reason}` : ''}
               </div>
-              <div style={{ fontFamily: _chSerif, fontStyle: 'italic', fontSize: 14, lineHeight: 1.5, color: isLatest ? _CH_TITLE : _CH_BODY, textWrap: 'pretty' }}>
+              <div style={{ fontFamily: _chSerif, fontStyle: 'italic', fontSize: 14, lineHeight: 1.5, color: isLatest ? COL.textHi : COL.textMid, textWrap: 'pretty' }}>
                 {renderEntryText(e.text)}
                 {isLatest && <ChronicleCursor />}
               </div>
@@ -182,7 +179,7 @@ function Chronicle({ entries }) {
           );
         })}
         <div style={{ marginTop: 10, textAlign: 'right' }}>
-          <span style={{ fontFamily: _chSerifSC, fontSize: 11, color: _CH_FAINT, letterSpacing: '0.08em' }}>— Nigehbān</span>
+          <span style={{ fontFamily: _chSerifSC, fontSize: 11, color: COL.dim, letterSpacing: '0.08em' }}>— Nigehbān</span>
         </div>
       </div>
     </DarkPanel>

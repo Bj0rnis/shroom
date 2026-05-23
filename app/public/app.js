@@ -1,6 +1,6 @@
 const { useEffect, useState } = React;
 
-function TopColony({ snapshot }) {
+function TopColony({ snapshot, onHoverColony, hoveredColonyId }) {
   const TICKS_PER_DAY = 28800;
   const coloniesByKey = snapshot.colonies || {};
   const top = Object.entries(coloniesByKey)
@@ -36,18 +36,33 @@ function TopColony({ snapshot }) {
                 cap_size:    c.capSize,
                 stem_length: c.stemLength,
               };
+              const isHovered = hoveredColonyId === c.key;
               return (
-                <li key={c.key || i} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '14px 24px 1fr',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontFamily: mono, fontSize: 10,
-                }}>
+                <li key={c.key || i}
+                  onMouseEnter={() => onHoverColony && onHoverColony(c.key)}
+                  onMouseLeave={() => onHoverColony && onHoverColony(null)}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '14px 24px 1fr',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontFamily: mono, fontSize: 10,
+                    cursor: 'pointer',
+                    // Subtle ember tint on the rail row when the bloom is
+                    // active on the canvas — closes the connection loop.
+                    background: isHovered ? 'rgba(200, 144, 88, 0.06)' : 'transparent',
+                    transition: 'background 120ms ease',
+                    margin: '0 -6px', padding: '2px 6px',
+                  }}>
                   <span style={{ color: '#5a5240' }}>{i + 1}.</span>
                   <HallMushroom entry={entry} size={24} glow={false} />
                   <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <span style={{ fontFamily: serif, fontSize: 13, color: c.name ? '#e8dfc8' : '#7a7060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.1 }}>
+                    <span style={{
+                      fontFamily: serif, fontSize: 13,
+                      color: isHovered ? '#c89058' : (c.name ? '#e8dfc8' : '#7a7060'),
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.1,
+                      transition: 'color 120ms ease',
+                    }}>
                       {displayName}
                     </span>
                     <span style={{ color: '#5a5240', fontSize: 9, letterSpacing: '0.04em', marginTop: 2 }}>
@@ -104,6 +119,10 @@ function App() {
 
   const [devOpen, setDevOpen] = useState(false);
   const [hallOpen, setHallOpen] = useState(false);
+  // Rail-row → canvas-bloom hover link (kanban #03). The colony key is
+  // the same string used in snapshot.colonies, so a quick equality check
+  // in TopColony tells each row whether it's the active one.
+  const [hoveredColonyId, setHoveredColonyId] = useState(null);
 
   if (!world || !snapshot) {
     return (
@@ -124,7 +143,7 @@ function App() {
           ShroomCanvas centers itself and maintains 16:9 within this
           flex item. At 1440px wide: canvas gets ~1116px → 627px tall. */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        <ShroomCanvas snapshot={snapshot} />
+        <ShroomCanvas snapshot={snapshot} hoveredColonyId={hoveredColonyId} />
       </div>
 
       {/* ── Right panel — fixed-width column beside the canvas ────────
@@ -149,7 +168,11 @@ function App() {
         <div style={{ flex: 1, minHeight: 80, overflow: 'hidden' }}>
           <Chronicle entries={journal?.entries} />
         </div>
-        <TopColony snapshot={snapshot} />
+        <TopColony
+          snapshot={snapshot}
+          onHoverColony={setHoveredColonyId}
+          hoveredColonyId={hoveredColonyId}
+        />
         <HallTrigger entries={hall?.entries} onOpen={() => setHallOpen(true)} />
         <StatusRight snapshot={snapshot} />
       </div>

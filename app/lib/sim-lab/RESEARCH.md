@@ -126,3 +126,89 @@ starting point for the next iter cycle.
 
 Live world still uses `randomGenome()` — natural variance preserved
 outside the lab.
+
+#### Latest park (sim-lab/02 iter-37 · merged via PR #36)
+
+Apical-dominance + faster-leaders config achieved the strongest Vision 1
+results yet — `aggregate 14/35`, `multipleDescents 3/5`, shape max 0.446
+on seed 1337. The painting's two-column geometry now lands on three of
+five seeds. See NOTES.md iter-27..37 for the arc.
+
+Vision 1 is **not yet achieved** — shape median 0.205 vs threshold 0.60;
+`modestSize` and `descended` still fail on lean seeds. Mechanic class is
+correct; the remaining gap is colony size on lean substrate.
+
+---
+
+## Vision 2 — Week-long persistence (proposed, 2026-05-23)
+
+**Trigger:** an extended-window observation on the iter-37 parked config
+([`grow-extended.js`](grow-extended.js)) showed every seed produces a
+beautiful day-1 painting and then *collapses by day 2-3*. Founders die,
+auto-bootstrap drops fresh spores, the surface looks alive but no single
+colony actually persists. The day-2 cliff happens because leaders senesce
+at LIFESPAN=120 extensions and the non-leader extension rate (0.012) can't
+replace what dies — the network just retracts.
+
+Observed (parked iter-37):
+
+| seed | day 1 cells | day 2 | day 3 |
+|---|---|---|---|
+| 1337 | 148 (2 descents, depth 8) | 4 | 2 |
+| 555 | 15 (depth 12) | founder dead | founder dead |
+
+The collapse is **pre-existing** — iter-25 main also dies by day 3; the
+older liquid-mat configs all show the same pattern. Vision 1's 28800-tick
+window is too short to see it.
+
+**the maintainer's call (2026-05-23):** "A colony should survive for a long time."
+This is a real shroom-world requirement, not an artifact of measurement.
+
+### Painting (target)
+
+No new painting yet — the spec is functional: at day 7, the founder
+colony is still alive, has held a meaningful size, and the shape that
+landed at day 1 hasn't been dismantled to bare threads.
+
+### Numeric scorers (sketch)
+
+| target | criterion | reason |
+|---|---|---|
+| `survivesToWeek` | founder colony still `alive` at tick 7 × 28800 | the basic "didn't die" |
+| `nonTrivialAtWeek` | founder cells ≥ 150 at day 7 (Vision 1's modestSize floor) | not just one surviving cell |
+| `shapeStillHolds` | shape match at day 7 ≥ Vision 1's day-1 threshold | the painting wasn't temporary |
+| `noAutoBootstrap` | `AUTO_BOOTSTRAP_AFTER_TICKS` was never triggered during the run | founder must persist on its own merit, not via succession |
+
+### Cost
+
+Lab runs become ~7× longer. At ~85 sec/sim-day, a 7-day single-seed run
+is ~10 minutes; a 5-seed sweep is ~50 minutes per iteration. The
+iteration loop slows from minutes to ~an hour per move. The signal is
+worth the time — persistence is load-bearing for the live world.
+
+### Suggested first moves (for the next session)
+
+The mechanic likely needs a **lifespan-renewal path**:
+
+- Currently every leader senesces after LIFESPAN extensions with no
+  replacement; once all leaders are gone the colony is locked in retreat.
+- The bifurcation-promoted leaders refresh the pool *while leaders exist*
+  but can't kickstart it from zero.
+- A *cell-lineage renewal* mechanic (a static cell at the frontier can
+  re-promote to leader at low probability when the colony has no active
+  leaders) would let the network keep extending past the LIFESPAN wall.
+
+Hypothesis buffet starting points:
+
+1. **Cell-lineage renewal** — non-leader extension creates a fresh leader
+   if `col.leaders.length === 0` and the cell is on the colony perimeter.
+2. **LIFESPAN gated by reserves** — leaders that still have reserves to
+   spend don't senesce. Burns less arbitrary, more biological.
+3. **Apical-tip relay** — when a leader senesces, the most recently
+   bifurcated child inherits its leader status. Already partial; make it
+   guaranteed instead of probabilistic.
+4. **Slow non-leader extension** isn't slow — it's *zero* once leaders are
+   all gone. Audit: does any growth happen post-leader-extinction?
+
+Status: **not started.** Pick this up after Vision 1 is closer to
+shipping or as a parallel track.

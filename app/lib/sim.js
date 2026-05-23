@@ -88,7 +88,15 @@ const APICAL_DOMINANCE_RADIUS = 15;  // sim-lab iter-33: was 5, aggressive separ
 // inherit the frontier. When all leaders senesce, growth halts until a new
 // frontier cell is lazily promoted — which only happens after one of the
 // senesced cells eventually dies. Sim-lab iter-5.
-const LEADER_LIFESPAN          = 120;   // sim-lab iter-25: was 60, give leaders more reach under THICKNESS_MAX=2 (iter-35 no-op: bump to 200 had zero effect)
+const LEADER_LIFESPAN          = 120;   // sim-lab iter-25: was 60, give leaders more reach under THICKNESS_MAX=2 (iter-35 no-op: bump to 200 had zero effect; sim-lab/03 iter-7 also no-op)
+
+// Cell-lineage renewal (sim-lab/03 iter-4). When all leaders senesce, the
+// colony enters retreat — interior cells can't extend (no free neighbors)
+// and the lazy revival on the first iterated cell wastes itself on an
+// interior. This gates revival to *frontier* cells (freeCount >= 3) and
+// resets their age so the renewed leader actually grows. Without this
+// the day-2 collapse is inevitable.
+const LEADER_REVIVAL_MIN_FREE   = 3;     // frontier requirement on revival
 
 // ── Colony carrying capacity ────────────────────────────
 // A soft cap on colony size — the brake the leader mechanic alone couldn't
@@ -534,7 +542,18 @@ function growHyphae(world) {
     //   leader-die-off. Gated on col.reserves: each new cell costs EXTEND_COST.
     if (!col.leaders) col.leaders = [];
     if (!col.leaderExt) col.leaderExt = [];
-    if (col.leaders.length === 0) { col.leaders.push(i); col.leaderExt.push(0); }
+    // Cell-lineage renewal: lazy revival is gated on freeCount so an
+    // interior cell can't claim leadership and stall. Also reset age so
+    // the renewed leader's extension rate isn't already dead from
+    // exp(-age/TIP_AGE_DECAY). The very first revival (founder bootstrap)
+    // fires immediately; subsequent re-revivals after a full leader die-off
+    // are rate-limited so the colony recovers gradually instead of
+    // boom-busting through clustered leader cohorts.
+    if (col.leaders.length === 0 && freeCount >= LEADER_REVIVAL_MIN_FREE) {
+      col.leaders.push(i);
+      col.leaderExt.push(0);
+      age[i] = 0;
+    }
     const leaderIdx = col.leaders.indexOf(i);
     const isLeader  = leaderIdx >= 0;
 
@@ -1255,6 +1274,7 @@ function autoBootstrap(world) {
     if (id) {
       const emptyHours = (world.meta.emptyTicks / TICKS_PER_HOUR).toFixed(1);
       logEvent(world, 'auto-sow', `world re-seeded after ${emptyHours} h empty`);
+      if (world.meta.lifetime) world.meta.lifetime.autoBootstraps++;
       return true;
     }
   }

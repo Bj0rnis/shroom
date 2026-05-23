@@ -127,20 +127,42 @@ starting point for the next iter cycle.
 Live world still uses `randomGenome()` — natural variance preserved
 outside the lab.
 
-#### Latest park (sim-lab/02 iter-37 · merged via PR #36)
+#### Latest park (sim-lab/03 iter-10)
 
-Apical-dominance + faster-leaders config achieved the strongest Vision 1
-results yet — `aggregate 14/35`, `multipleDescents 3/5`, shape max 0.446
-on seed 1337. The painting's two-column geometry now lands on three of
-five seeds. See NOTES.md iter-27..37 for the arc.
+Founder gets a 50-reserve head start at sow (was 0) — solves the
+lean-seed bootstrap stall. Combined with the iter-4 frontier-revival
+bugfix (renewal of leaders when the cohort senesces), the day-1 painting
+now lands at painting volume on 4 of 5 seeds. Aggregate **22/35** (up
+from 14-19/35 at iter-37).
 
-Vision 1 is **not yet achieved** — shape median 0.205 vs threshold 0.60;
-`modestSize` and `descended` still fail on lean seeds. Mechanic class is
-correct; the remaining gap is colony size on lean substrate.
+| scorer | iter-37 | iter-10 |
+|---|---|---|
+| shape | 0/5 (med 0.205, max 0.446) | 0/5 (med 0.165, max 0.191) |
+| modestSize | 1/5 | **4/5** |
+| soilDispersion | 3/5 | 3/5 |
+| descended | 2/5 | 3/5 |
+| multipleDescents | 3/5 | 3/5 |
+| noPrematureFruit | 5/5 | 4/5 |
+| notSaturated | 5/5 | 5/5 |
+
+Per-seed: 42=5/7 (was 3/7), 1337=3/7 (was 5/7), 314=**6/7** (best-ever
+on the branch), 271=5/7, 555=3/7.
+
+Vision 1 is **not yet achieved** — shape median 0.165 vs threshold 0.60.
+The colonies are now painting-sized but still single-bundle in geometry,
+not the painting's two-column root system. Mechanic class is correct;
+the remaining gap is structural (lateral spread), not volumetric.
+
+#### Earlier park (sim-lab/02 iter-37 · merged via PR #36)
+
+Apical-dominance + faster-leaders config — aggregate 14/35,
+multipleDescents 3/5, shape max 0.446 on seed 1337. The painting's
+two-column geometry landed on three of five seeds but no seed reached
+painting volume on lean substrate. See NOTES.md iter-27..37 for the arc.
 
 ---
 
-## Vision 2 — Week-long persistence (proposed, 2026-05-23)
+## Vision 2 — Week-long persistence (in progress, 2026-05-23)
 
 **Trigger:** an extended-window observation on the iter-37 parked config
 ([`grow-extended.js`](grow-extended.js)) showed every seed produces a
@@ -170,14 +192,24 @@ No new painting yet — the spec is functional: at day 7, the founder
 colony is still alive, has held a meaningful size, and the shape that
 landed at day 1 hasn't been dismantled to bare threads.
 
-### Numeric scorers (sketch)
+### Numeric scorers
+
+In `targets.js` as `VISION_2_PERSISTENCE`. Defined and wired (sim-lab/03
+iter-1). The shape threshold sits at 0.30 — half of Vision 1's 0.60 —
+because the painting comparison is structural and the week-old colony may
+have shifted laterally without losing its character.
 
 | target | criterion | reason |
 |---|---|---|
-| `survivesToWeek` | founder colony still `alive` at tick 7 × 28800 | the basic "didn't die" |
+| `survivesToWeek` | founder colony still `alive` at end-of-run | the basic "didn't die" |
 | `nonTrivialAtWeek` | founder cells ≥ 150 at day 7 (Vision 1's modestSize floor) | not just one surviving cell |
-| `shapeStillHolds` | shape match at day 7 ≥ Vision 1's day-1 threshold | the painting wasn't temporary |
-| `noAutoBootstrap` | `AUTO_BOOTSTRAP_AFTER_TICKS` was never triggered during the run | founder must persist on its own merit, not via succession |
+| `shapeStillHolds` | shape match at day 7 ≥ 0.30 | the painting wasn't temporary |
+| `noAutoBootstrap` | `lifetime.autoBootstraps === 0` for the whole run | founder must persist on its own merit, not via succession |
+
+The founder is identified by `pickFounderColony` (lowest `foundedTick`,
+i.e. the colony sown at tick 0 by the scenario setup), not by `pickFocalColony`
+(largest current colony) — succession would otherwise mask the founder's
+death by surfacing a child colony as "focal."
 
 ### Cost
 
@@ -210,5 +242,10 @@ Hypothesis buffet starting points:
 4. **Slow non-leader extension** isn't slow — it's *zero* once leaders are
    all gone. Audit: does any growth happen post-leader-extinction?
 
-Status: **not started.** Pick this up after Vision 1 is closer to
-shipping or as a parallel track.
+Status: **paused (2026-05-23, mid-session redirect).** Scaffolding shipped
+in sim-lab/03 iter-1 (scorers, `pickFounderColony`, persistence config,
+auto-bootstrap counter). The frontier-revival fix (iter-4) addressed a real
+bug in the leader code that *would* have masked Vision 2 results — that
+fix stays in `sim.js`. Active optimisation against Vision 2 is paused
+until Vision 1 is closer to shipping. the maintainer's call: extending the test
+window past day 1 introduces noise when day-1 isn't load-bearing yet.

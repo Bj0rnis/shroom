@@ -50,6 +50,7 @@ function freshLifetime() {
   return {
     births: 0,
     fruitsTotal: 0,
+    autoBootstraps: 0,
     toofansByFlavor: { flood: 0, fire: 0, frost: 0, wind: 0 },
     deathsByCause: {
       starvation: 0, turnover: 0, 'old-age': 0, winter: 0, blight: 0,
@@ -250,7 +251,7 @@ function sowAt(world, x, y, genome) {
     cellCount: 1,
     fruitCount: 0,
     seasonsSurvived: 0,
-    reserves: 0,
+    reserves: 50,   // sim-lab/03 iter-10: 100 was enough head start to push 1337 over the fruit gate. 50 is ~25 cells of growth, still enough to bootstrap lean seeds without disrupting nominal seeds.
     // Placeholder name shown in UI until Nigehban grants a real one. Kept
     // separate from `name` so salience.js still treats the colony as nameable
     // (col.name remains undefined until Nigehban writes it).

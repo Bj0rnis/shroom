@@ -25,13 +25,13 @@ function roman(n) {
   return String(n);
 }
 
-// Sim-clock constants for hour-of-day labels. Mirror lib/time.js.
-const _CHRON_TICK_MS       = 3000;
-const _CHRON_TICKS_PER_HR  = (60 * 60 * 1000) / _CHRON_TICK_MS;
-const _CHRON_TICKS_PER_DAY = 24 * _CHRON_TICKS_PER_HR;
-function hourOfSimDay(tick) {
+// Sim-clock helper for hour-of-day labels. ticksPerDay comes from the
+// snapshot meta (kanban #06); the per-hour divisor falls out of /24.
+function hourOfSimDay(tick, ticksPerDay) {
   if (typeof tick !== 'number') return null;
-  return Math.floor((tick % _CHRON_TICKS_PER_DAY) / _CHRON_TICKS_PER_HR);
+  const tpd = ticksPerDay || 28800;
+  const tpHour = tpd / 24;
+  return Math.floor((tick % tpd) / tpHour);
 }
 
 // Nastaliq glyphs render bigger at the same fontSize because of tall
@@ -114,7 +114,7 @@ if (typeof document !== 'undefined' && !document.getElementById('chronicle-style
   document.head.appendChild(s);
 }
 
-function Chronicle({ entries }) {
+function Chronicle({ entries, ticksPerDay }) {
   if (!entries) {
     return (
       <DarkPanel seed={11} elevation={3} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
@@ -168,7 +168,7 @@ function Chronicle({ entries }) {
               )}
               <div style={{ fontFamily: _chSerifSC, fontSize: 10, color: isLatest ? COL.ember : COL.dim, letterSpacing: '0.16em', marginBottom: 3 }}>
                 day {roman(e.day)}
-                {(() => { const h = hourOfSimDay(e.tick); return h != null ? ` · ${h}h` : ''; })()}
+                {(() => { const h = hourOfSimDay(e.tick, ticksPerDay); return h != null ? ` · ${h}h` : ''; })()}
                 {e.reason && e.reason !== 'periodic' ? ` · ${e.reason}` : ''}
               </div>
               <div style={{ fontFamily: _chSerif, fontStyle: 'italic', fontSize: 14, lineHeight: 1.5, color: isLatest ? COL.textHi : COL.textMid, textWrap: 'pretty' }}>

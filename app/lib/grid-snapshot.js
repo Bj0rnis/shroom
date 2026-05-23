@@ -3,6 +3,7 @@
 // Polled at ~1 Hz; payload is ~200 KB raw. Tight enough for local + Tailscale.
 
 const { mutate } = require('./genome'); // no-op import to keep tree-shake honest
+const { TICKS_PER_DAY } = require('./time');
 
 function packBytes(typedArr) {
   return Buffer.from(typedArr.buffer, typedArr.byteOffset, typedArr.byteLength).toString('base64');
@@ -55,7 +56,10 @@ function buildGridSnapshot(world) {
   }
 
   return {
-    meta: world.meta,
+    // ticksPerDay rides along in meta so every client surface (canvas,
+    // chronicle, status strips, TopColony) can read the sim-time anchor
+    // from one place instead of duplicating the literal. Kanban #06.
+    meta: { ...world.meta, ticksPerDay: TICKS_PER_DAY },
     shape: world.shape,
     kind:     packBytes(kind),
     colony:   packBytes(colony),       // Uint16Array — colony id per cell

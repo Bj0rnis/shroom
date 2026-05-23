@@ -732,7 +732,7 @@ function ShroomCanvas({ snapshot, hoveredColonyId }) {
           width: '100%',
           height: '100%',
           imageRendering: 'pixelated',
-          background: '#0a0908',
+          background: COL.inkDeep,
         }}
       />
     </div>

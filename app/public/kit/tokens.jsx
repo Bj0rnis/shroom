@@ -193,10 +193,14 @@ const SANS      = '"IBM Plex Sans", system-ui, sans-serif';
 const COL = {
   text:     '#d4cdb8',
   textHi:   '#e8dfc8',
+  textMid:  '#c8c1ad',    // between text and text2 — body register
   text2:    '#a89a78',
   dim:      '#7a7060',
+  dimLo:    '#5a5240',    // between dim and faint — meta/captions
   faint:    '#52483c',
+  divider:  '#3a342a',    // panel dividers, hairline separators
   ink:      '#1a1612',
+  inkDeep:  '#0a0908',    // canvas backstop / deepest page bg
   ember:    '#c89058',
   emberHi:  '#e8b878',
   emberLo:  '#90603a',
@@ -209,6 +213,7 @@ const COL = {
   log:      '#6e4c1c',
   soil:     '#3a2a18',
   grass:    '#4c6230',
+  grassHi:  '#9dc488',    // sunlit grass / spring overlay
   air:      '#2a2620',
   flood:    '#6a9ec4',
   fire:     '#d87a48',

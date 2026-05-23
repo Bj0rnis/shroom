@@ -57,6 +57,14 @@ to free space — they're regenerable. The lab never touches the live world.
 Verify after deploy: `docker logs shroom | tail -10`. Look for `loaded world.json`
 and the tick number. A clean restart picks up from the last saved tick.
 
+**Fresh-world wipe — order matters.** To start a fresh sim you must
+`docker compose stop shroom` *before* removing `data/shroom/current/`. The
+server saves world.json on graceful shutdown, so `docker compose up
+--build` (which gracefully stops the old container before swapping
+images) will resurrect a wiped world during shutdown. The safe order is:
+`stop` → `rm current/world.json current/journal.json` → `up -d`. Build
+ahead of time if needed; `--build` is fine on the second `up`.
+
 ---
 
 ## No bundler
@@ -119,14 +127,24 @@ the interior holds. Recovery is 4× faster than buildup — if any tip finds
 fresh ground, the streak unwinds. See `BALANCE.md` for the rationale and
 any future revisions.
 
-Branching is controlled by the `freeCount` probability tiers in `growHyphae`:
-- `freeCount >= 3` (tip): 30% base extension chance
-- `freeCount === 2` (junction): 14% base extension chance
-- `freeCount <= 1` (interior): 2% base extension chance
+Growth is leader-driven (sim-lab/01). Each colony tracks up to
+`MAX_LEADERS_PER_COLONY = 5` "leader" cells — the active exploring tips.
+Leaders extend at `LEADER_EXTEND_PROB = 0.15` (tip, freeCount ≥ 3) or
+`LEADER_EXTEND_JUNCTION = 0.05` (junction, freeCount = 2). Every other cell
+in the network extends at the much slower `NON_LEADER_EXTEND_PROB = 0.012`
+and `NON_LEADER_EXTEND_JUNC = 0.002`. On extension, leadership *moves* to the
+new cell — the parent becomes static transport infrastructure. Apical
+dominance forbids a new bif-born leader within `APICAL_DOMINANCE_RADIUS = 15`
+cells of another leader, forcing spatial separation between concurrent
+descents. Leaders senesce after `LEADER_LIFESPAN = 120` extensions.
 
-Tips also have a 40% chance of bifurcation (`TIP_BIFURCATION_PROB`) — extending
-in two directions in one tick to produce Y-shaped branches. Tuned for
-"roots, not worms"; first Y-branch appears around cell ~8 on a healthy colony.
+Bifurcation produces Y-shaped branches: when a leader extends, it rolls a
+second extension into a different free neighbour at `TIP_BIFURCATION_PROB =
+0.30` (above grass) or `TIP_BIFURCATION_PROB_SOIL = 0.55` (in soil — added
+sim-lab/04 for lattice formation). In soil the bif-child also gets a 4×
+weight bias toward neighbours perpendicular to the parent's move — that's
+what produces the painting's lateral lacework instead of a fat single
+bundle.
 
 All growth is multiplied by `growthRate` (genome) and `seasonMult` (season).
 Winter suppresses growth significantly; spring amplifies it.

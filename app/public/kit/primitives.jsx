@@ -151,8 +151,8 @@ function LoadingPassage({ message = 'the world stirs.' }) {
 function Stat({ label, v, warn }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-      <span style={{ color: '#5a5240', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</span>
-      <span style={{ color: warn ? '#c89058' : '#c8c1ad', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{v}</span>
+      <span style={{ color: COL.dimLo, fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</span>
+      <span style={{ color: warn ? COL.ember : COL.textMid, fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{v}</span>
     </span>
   );
 }

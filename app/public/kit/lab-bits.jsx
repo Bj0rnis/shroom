@@ -17,7 +17,7 @@ function LabCanvas({ snapshot }) {
     return (
       <div style={{
         width: '100%', aspectRatio: '320 / 180',
-        background: '#0a0908',
+        background: COL.inkDeep,
         fontFamily: MONO, color: COL.dim, fontSize: 11,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
@@ -100,7 +100,7 @@ function AsciiGrid({ ascii }) {
   return (
     <pre style={{
       fontFamily: MONO, fontSize: 9, lineHeight: 1.0,
-      color: COL.text, background: '#0a0908',
+      color: COL.text, background: COL.inkDeep,
       padding: 10, margin: 0,
       whiteSpace: 'pre', overflowX: 'auto',
       border: `1px solid ${COL.faint}`,
@@ -191,7 +191,7 @@ function TimeseriesTable({ samples }) {
     <div style={{ maxHeight: 240, overflowY: 'auto' }}>
       <table style={{ borderCollapse: 'collapse', fontFamily: MONO, fontSize: 10, color: COL.text, width: '100%' }}>
         <thead>
-          <tr style={{ color: COL.dim, textAlign: 'right', position: 'sticky', top: 0, background: '#0a0908' }}>
+          <tr style={{ color: COL.dim, textAlign: 'right', position: 'sticky', top: 0, background: COL.inkDeep }}>
             <th style={{ padding: '4px 8px', textAlign: 'left' }}>day</th>
             <th style={{ padding: '4px 8px' }}>colonies</th>
             <th style={{ padding: '4px 8px' }}>hyphae</th>

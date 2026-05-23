@@ -8,12 +8,9 @@
 
 const { MONO, SERIF, SERIF_RUN, SERIF_BODY, SANS, COL } = window.SHROOM_TOKENS;
 
-// ── Palette shortcuts (hall) ──────────────────────────────────────────────
-const H_TITLE  = '#e8dfc8';
-const H_BODY   = '#c8c1ad';
-const H_FAINT  = '#7a7060';
-const H_DIM    = '#3a342a';
-const H_EMBER  = '#c89058';
+// Palette shortcuts removed in #05 sweep — use COL.* directly. The old
+// H_TITLE / H_BODY / H_FAINT / H_DIM / H_EMBER mapped to
+// COL.textHi / COL.textMid / COL.dim / COL.divider / COL.ember.
 
 // ── hsl → [r, g, b] ──────────────────────────────────────────────────────
 function _hsl(h, s, l) {
@@ -33,11 +30,11 @@ function HallMark() {
     <PIX.PixelStage w={7} h={8} scale={2}
       deps={[]}
       draw={(pb) => {
-        pb.rect(0, 1, 7, 4, '#1a160f');
-        pb.rect(1, 1, 5, 1, H_FAINT);
-        pb.rect(0, 2, 7, 2, H_FAINT);
-        pb.rect(3, 4, 1, 2, H_BODY);
-        pb.rect(0, 7, 7, 1, H_DIM);
+        pb.rect(0, 1, 7, 4, COL.ink);
+        pb.rect(1, 1, 5, 1, COL.dim);
+        pb.rect(0, 2, 7, 2, COL.dim);
+        pb.rect(3, 4, 1, 2, COL.textMid);
+        pb.rect(0, 7, 7, 1, COL.divider);
       }}
       style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 6, imageRendering: 'pixelated' }}
     />
@@ -165,7 +162,7 @@ function HallMushroom({ entry, size = 84, pixelScale, glow = true }) {
 function HallTrigger({ entries, onOpen }) {
   const count = entries ? entries.length : 0;
   return (
-    <DarkPanel seed={13} style={{ color: H_BODY, flexShrink: 0 }}>
+    <DarkPanel seed={13} style={{ color: COL.textMid, flexShrink: 0 }}>
       <button
         type="button"
         onClick={onOpen}
@@ -179,14 +176,14 @@ function HallTrigger({ entries, onOpen }) {
         }}
       >
         <HallMark />
-        <span style={{ fontFamily: SERIF, fontSize: 13, color: H_TITLE, letterSpacing: '0.06em' }}>
+        <span style={{ fontFamily: SERIF, fontSize: 13, color: COL.textHi, letterSpacing: '0.06em' }}>
           Hall of fame
         </span>
-        <span style={{ fontFamily: MONO, fontSize: 9, color: H_FAINT, letterSpacing: '0.12em' }}>
+        <span style={{ fontFamily: MONO, fontSize: 9, color: COL.dim, letterSpacing: '0.12em' }}>
           · {count} inscribed
         </span>
         <span style={{ flex: 1 }} />
-        <span style={{ fontFamily: MONO, fontSize: 10, color: H_FAINT }}>open →</span>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: COL.dim }}>open →</span>
       </button>
     </DarkPanel>
   );
@@ -204,28 +201,28 @@ function HallModal({ open, entries, onClose, onSelect }) {
         width: 'min(720px, 92vw)', height: 'min(560px, 86vh)',
         display: 'flex', flexDirection: 'column',
       }}>
-        <DarkPanel seed={15} style={{ width: '100%', height: '100%', overflow: 'hidden', color: H_BODY }}>
+        <DarkPanel seed={15} style={{ width: '100%', height: '100%', overflow: 'hidden', color: COL.textMid }}>
           <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
             <div style={{
               padding: '14px 20px', display: 'flex', alignItems: 'baseline', gap: 12,
-              borderBottom: `1px solid ${H_DIM}`,
+              borderBottom: `1px solid ${COL.divider}`,
             }}>
               <HallMark />
-              <span style={{ fontFamily: SERIF, fontSize: 18, color: H_TITLE, letterSpacing: '0.04em' }}>
+              <span style={{ fontFamily: SERIF, fontSize: 18, color: COL.textHi, letterSpacing: '0.04em' }}>
                 Hall of fame
               </span>
-              <span style={{ fontFamily: MONO, fontSize: 10, color: H_FAINT, letterSpacing: '0.12em' }}>
+              <span style={{ fontFamily: MONO, fontSize: 10, color: COL.dim, letterSpacing: '0.12em' }}>
                 · {list.length} inscribed
               </span>
               <span style={{ flex: 1 }} />
               <button onClick={onClose} style={{
-                background: 'transparent', border: 0, color: H_FAINT, cursor: 'pointer',
+                background: 'transparent', border: 0, color: COL.dim, cursor: 'pointer',
                 fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '4px 8px',
               }}>close ✕</button>
             </div>
             {list.length === 0 ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 15, color: H_FAINT }}>
+                fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 15, color: COL.dim }}>
                 no colony has yet been inscribed.
               </div>
             ) : (
@@ -241,16 +238,16 @@ function HallModal({ open, entries, onClose, onSelect }) {
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                       padding: 10, borderRadius: 2,
                       background: 'rgba(232, 223, 200, 0.04)',
-                      border: `1px solid ${H_DIM}`,
+                      border: `1px solid ${COL.divider}`,
                       cursor: 'pointer',
                       transition: 'background 120ms, border-color 120ms',
                     }}
-                    onMouseEnter={ev => { ev.currentTarget.style.background = 'rgba(232, 223, 200, 0.08)'; ev.currentTarget.style.borderColor = H_FAINT; }}
-                    onMouseLeave={ev => { ev.currentTarget.style.background = 'rgba(232, 223, 200, 0.04)'; ev.currentTarget.style.borderColor = H_DIM; }}
+                    onMouseEnter={ev => { ev.currentTarget.style.background = 'rgba(232, 223, 200, 0.08)'; ev.currentTarget.style.borderColor = COL.dim; }}
+                    onMouseLeave={ev => { ev.currentTarget.style.background = 'rgba(232, 223, 200, 0.04)'; ev.currentTarget.style.borderColor = COL.divider; }}
                   >
                     <HallMushroom entry={e} size={72} />
-                    <div style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 13, color: H_TITLE, textAlign: 'center' }}>{e.name}</div>
-                    <div style={{ fontFamily: MONO, fontSize: 9, color: H_FAINT, letterSpacing: '0.08em' }}>
+                    <div style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 13, color: COL.textHi, textAlign: 'center' }}>{e.name}</div>
+                    <div style={{ fontFamily: MONO, fontSize: 9, color: COL.dim, letterSpacing: '0.08em' }}>
                       vol {e.volume}
                     </div>
                   </button>
@@ -274,24 +271,24 @@ function HallDetail({ entry, onClose }) {
       <div onClick={e => e.stopPropagation()} style={{
         width: 'min(480px, 92vw)',
       }}>
-        <DarkPanel seed={17} style={{ width: '100%', overflow: 'hidden', color: H_BODY }}>
+        <DarkPanel seed={17} style={{ width: '100%', overflow: 'hidden', color: COL.textMid }}>
           <div style={{ position: 'relative', padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end' }}>
               <HallMushroom entry={entry} size={120} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 22, color: H_TITLE }}>{entry.name}</div>
-                <div style={{ fontFamily: MONO, fontSize: 10, color: H_FAINT, letterSpacing: '0.16em', textTransform: 'uppercase', marginTop: 4 }}>
+                <div style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 22, color: COL.textHi }}>{entry.name}</div>
+                <div style={{ fontFamily: MONO, fontSize: 10, color: COL.dim, letterSpacing: '0.16em', textTransform: 'uppercase', marginTop: 4 }}>
                   volume {entry.volume}{entry.phenotype ? ` · ${entry.phenotype}` : ''}
                 </div>
               </div>
             </div>
             {entry.reason && (
-              <div style={{ fontFamily: MONO, fontSize: 11, color: H_FAINT, letterSpacing: '0.05em' }}>
+              <div style={{ fontFamily: MONO, fontSize: 11, color: COL.dim, letterSpacing: '0.05em' }}>
                 cause: {entry.reason}
               </div>
             )}
             {entry.epitaph && (
-              <div style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 14, lineHeight: 1.55, color: H_TITLE }}>
+              <div style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 14, lineHeight: 1.55, color: COL.textHi }}>
                 "{entry.epitaph}"
               </div>
             )}
@@ -351,20 +348,20 @@ function DevDashboard({ open, onClose, onAction }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <DarkPanel seed={2} onClick={e => e.stopPropagation()} style={{
-        color: '#d4cdb8', width: '90%', maxWidth: 480,
+        color: COL.text, width: '90%', maxWidth: 480,
         maxHeight: '85vh', display: 'flex', flexDirection: 'column',
       }}>
         {/* header */}
         <div style={{
           position: 'relative',
           display: 'flex', alignItems: 'center', gap: 12,
-          padding: '14px 20px', borderBottom: '1px solid #2a261f',
+          padding: '14px 20px', borderBottom: `1px solid ${COL.air}`,
         }}>
-          <span style={{ width: 7, height: 7, background: '#c89058' }} />
+          <span style={{ width: 7, height: 7, background: COL.ember }} />
           <span style={{ fontFamily: SERIF, fontSize: 16, letterSpacing: '0.06em' }}>Tools</span>
-          <span style={{ fontFamily: MONO, fontSize: 10, color: '#5a5240' }}>· ⌘.</span>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: COL.dimLo }}>· ⌘.</span>
           <div style={{ flex: 1 }} />
-          {msg && <span style={{ fontFamily: MONO, fontSize: 10, color: msg === 'ok' ? '#8aaa78' : '#c87058' }}>{msg}</span>}
+          {msg && <span style={{ fontFamily: MONO, fontSize: 10, color: msg === 'ok' ? COL.grassHi : COL.danger }}>{msg}</span>}
           <button onClick={onClose} style={_dashBtn('ghost', { padding: '4px 10px', marginTop: 0 })}>esc</button>
         </div>
 
@@ -414,7 +411,7 @@ function DevDashboard({ open, onClose, onAction }) {
           </_DashSection>
 
           {status && (
-            <div style={{ fontFamily: MONO, fontSize: 10, color: '#5a5240', marginTop: 10, paddingTop: 10, borderTop: '1px dotted #2a261f' }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, color: COL.dimLo, marginTop: 10, paddingTop: 10, borderTop: `1px dotted ${COL.air}` }}>
               tickInterval {status.tickIntervalMs}ms · paused {String(!!status.paused)}
               {typeof status.nigehbanDisabled === 'boolean' ? ' · nigehban ' + (status.nigehbanDisabled ? 'off' : 'on') : ''}
             </div>
@@ -429,8 +426,8 @@ function DevDashboard({ open, onClose, onAction }) {
 
 function _DashSection({ label, children }) {
   return (
-    <div style={{ padding: '14px 0', borderBottom: '1px solid #2a261f' }}>
-      <div style={{ fontFamily: MONO, fontSize: 10, color: '#7a7060', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+    <div style={{ padding: '14px 0', borderBottom: `1px solid ${COL.air}` }}>
+      <div style={{ fontFamily: MONO, fontSize: 10, color: COL.dim, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
       {children}
     </div>
   );
@@ -441,18 +438,18 @@ function _Toggle({ k, v: initial, onChange }) {
   React.useEffect(() => setV(initial), [initial]);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 0' }}>
-      <span style={{ flex: 1, color: '#c8c1ad' }}>{k}</span>
+      <span style={{ flex: 1, color: COL.textMid }}>{k}</span>
       <button
         onClick={() => { const nv = !v; setV(nv); onChange && onChange(nv); }}
         style={{
-          width: 30, height: 16, border: '1px solid #3a342a',
+          width: 30, height: 16, border: `1px solid ${COL.divider}`,
           cursor: 'pointer', padding: 0,
-          background: v ? '#5a4632' : '#1f1c17', position: 'relative',
+          background: v ? COL.faint : COL.ink, position: 'relative',
         }}>
         <span style={{
           position: 'absolute', top: 2, left: v ? 16 : 2,
           width: 12, height: 12,
-          background: v ? '#c89058' : '#5a5240',
+          background: v ? COL.ember : COL.dimLo,
         }} />
       </button>
     </div>
@@ -465,14 +462,14 @@ function _Range({ k, v: initial, min, max, step, onChange, onCommit, fmt }) {
   return (
     <div style={{ padding: '8px 0' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
-        <span style={{ flex: 1, color: '#c8c1ad' }}>{k}</span>
-        <span style={{ fontFamily: MONO, fontSize: 10, color: '#a89a78' }}>{fmt ? fmt(v) : v}</span>
+        <span style={{ flex: 1, color: COL.textMid }}>{k}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: COL.text2 }}>{fmt ? fmt(v) : v}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={v}
         onChange={(e) => { const nv = +e.target.value; setV(nv); onChange && onChange(nv); }}
         onMouseUp={() => onCommit && onCommit(v)}
         onTouchEnd={() => onCommit && onCommit(v)}
-        style={{ width: '100%', accentColor: '#c89058', background: 'transparent', height: 16 }} />
+        style={{ width: '100%', accentColor: COL.ember, background: 'transparent', height: 16 }} />
     </div>
   );
 }
@@ -481,18 +478,18 @@ function _Segmented({ k, options, v, onChange }) {
   return (
     <div style={{ padding: '8px 0' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
-        <span style={{ flex: 1, color: '#c8c1ad' }}>{k}</span>
+        <span style={{ flex: 1, color: COL.textMid }}>{k}</span>
       </div>
       <div style={{ display: 'flex', gap: 2 }}>
         {options.map(o => (
           <button key={o} onClick={() => onChange(o)} style={{
             flex: 1, padding: '6px 10px',
-            border: '1px solid #2a261f',
+            border: `1px solid ${COL.air}`,
             cursor: 'pointer',
             fontFamily: MONO, fontSize: 11,
-            background: o === v ? '#1f1c17' : 'transparent',
-            color: o === v ? '#e8dfc8' : '#7a7060',
-            ...(o === v ? { borderTopColor: '#c89058' } : {}),
+            background: o === v ? COL.ink : 'transparent',
+            color: o === v ? COL.textHi : COL.dim,
+            ...(o === v ? { borderTopColor: COL.ember } : {}),
           }}>{o}</button>
         ))}
       </div>
@@ -505,13 +502,13 @@ function _dashBtn(variant, extra) {
     display: 'block', width: '100%', textAlign: 'left',
     padding: '8px 12px', cursor: 'pointer',
     fontFamily: SANS, fontSize: 12, marginTop: 6,
-    background: '#c89058', color: '#0a0908',
-    border: '1px solid #5a4632',
+    background: COL.ember, color: COL.inkDeep,
+    border: `1px solid ${COL.faint}`,
     ...(extra || {}),
   };
-  if (variant === 'warn')   return { ...base, background: '#0a0908', color: '#c89058', border: '1px solid #5a4632' };
-  if (variant === 'danger') return { ...base, background: '#c87058', color: '#0a0908', border: '1px solid #5a3232' };
-  if (variant === 'ghost')  return { ...base, background: 'transparent', color: '#c8c1ad', border: '1px solid rgba(200,193,173,0.6)' };
+  if (variant === 'warn')   return { ...base, background: COL.inkDeep, color: COL.ember, border: `1px solid ${COL.faint}` };
+  if (variant === 'danger') return { ...base, background: COL.danger, color: COL.inkDeep, border: `1px solid ${COL.faint}` };
+  if (variant === 'ghost')  return { ...base, background: 'transparent', color: COL.textMid, border: '1px solid rgba(200,193,173,0.6)' };
   return base;
 }
 
@@ -548,7 +545,7 @@ function DevDashboardTrigger({ onOpen }) {
             pb.set(4, 4, C.inkLo);
           }}
         />
-      ) : <span style={{ color: '#7a7060', fontSize: 14 }}>⚙</span>}
+      ) : <span style={{ color: COL.dim, fontSize: 14 }}>⚙</span>}
     </button>
   );
 }
@@ -571,7 +568,7 @@ function NavLinkTrigger({ href, title, draw }) {
           deps={[hover]}
           draw={(pb) => draw(pb, window.PIX.C, hover)}
         />
-      ) : <span style={{ color: '#7a7060', fontSize: 12 }}>·</span>}
+      ) : <span style={{ color: COL.dim, fontSize: 12 }}>·</span>}
     </a>
   );
 }

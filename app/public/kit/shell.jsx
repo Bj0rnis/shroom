@@ -5,7 +5,7 @@
 
 (function () {
 
-const { MONO, SERIF, SERIF_BODY, SANS } = window.SHROOM_TOKENS;
+const { MONO, SERIF, SERIF_BODY, SANS, COL } = window.SHROOM_TOKENS;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function eraName(volume) {
@@ -37,20 +37,20 @@ function StatusLeft({ snapshot }) {
   if (!snapshot) return null;
   const m = snapshot.meta;
   return (
-    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: SANS }}>
+    <DarkPanel seed={7} style={{ color: COL.text, fontFamily: SANS }}>
       <div style={{
         position: 'relative',
         padding: '10px 16px',
         display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap',
       }}>
-        <span style={{ fontFamily: SERIF, fontSize: 18, color: '#e8dfc8', letterSpacing: '0.04em' }}>
+        <span style={{ fontFamily: SERIF, fontSize: 18, color: COL.textHi, letterSpacing: '0.04em' }}>
           vol&nbsp;{String(m.volume || 1).padStart(2, '0')}
         </span>
-        <span style={{ width: 1, height: 12, background: '#3a342a', alignSelf: 'center' }} />
-        <span style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 14, color: '#c8c1ad' }}>
+        <span style={{ width: 1, height: 12, background: COL.divider, alignSelf: 'center' }} />
+        <span style={{ fontFamily: SERIF_BODY, fontStyle: 'italic', fontSize: 14, color: COL.textMid }}>
           {eraName(m.volume)}
         </span>
-        <span style={{ fontFamily: MONO, fontSize: 10, color: '#7a7060', letterSpacing: '0.08em' }}>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: COL.dim, letterSpacing: '0.08em' }}>
           {dayText(m)}
         </span>
       </div>
@@ -76,12 +76,12 @@ function StatusRight({ snapshot }) {
   const mSrc = 30;
 
   return (
-    <DarkPanel seed={7} style={{ color: '#d4cdb8', fontFamily: SANS }}>
+    <DarkPanel seed={7} style={{ color: COL.text, fontFamily: SANS }}>
       <div style={{
         position: 'relative',
         padding: '10px 14px',
         display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        fontFamily: MONO, fontSize: 10, color: '#7a7060',
+        fontFamily: MONO, fontSize: 10, color: COL.dim,
       }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {PIX && (
@@ -98,8 +98,8 @@ function StatusRight({ snapshot }) {
         <Stat label="spores" v={String(c.spores).padStart(2, '0')} />
         <Stat label="fruits" v={String(c.fruits).padStart(2, '0')} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-          <span style={{ color: '#5a5240', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' }}>pres</span>
-          <span style={{ color: c.pressure > 60 ? '#c89058' : '#c8c1ad', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>
+          <span style={{ color: COL.dimLo, fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' }}>pres</span>
+          <span style={{ color: c.pressure > 60 ? COL.ember : COL.textMid, fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>
             {c.pressure}%
           </span>
           {PIX && (

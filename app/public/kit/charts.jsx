@@ -344,7 +344,7 @@ function FruitDecisions({ c }) {
             </div>
             <div style={{
               marginTop: 10, padding: '5px 8px',
-              background: can ? '#1c2418' : '#241612',
+              background: COL.ink,
               border: `1px solid ${ac}`,
               color: ac,
               fontFamily: MONO, fontSize: 11,

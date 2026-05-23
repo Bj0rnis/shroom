@@ -6,6 +6,9 @@
 
 (function () {
 
+// Workshop-only palette — intentionally light/parchment to read as a
+// design surface rather than the dark in-world chrome. Lives outside
+// COL (kit tokens) by design; the #05 sweep deliberately preserved it.
 const DC = {
   bg:       '#f0eee9',
   grid:     'rgba(0,0,0,0.06)',

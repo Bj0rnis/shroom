@@ -1,4 +1,5 @@
 const { useEffect, useState } = React;
+const { COL, MONO, SERIF } = window.SHROOM_TOKENS;
 
 function TopColony({ snapshot, onOpenDev }) {
   const TICKS_PER_DAY = 28800;
@@ -9,14 +10,11 @@ function TopColony({ snapshot, onOpenDev }) {
     .sort((a, b) => (b.cellCount || 0) - (a.cellCount || 0))
     .slice(0, 3);
 
-  const mono = '"IBM Plex Mono", monospace';
-  const serif = '"IM Fell DW Pica SC", serif';
-
   return (
-    <DarkPanel seed={9} style={{ color: '#d4cdb8', flexShrink: 0 }}>
+    <DarkPanel seed={9} style={{ color: COL.text, flexShrink: 0 }}>
       <div style={{ position: 'relative', padding: '10px 14px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontFamily: mono, color: '#7a7060', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: MONO, color: COL.dim, fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             top colony
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -26,7 +24,7 @@ function TopColony({ snapshot, onOpenDev }) {
           </span>
         </div>
         {top.length === 0 ? (
-          <div style={{ fontFamily: mono, color: '#5a5240', fontSize: 10, fontStyle: 'italic' }}>none</div>
+          <div style={{ fontFamily: MONO, color: COL.dimLo, fontSize: 10, fontStyle: 'italic' }}>none</div>
         ) : (
           <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {top.map((c, i) => {
@@ -47,15 +45,15 @@ function TopColony({ snapshot, onOpenDev }) {
                   gridTemplateColumns: '14px 24px 1fr',
                   alignItems: 'center',
                   gap: 8,
-                  fontFamily: mono, fontSize: 10,
+                  fontFamily: MONO, fontSize: 10,
                 }}>
-                  <span style={{ color: '#5a5240' }}>{i + 1}.</span>
+                  <span style={{ color: COL.dimLo }}>{i + 1}.</span>
                   <HallMushroom entry={entry} size={24} glow={false} />
                   <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <span style={{ fontFamily: serif, fontSize: 13, color: c.name ? '#e8dfc8' : '#7a7060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.1 }}>
+                    <span style={{ fontFamily: SERIF, fontSize: 13, color: c.name ? COL.textHi : COL.dim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.1 }}>
                       {displayName}
                     </span>
-                    <span style={{ color: '#5a5240', fontSize: 9, letterSpacing: '0.04em', marginTop: 2 }}>
+                    <span style={{ color: COL.dimLo, fontSize: 9, letterSpacing: '0.04em', marginTop: 2 }}>
                       {ageLabel} · {c.cellCount || 0} hyphae
                     </span>
                   </span>
@@ -115,7 +113,7 @@ function App() {
       <div style={{ height: '100dvh', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <PageWallpaper />
         {err
-          ? <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 12, color: '#7a7060' }}>error: {err}</span>
+          ? <span style={{ fontFamily: MONO, fontSize: 12, color: COL.dim }}>error: {err}</span>
           : <LoadingPassage />}
       </div>
     );

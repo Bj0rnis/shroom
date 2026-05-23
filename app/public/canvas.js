@@ -611,7 +611,7 @@ function ShroomCanvas({ snapshot }) {
           width: '100%',
           height: '100%',
           imageRendering: 'pixelated',
-          background: '#0a0908',
+          background: window.SHROOM_TOKENS.COL.inkDeep,
         }}
       />
     </div>

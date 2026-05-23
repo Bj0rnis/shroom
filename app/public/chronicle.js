@@ -120,7 +120,7 @@ if (typeof document !== 'undefined' && !document.getElementById('chronicle-style
 function Chronicle({ entries }) {
   if (!entries) {
     return (
-      <DarkPanel seed={11} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      <DarkPanel seed={11} elevation={3} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
         <div style={{ position: 'relative', padding: 24, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 14, color: _CH_FAINT }}>
           loading…
         </div>
@@ -129,7 +129,7 @@ function Chronicle({ entries }) {
   }
   if (entries.length === 0) {
     return (
-      <DarkPanel seed={11} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      <DarkPanel seed={11} elevation={3} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
         <div style={{ position: 'relative', padding: 24, fontFamily: _chSerif, fontStyle: 'italic', fontSize: 15, color: _CH_BODY }}>
           khaamoshi <span style={{ fontFamily: '"Noto Nastaliq Urdu", serif', fontSize: 18 }}>خاموشی</span> — he has not yet written.
           <ChronicleCursor />
@@ -140,7 +140,7 @@ function Chronicle({ entries }) {
   // Newest first.
   const ordered = entries.slice().reverse();
   return (
-    <DarkPanel seed={11} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+    <DarkPanel seed={11} elevation={3} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
       <div className="chronicle-body" style={{
         position: 'relative', padding: '16px 18px 14px', height: '100%', overflowY: 'auto',
         fontFamily: _chSerif, color: _CH_BODY,

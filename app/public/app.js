@@ -13,7 +13,7 @@ function TopColony({ snapshot, onOpenDev }) {
   const serif = '"IM Fell DW Pica SC", serif';
 
   return (
-    <DarkPanel seed={9} style={{ color: '#d4cdb8', flexShrink: 0 }}>
+    <DarkPanel seed={9} elevation={2} style={{ color: '#d4cdb8', flexShrink: 0 }}>
       <div style={{ position: 'relative', padding: '10px 14px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <span style={{ fontFamily: mono, color: '#7a7060', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>

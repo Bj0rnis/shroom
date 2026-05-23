@@ -246,6 +246,15 @@ function PageWallpaper() {
         draw={(pb) => paintDark(pb, 0, 0, dim.w, dim.h, { seed: 5 })}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
       />
+      {/* Depth-pass vignette — soft radial darkening from the corners.
+          Recedes the page edges so the elevated rail panels and the canvas
+          read as foreground. Sits above the pixel noise but below the
+          content (zIndex: -1 on the wrapper, this div inherits). */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.65) 100%)',
+        pointerEvents: 'none',
+      }} />
     </div>
   );
 }

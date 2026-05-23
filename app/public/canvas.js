@@ -264,7 +264,97 @@ function cloudCoverForSeason(season) {
 
 // ── render ────────────────────────────────────────────────────────────
 
-function drawScene(ctx, snap, t = 0) {
+// ── Rail hover bloom (design kanban #03 + #10) ───────────────────────
+// When the user hovers a TopColony rail entry, App passes the matching
+// colonyId via the `hoveredColonyId` prop. We paint a soft hue-tinted
+// ring around the colony's bbox and an F57 label above it — connecting
+// the rail name to the colony without permanent labels on the diorama.
+function paintHoverBloom(ctx, snap, hoveredColonyId, sx, sy) {
+  if (!hoveredColonyId) return;
+  const c = snap.colonies?.[hoveredColonyId];
+  if (!c || !c.alive || !c.bbox) return;
+  const A = window.ShroomAtoms;
+  if (!A) return;
+
+  const { minX, minY, maxX, maxY } = c.bbox;
+  // Expand the bbox slightly for the bloom — gives breathing room around
+  // tip cells that sit at the edge.
+  const pad = 4;
+  const x0 = Math.max(0, minX - pad) * sx;
+  const y0 = Math.max(0, minY - pad) * sy;
+  const x1 = (maxX + pad) * sx;
+  const y1 = (maxY + pad) * sy;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const w = x1 - x0, h = y1 - y0;
+  const r = Math.max(w, h) * 0.7;
+
+  // Soft outline bloom — capHue tint, additive, breathing-free (no
+  // animation: hover is the animation).
+  const rgb = A.hsl(c.capHue || 0, 70, 64);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.25, cx, cy, r);
+  g.addColorStop(0,    `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.20)`);
+  g.addColorStop(0.55, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.10)`);
+  g.addColorStop(1,    `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // F57 label — first in-world use of the bitmap font (kanban #10).
+  // We paint each glyph pixel as a scaled rect on the upscaled context
+  // so the bitmap pixels line up with the rest of the diorama. A dark
+  // 1-pixel halo keeps the label legible against any background.
+  const name = (c.name || c.placeholderName || '').toString();
+  if (!name) return;
+  const F57 = window.SHROOM_TOKENS && window.SHROOM_TOKENS.F57;
+  if (!F57) return;
+  const labelText = name.toUpperCase();
+  const cw = 5, ch = 7, sp = 1;
+  const labelW = labelText.length * (cw + sp) - sp;
+  // Position in pixel-buffer coords: 2 px above the bbox top, clamped
+  // inside the canvas.
+  const labelPbX = Math.max(2, Math.min(SHROOM_W - labelW - 2,
+    Math.floor((minX + maxX) / 2 - labelW / 2)));
+  const labelPbY = Math.max(2, minY - pad - ch - 2);
+
+  const labelRgb = A.hsl(c.capHue || 0, 65, 88);
+  const labelFill = `rgb(${labelRgb[0]},${labelRgb[1]},${labelRgb[2]})`;
+  const haloFill  = 'rgba(8, 6, 4, 0.85)';
+
+  // Two passes: halo offsets first, then the label on top.
+  function paintGlyphPixels(fill, ox, oy) {
+    ctx.fillStyle = fill;
+    let pxx = labelPbX + ox;
+    for (const char of labelText) {
+      const g = F57[char] || F57['?'];
+      if (g) {
+        for (let r = 0; r < ch; r++) {
+          const bits = g[r];
+          for (let cc = 0; cc < cw; cc++) {
+            if (bits & (1 << (cw - 1 - cc))) {
+              ctx.fillRect(
+                (pxx + cc) * sx,
+                (labelPbY + oy + r) * sy,
+                sx, sy);
+            }
+          }
+        }
+      }
+      pxx += cw + sp;
+    }
+  }
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  for (const [dx, dy] of [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]]) {
+    paintGlyphPixels(haloFill, dx, dy);
+  }
+  paintGlyphPixels(labelFill, 0, 0);
+  ctx.restore();
+}
+
+function drawScene(ctx, snap, t = 0, opts) {
   const A = window.ShroomAtoms;
   if (!A) return;
   const cfg = worldToCfg(snap, new Date(), t);
@@ -319,6 +409,15 @@ function drawScene(ctx, snap, t = 0) {
   // from the cell grid too: build an offscreen hue-tinted glow buffer
   // (tip pixels emit bright, interior dim), blur, composite additive.
   paintOverlays(ctx, cfg, colonyU16, snap.colonies, t);
+
+  // 4. Hover bloom — drawn on top of the vignette so the highlighted
+  // colony stays legible no matter where it sits. Only fires when the
+  // user is hovering a TopColony rail entry.
+  if (opts && opts.hoveredColonyId) {
+    const sx = CANVAS_W / SHROOM_W;
+    const sy = CANVAS_H / SHROOM_H;
+    paintHoverBloom(ctx, snap, opts.hoveredColonyId, sx, sy);
+  }
 }
 
 // Build an offscreen 320×180 glow buffer from the cell grid. Tip cells
@@ -575,14 +674,19 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid, t = 0) {
 // ── React component ──────────────────────────────────────────────────
 // Exact same signature as the old canvas.js: <ShroomCanvas snapshot={...} />.
 
-function ShroomCanvas({ snapshot }) {
+function ShroomCanvas({ snapshot, hoveredColonyId }) {
   const ref = React.useRef(null);
+  // Stash hoveredColonyId in a ref so the rAF loop reads the latest value
+  // without restarting on every hover change (which would also drop the
+  // scene mid-frame).
+  const hoverRef = React.useRef(hoveredColonyId);
+  React.useEffect(() => { hoverRef.current = hoveredColonyId; }, [hoveredColonyId]);
   React.useEffect(() => {
     if (!ref.current || !snapshot) return;
     const ctx = ref.current.getContext('2d');
     let raf = 0;
     const tick = (t) => {
-      drawScene(ctx, snapshot, t);
+      drawScene(ctx, snapshot, t, { hoveredColonyId: hoverRef.current });
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

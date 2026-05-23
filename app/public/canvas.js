@@ -594,6 +594,11 @@ function ShroomCanvas({ snapshot }) {
   // maxWidth: native size — never upscale past the pixel buffer resolution.
   // maxHeight: 100% — when the container is more portrait than 16:9, the
   //   wrapper shrinks from the height side and the width follows via aspect-ratio.
+  //
+  // Depth-pass frame: the canvas reads as nested into the page via a
+  // hairline outer border + inset shadow on the wrapper. Pairs with the
+  // elevated right-rail panels (DarkPanel.elevation) so the page reads
+  // as a stack of planes instead of a flat surface.
   return (
     <div style={{
       width: '100%',
@@ -601,6 +606,18 @@ function ShroomCanvas({ snapshot }) {
       aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
       maxHeight: '100%',
       flexShrink: 0,
+      position: 'relative',
+      // Hairline outer border + inner shadow ring — makes the canvas
+      // sit "in" the page. Using a 2px outer dark hairline so the pixel
+      // edge stays crisp, plus a soft inner shadow that draws the eye
+      // toward the diorama interior.
+      border: '1px solid rgba(8, 6, 4, 0.85)',
+      boxShadow: [
+        '0 0 0 1px rgba(232,223,200,0.04)',                // outer rim highlight
+        'inset 0 0 0 1px rgba(0,0,0,0.55)',                // inset crisp ring
+        'inset 0 12px 32px rgba(0,0,0,0.35)',              // soft inner top shadow
+        'inset 0 -12px 32px rgba(0,0,0,0.25)',             // soft inner bottom shadow
+      ].join(', '),
     }}>
       <canvas
         ref={ref}

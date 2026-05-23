@@ -37,6 +37,108 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-23 · sim-lab/03-persistence · iter-1 · [rewrite]
+Agent: claude-opus-4-7
+Plain: Wired up Vision 2 — the week-long-persistence vision. Added four scorers (does the founder live to day 7, is it still a meaningful size, does the painting still look right, did the auto-bootstrap safety net fire), and a tracking counter for auto-bootstrap events. Aligned the cheap probe with the lab's sowing so probe day-1 numbers match what the full sweep will see.
+Hypothesis: scaffold first; can't tune what we can't measure.
+Setup: `targets.js` gains `survivesToWeek`, `nonTrivialAtWeek`, `shapeStillHolds`, `noAutoBootstrap`, `pickFounderColony`, and `VISION_2_PERSISTENCE`. New `configs/persistence.js` runs Vision 2 against the existing `week-on-log` scenario (durationDays=7). `freshLifetime()` gains `autoBootstraps: 0`; `autoBootstrap()` increments it. `grow-extended.js` switched from `randomGenome` + geometric-center sow to the lab's `pinnedGenome` + richest-log-cell sow so the probe is a leading indicator of the sweep. Baseline guards in `test.js` refreshed to the iter-37 numbers (143/504/268 → 205/686/449) — they'd drifted since iter-26.
+Result: tests pass. Scorers exercise cleanly on a probe-built world.
+Reading: scaffolding done. The full sweep takes ~50min; cheap probes via `grow-extended.js` will carry early iters.
+Next: iter-2 — baseline probe on the iter-37 parked config under the new probe sowing, to lock the collapse numbers in.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-2 · [observe]
+Agent: claude-opus-4-7
+Plain: Re-ran the day-2 collapse probe under the lab-aligned sowing. The collapse is exactly what we expected: the first colony grows beautifully on day 1, then dies down to almost nothing by day 3, even though it's still got plenty of food in the bank.
+Hypothesis: lab-aligned probe reproduces the day-2 collapse on the parked iter-37 config.
+Setup: `grow-extended.js` (now pinned-genome + rich-cell sow), seed 1337, 3 sim-days. No sim.js changes.
+Result: day-1 cells=285 (matches lab iter-37's 1337=285), 2 leaders, descents=2, depth=19. day-2 cells=12, 1 leader. day-3 cells=2, 1 leader. Reserves never run low — they climb 30k → 32k → 32k across the 3 days. Auto-bootstraps=0 (founder is technically still alive, just shrunken to nothing).
+Reading: it's a leader-extinction problem, not a starvation problem. The colony has food. It can't grow because every leader either senesced (LIFESPAN=120 extensions) or its lineage thread died out. Non-leader extension at 0.012 with TIP_AGE_DECAY=400 is effectively zero by day 2 — aged-out cells can't recover.
+Next: iter-3 — read the leader code carefully and figure out exactly why zero-leader colonies can't restart growth.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-3 · [observe]
+Agent: claude-opus-4-7
+Plain: Read the growth code and found the bug. When all the leader threads die out, the code does try to grow a new one, but it picks the wrong cell — usually one buried inside the colony with no free space around it. So the "new" leader is stuck and the colony stops growing.
+Hypothesis: the lazy revival path at `sim.js:537` is structurally broken — needs cell-level diagnosis.
+Setup: read-only audit of `growHyphae` and the `col.leaders` logic.
+Findings: (1) lazy revival at the top of the per-cell loop unconditionally promotes the *first iterated cell* of a colony with empty leaders. Iteration is linear grid-order — that's typically a topmost log-surface cell, often interior (`freeCount === 0`). (2) Even when the revived cell happens to be on the frontier, its `age[i]` is high (28800+ ticks by day 2), so `ageFactor = exp(-age/400) ≈ 0`. The promoted leader's effective extension rate is dead-on-arrival. (3) Bifurcation refills leaders only up to `MAX_LEADERS_PER_COLONY=5`; once they all senesce in the day-1 cohort, lazy revival is the only path, and it's broken. (4) NON_LEADER rate (0.012) is also shut down by age-decay — interior cells contribute nothing.
+Reading: the fix has two parts. Revival must (a) pick a cell that *can actually extend* (freeCount ≥ 3), and (b) reset that cell's age so the leader rate isn't already attenuated.
+Next: iter-4 — gate revival on freeCount, reset age on promotion.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-4 · [mechanic]
+Agent: claude-opus-4-7
+Plain: Fixed the broken revival path. New leaders must come from a cell that actually has somewhere to grow, and we reset its age so the new leader gets a full life. The founder colony survived all 7 sim-days on both the rich seed and the lean seed — the day-2 collapse is gone. Trade-off: on the rich seed the colony oscillates wildly (285 → 129 → 684 → 179 → 64 → 175 → 237 cells across days 1-7) and the deepest threads drill 114 rows down, way past the painting.
+Hypothesis: gating revival on `freeCount ≥ 3` + resetting `age[i] = 0` lets the renewed leader actually grow.
+Setup: new constant `LEADER_REVIVAL_MIN_FREE = 3`. Changed lazy-revival block at `sim.js:537` to require `freeCount >= LEADER_REVIVAL_MIN_FREE` and to set `age[i] = 0` on promotion.
+Result (probe, 7d): seed 1337 day-by-day cells = 285/129/684/179/64/175/237. seed 555 cells = 99/88/58/253/57/269/43. Founder alive at day 7 on both. Reserves grow steadily through the run (no starvation). Side-effect on 1337: 12 fruits by day 2 (premature), and a second colony spawns from succession.
+Reading: leader-extinction is the only cause of collapse. Once revival actually works, the colony breathes — leaders die in clusters (cohort senescence from the day-1 bifurcation chain), revival rebuilds, growth re-fires, repeat. The boom-bust amplitude is large (5×) because cohort senescence makes leaders die in lockstep. The runaway depth on rich seeds is chemotaxis-driven once renewal is unlocked — leaders walk toward fresh nutrients, which are deep in the soil after the log surface is depleted.
+Next: iter-5 — try rate-limiting revival to smooth the oscillation.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-5 · [tweak]
+Agent: claude-opus-4-7
+Plain: Tried slowing down revival to smooth the boom-bust. Two attempts — first time it slowed everything including the founder's first leader, so day-1 cells dropped to 105. Added a "first revival is free" gate; that fixed day-1 but the lean seed still ended day 7 at 90 cells (below the 150-cell floor), and the rich seed ended at 52. Slowing revival didn't help — it just shifted the failure phase.
+Hypothesis: a per-tick probability cap on revival (`LEADER_REVIVAL_PROB`) smooths cohort-senescence cliffs without preventing recovery.
+Setup: added `LEADER_REVIVAL_PROB` and gated the revival block. Tried 0.0005 (too slow — even day-1 founder waited too long), then 0.0005 + `hasHadLeader` first-revival exemption, then 0.01.
+Result: 0.0005 → day-1 cells=105 (founder bootstrap broken). With first-revival exemption, day-1 restored to 285 but day-7 cells=52 on 1337 (collapse phase caught at snapshot). 0.01 → day-7 cells=90 on 1337. None reliably above 150-cell floor.
+Reading: oscillation is intrinsic to cohort-senescence under TIP_AGE_DECAY — slowing revival just shifts which day catches the trough. The end-state passes or fails by snapshot lottery, not by mechanic quality. Rate-limit is the wrong knob.
+Next: iter-6 — try the volume brake (carrying-cap) instead.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-6 · [tweak] · [stuck]
+Agent: claude-opus-4-7
+Plain: Tightened the colony size cap from 1500 to 500 so the colony couldn't drill too deep. Backfired hard — even the founding day was crushed: day-1 dropped from 285 cells to 44. The cap also throttles bifurcation, which compounds. Wrong knob.
+Hypothesis: lowering `COLONY_CARRYING_CAPACITY` 1500 → 500 brakes growth before the runaway depth.
+Setup: only that constant.
+Result: day-1 cells=44 (was 285 under iter-4). day-7 cells=4. Founder essentially failed to establish.
+Reading: the cap-factor multiplies into BOTH base extension and bifurcation probability, so lowering it kills the leader pool refill rate too. Cap is calibrated for "stop late-stage matting," not for "prevent painting overgrowth."
+Next: iter-7 — try removing senescence instead.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-7 · [tweak] · [stuck]
+Agent: claude-opus-4-7
+Plain: Made leaders effectively immortal (LIFESPAN=100000 = never senesce). Hope was that without cohort senescence, the colony wouldn't oscillate. It still did — leaders die from other causes (cell-age, starvation around the lineage) and the colony still boom-busts. Day-7 cells=92 on 1337 — same range as iter-4/5.
+Hypothesis: leader cohort senescence is the oscillation driver; removing LIFESPAN should stabilize.
+Setup: `LEADER_LIFESPAN` 120 → 100000.
+Result: identical oscillation pattern. day-by-day cells on 1337 = 285/112/20/172/71/16/92. Even worse on day 6 (16 cells, 0 leaders).
+Reading: senescence isn't the only leader-loss path. Cells age out via `HYPHA_AGE_LIMIT`; starvation eats the perimeter; thickness gating blocks extension into crowded zones. Removing LIFESPAN is a no-op because leaders are still dying via other paths. Same boom-bust.
+Next: iter-8 — Bjorn's redirect (mid-session): "keep to 1 day max. If we get Vision 1, we get there." The day-2+ window is introducing noise; the painting isn't load-bearing yet so optimising against persistence is premature. Killing the Vision 2 sweep, keeping iter-4 as a bugfix only, redirecting iters 8-10 to Vision 1.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-8 · [observe]
+Agent: claude-opus-4-7
+Plain: Took the renewal bugfix and ran it against the day-1 painting test. Result was almost identical to the parked iter-37 numbers — the renewal mechanic doesn't help or hurt the day-1 painting, because by the time leaders die out and need replacing, day 1 is already over. The bugfix can stay without disrupting Vision 1.
+Hypothesis: Renewal fires only after leader senescence — at day 1 the founder cohort is mostly still alive, so renewal should be near-neutral.
+Setup: Vision 1 baseline lab. iter-4 renewal in sim.js. 5 seeds × 1 sim-day.
+Result: shape 0/5 (median 0.175, max 0.422). modestSize **1/5** (only 1337 at 285). soilDispersion 2/5. descended 2/5. multipleDescents 3/5. noPrematureFruit 5/5. notSaturated 5/5. Aggregate 13/35 — within ±1 of iter-37 park (which was 14-19/35 depending on counting). Per-seed cells: 42=24, 1337=285, 314=107, 271=91, 555=99.
+Reading: confirmed. Renewal is structurally a bugfix to the lazy-revival code at `sim.js:537` that was already trying to renew leaders. It activates after the first cohort senesces, which on log-rich seeds happens within day 1 but doesn't change the painting much. The lean-seed problem remains: 4/5 seeds undersized (24-107 cells vs 150-800 painting band).
+Next: iter-9 — try the initial-reserves head start from iter-37's parking note. Lean seeds may be stalling on the bootstrap absorption window.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-9 · [tweak] · [BREAKTHROUGH]
+Agent: claude-opus-4-7
+Plain: Gave the founder a 100-reserve head start at sow time. The result was the biggest single-iter jump on the branch — four of five seeds now grow to painting size (up from one), one seed hit 6/7 targets (best ever on this branch), and aggregate jumped from 13 to 22 of 35. Only regression is the rich seed (1337) overshooting past the fruit gate and germinating children.
+Hypothesis: lean substrate has slow side-absorption, so the founder stalls at the bootstrap (reserves < EXTEND_COST blocks any extension). A small initial-reserve head start at sow time should unblock lean-seed founders without affecting rich-substrate seeds materially.
+Setup: `world.js:254` — `reserves: 0` → `reserves: 100` at sowAt. No other changes.
+Result: shape 0/5 (median 0.165, max 0.191). **modestSize 4/5** (up from 1/5). soilDispersion 3/5. descended 3/5. multipleDescents 3/5. **noPrematureFruit 4/5** (1337 fruited at peak). notSaturated 5/5. Per-seed pass counts: 42=5/7 (was 3/7), **314=6/7 best-ever**, 271=5/7 (was 5/7), 1337=3/7 (was 5/7, regression from premature fruit), 555=3/7 (was 2/7). **Aggregate 22/35**.
+Reading: the bootstrap-absorption window WAS the lean-seed brake. Once unblocked, 4 of 5 seeds reach painting size. The shape median is still 0.165 (vs 0.60 threshold) — the colonies are now BIG enough but still single-bundle, not the painting's two-column root. That's a separate problem (geometry, not volume). 1337 regression: with the head start, the rich seed crosses 800 cells (FRUIT_MIN_CELL_COUNT) at peak before retracting, fruits 10×, germinates child colonies. The renewal mechanic enables the overshoot — without it, 1337 stays at 285 and doesn't fruit. So renewal is no longer perfectly neutral on Vision 1; it amplifies overshoot when paired with the reserves head start.
+Next: iter-10 — sanity check the value is calibrated, then park.
+
+## 2026-05-23 · sim-lab/03-persistence · iter-10 · [tweak] · [park]
+Agent: claude-opus-4-7
+Plain: Halved the founder head start from 100 to 50 reserves to see if the smaller boost is enough. It gave identical numbers across all five seeds — the breakthrough comes from "any positive starting budget," not the specific value. 50 is the parked choice (smaller, more conservative). 1337 still overshoots; fixing that is a follow-up.
+Hypothesis: `reserves: 50` is enough to bootstrap; the magnitude beyond bootstrap doesn't matter because the colony quickly amasses tens of thousands of reserves through absorption.
+Setup: `world.js:254` — `reserves: 100` → `reserves: 50`. No other changes.
+Result: bit-identical to iter-9. shape 0/5 (median 0.165). modestSize 4/5. soilDispersion 3/5. descended 3/5. multipleDescents 3/5. noPrematureFruit 4/5. notSaturated 5/5. Aggregate **22/35**. Per-seed: 42=5/7, 1337=3/7, 314=6/7, 271=5/7, 555=3/7.
+Reading: the head-start mechanic is "fire-and-forget" — once bootstrap is solved, the colony's day-1 trajectory is set by the existing growth dynamics. 50 reserves = 25 cells of starter budget, enough to escape the absorption window. Parking at 50.
+Next: hand off to Bjorn. Open Vision 1 problems still: (a) shape median 0.165 vs 0.60 threshold — the colonies are big enough but single-bundle, not branched root (geometry needs another mechanic, e.g. lateral chemotaxis bias or wider apical dominance), (b) 1337 overshoots 800-cell fruit gate when renewal + head start combine. Possible follow-up: gate fruiting on colony age (≥1 sim-day) so day-1 overshoot doesn't germinate children.
+
+
+Agent: claude-opus-4-7
+Plain: Took the parked iter-37 config from main and ran it for three full sim-days instead of one. Every seed produced a clean day-1 painting and then collapsed by day 2 — colonies that hit 148 cells at day 1 were down to 4 cells the next day, and back to 2 the day after. The same thing happens on the pre-iter-37 main config too, so it's not new — Vision 1's 1-day window has been hiding it the whole time. Auto-bootstrap masks the founder death by sowing fresh spores, which is succession, not persistence.
+Probe: `node app/lib/sim-lab/grow-extended.js <seed> <days>` — one founder, current sim.js constants, ASCII at each day boundary. Added in this branch.
+Observation:
+- seed 1337 (parked iter-37): day-1 cells=148 (2 descents, depth 8) → day-2 cells=4 → day-3 cells=2.
+- seed 555 (parked iter-37): day-1 cells=15 (depth 12) → day-2 founder dead.
+- seed 1337 (pre-iter-27 baseline): day-1 cells=139 → day-2 cells=9 → day-3 founder dead, 534 hyphae of *child* colonies via auto-bootstrap.
+Reading: Leaders senesce at LEADER_LIFESPAN=120 extensions; the non-leader extension rate (0.012) can't replace what dies. Once leaders are gone, the colony enters net-retraction. Reserves are abundant (~67k at day 1, growing) — this is a leader-renewal problem, not a substrate problem.
+Bjorn's decision: this needs fixing. Proposed Vision 2 — Week-long persistence (see RESEARCH.md). Open question: lifespan-renewal mechanic, or rethink leader senescence entirely. Picking this up another day.
+Next: not iter-38 in this branch. The right next move is a new sim-lab branch on Vision 2 (after the painting is closer on Vision 1, or as a parallel track). See RESEARCH.md "suggested first moves" for the buffet.
+
 ## 2026-05-23 · sim-lab/02-carrying-capacity · iter-27 · [tweak]
 Agent: claude-opus-4-7
 Plain: Raised the leader-slot cap from 3 to 5, hoping more concurrent threads would give the second descent column the painting wants. It barely moved the needle — one extra seed passes modestSize, one extra passes soilDispersion, and the worst seed (1337) finally hit 267 cells. But descended slipped from three seeds to two, and multipleDescents still fails on every seed. More leaders, same single descent column.

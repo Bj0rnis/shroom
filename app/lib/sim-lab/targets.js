@@ -94,6 +94,16 @@ function pickFocalColony(world) {
   return cs.reduce((a, b) => (a.cellCount > b.cellCount ? a : b));
 }
 
+// The colony sown by the scenario itself — lowest foundedTick.
+// Used by Vision 2's persistence scorers: we care whether *this specific
+// colony* survives, not whether *some* descendant is alive (succession
+// would mask the founder's death).
+function pickFounderColony(world) {
+  const cs = Object.values(world.colonies);
+  if (!cs.length) return null;
+  return cs.reduce((a, b) => (a.foundedTick <= b.foundedTick ? a : b));
+}
+
 // ── The targets ─────────────────────────────────────────
 
 // modest-size: founding colony in a sane day-1 range.
@@ -190,6 +200,77 @@ function shape(world, opts = {}, ctx = {}) {
   };
 }
 
+// ── Vision 2 scorers — week-long persistence ──────────────
+//
+// Vision 2 reads the founder colony at the *end* of the run (driver passes
+// the final snapshot). The scenario is `week-on-log` (7 sim-days). A run
+// that "passes" Vision 2 is one where the colony sown at tick 0 is still
+// alive, of meaningful size, and looks roughly like the shape it landed
+// on at day 1 — i.e. the painting persists, not just appears.
+
+// survivesToWeek — the founder colony is still flagged alive at end-of-run.
+// The minimum bar: it didn't get killed off entirely.
+function survivesToWeek(world) {
+  const c = pickFounderColony(world);
+  if (!c) return { ok: false, value: 0, note: 'no founder colony' };
+  const ok = !!c.alive;
+  return { ok, value: ok ? 1 : 0,
+    note: ok ? `founder alive (cells=${c.cellCount})` : `founder DEAD (died tick ${c.deathTick})` };
+}
+
+// nonTrivialAtWeek — founder still holds at least N cells. Surviving with
+// 2 cells doesn't count. Bar is Vision 1's modestSize floor (150) — if the
+// painting landed at day 1, the colony was at least that size; if it's
+// below that at day 7, the network has been dismantled.
+function nonTrivialAtWeek(world, opts = {}) {
+  const min = opts.min ?? 150;
+  const c = pickFounderColony(world);
+  if (!c) return { ok: false, value: 0, note: 'no founder colony' };
+  const v = c.cellCount;
+  return { ok: v >= min, value: v, note: `founder cells=${v} (want ≥${min})` };
+}
+
+// shapeStillHolds — the founder's ASCII shape at end-of-run still scores
+// against the painting at Vision 1's threshold. The painting wasn't a
+// transient moment that decayed. Reuses the same shape comparator as
+// Vision 1, but reads ctx.ascii at end-of-run, not at day 1.
+function shapeStillHolds(world, opts = {}, ctx = {}) {
+  if (!_shapeMod) _shapeMod = require('./shape');
+  const ascii = ctx.ascii;
+  if (!ascii) return { ok: false, value: 0, note: 'shape scorer needs ctx.ascii' };
+  const threshold = opts.threshold ?? 0.30;
+  const runFeatures = _shapeMod.extractFeatures(ascii);
+  const painting = _shapeMod.paintingFeatures();
+  const result = _shapeMod.shapeScore(runFeatures, painting);
+  return {
+    ok: result.score >= threshold,
+    value: result.score,
+    note: `shape=${(result.score * 100).toFixed(0)}% (want ≥${threshold * 100}%)`,
+  };
+}
+
+// noAutoBootstrap — the auto-sow safety net was never triggered during the
+// run. If it fired, the world went empty (every colony dead) before being
+// re-seeded — a *succession* event, not persistence. We want the founder
+// to persist on its own merit.
+function noAutoBootstrap(world) {
+  const n = world.meta.lifetime?.autoBootstraps ?? 0;
+  return { ok: n === 0, value: n,
+    note: `autoBootstraps=${n} (want 0)` };
+}
+
+const VISION_2_PERSISTENCE = {
+  id: 'vision-2-persistence',
+  description: 'Week-long: founder colony still alive, nontrivial size, painting shape still recognisable, no auto-bootstrap.',
+  scenarioId: 'week-on-log',
+  scorers: [
+    { name: 'survivesToWeek',    fn: survivesToWeek,                                  },
+    { name: 'nonTrivialAtWeek',  fn: nonTrivialAtWeek,  opts: { min: 150 }            },
+    { name: 'shapeStillHolds',   fn: shapeStillHolds,   opts: { threshold: 0.30 }     },
+    { name: 'noAutoBootstrap',   fn: noAutoBootstrap,                                 },
+  ],
+};
+
 // Vision 1 — "day-1 root" — bundle of targets that together describe the
 // painting-derived first vision. See RESEARCH.md for the picture.
 //
@@ -220,7 +301,8 @@ const VISION_1_DAY1_ROOT = {
 module.exports = {
   modestSize, soilDispersion, descended, multipleDescentPoints,
   noPrematureFruit, notSaturated, shape,
+  survivesToWeek, nonTrivialAtWeek, shapeStillHolds, noAutoBootstrap,
   colonyCells, boundingBox, grassCrossings, descentDepth,
-  soilDispersionScore, pickFocalColony,
-  VISION_1_DAY1_ROOT,
+  soilDispersionScore, pickFocalColony, pickFounderColony,
+  VISION_1_DAY1_ROOT, VISION_2_PERSISTENCE,
 };

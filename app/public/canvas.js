@@ -26,12 +26,13 @@ const LOG   = 3;
 const FRUIT = 4;
 const TREE  = 5;
 
-// Sim time anchors (mirror lib/time.js — kept renderer-side so we can
-// translate "ticks since" → "real days" for log age etc.).
-const CANONICAL_TICK_MS = 3000;
-const TICKS_PER_DAY     = (24 * 60 * 60 * 1000) / CANONICAL_TICK_MS; // 28800
-const TICKS_PER_WEEK    = 7 * TICKS_PER_DAY;
-const TICKS_PER_MONTH   = 30 * TICKS_PER_DAY;
+// Sim time anchors — derive from snapshot.meta.ticksPerDay at use sites
+// (kanban #06). These local consts were the literal copies; remove them
+// once `_resolveTicks(snap)` is the only path. Kept as fallbacks until
+// the live snapshot reliably ships ticksPerDay.
+function _ticksPerDay(snap) { return (snap && snap.meta && snap.meta.ticksPerDay) || 28800; }
+function _ticksPerWeek(snap) { return 7 * _ticksPerDay(snap); }
+function _ticksPerMonth(snap) { return 30 * _ticksPerDay(snap); }
 
 // ── decode ────────────────────────────────────────────────────────────
 
@@ -129,11 +130,13 @@ function worldToCfg(snap, now, t = 0) {
   // ── logs ────────────────────────────────────────────────────────────
   // Each log: x1/x2/y/thickness/species/age/mossy. Age derives from how
   // long since the log was created; > 4 weeks goes mossy automatically.
+  const tpMonth = _ticksPerMonth(snap);
+  const tpWeek  = _ticksPerWeek(snap);
   const logs = [];
   for (const lg of (snap.logs || [])) {
     const ageTicks = Math.max(0, tick - (lg.foundedTick || 0));
-    const ageFrac  = Math.min(1, ageTicks / (TICKS_PER_MONTH * 3)); // ~3 months → fully aged
-    const mossy    = lg.mossy || ageTicks > TICKS_PER_WEEK * 4;
+    const ageFrac  = Math.min(1, ageTicks / (tpMonth * 3)); // ~3 months → fully aged
+    const mossy    = lg.mossy || ageTicks > tpWeek * 4;
     logs.push({
       x1: lg.x0, x2: lg.x0 + lg.w - 1,
       y:  lg.y0, thickness: lg.h,
@@ -243,7 +246,7 @@ function worldToCfg(snap, now, t = 0) {
     // Scars age over ~3 real weeks (~600k ticks); renderer fades alpha.
     eraScars: (snap.eraScars || []).map(s => {
       const elapsed = Math.max(0, tick - (s.foundedTick || 0));
-      const lifeTicks = TICKS_PER_WEEK * 3;
+      const lifeTicks = _ticksPerWeek(snap) * 3;
       return { ...s, age: Math.max(0, 1 - elapsed / lifeTicks) };
     }),
     dew:        sky.hour < 7.5,

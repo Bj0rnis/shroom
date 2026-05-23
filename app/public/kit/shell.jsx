@@ -13,8 +13,10 @@ function eraName(volume) {
 }
 
 function dayText(meta) {
-  const TICKS_PER_DAY = 28800;
-  const days = Math.floor((meta.tick || 0) / TICKS_PER_DAY);
+  // Snapshot meta now ships ticksPerDay (kanban #06); fall back to the
+  // canonical 28800 only if a stale client reaches a newer server.
+  const ticksPerDay = meta.ticksPerDay || 28800;
+  const days = Math.floor((meta.tick || 0) / ticksPerDay);
   return `day ${String(days).padStart(3, '0')}`;
 }
 

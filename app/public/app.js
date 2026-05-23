@@ -1,7 +1,8 @@
 const { useEffect, useState } = React;
 
 function TopColony({ snapshot, onHoverColony, hoveredColonyId }) {
-  const TICKS_PER_DAY = 28800;
+  // Read the sim-time anchor from the snapshot — see kanban #06.
+  const TICKS_PER_DAY = snapshot.meta?.ticksPerDay || 28800;
   const coloniesByKey = snapshot.colonies || {};
   const top = Object.entries(coloniesByKey)
     .map(([key, c]) => ({ key, ...c }))
@@ -166,7 +167,7 @@ function App() {
           }
         />
         <div style={{ flex: 1, minHeight: 80, overflow: 'hidden' }}>
-          <Chronicle entries={journal?.entries} />
+          <Chronicle entries={journal?.entries} ticksPerDay={snapshot.meta?.ticksPerDay} />
         </div>
         <TopColony
           snapshot={snapshot}

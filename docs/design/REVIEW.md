@@ -9,13 +9,14 @@ wouldn't get served as a live route. The full reasoning per item is
 recoverable from `git show a92fcf5^:app/public/_audit.html`. This kanban
 is the live surface.
 
-**Shipped:** 4 / 14 (last reviewed 2026-05-23). Sweep on 2026-05-23
+**Shipped:** 5 / 14 (last reviewed 2026-05-23). Sweep on 2026-05-23
 moved #08, #09, and #11 to Done; #04 refreshed with sim-lab/03 parked
 state. Retire-sweep same day: #13 closed after verification (no code
 change needed), #12 retired as won't-do (sim-engine side, deferred per
 Bjorn), #14 retired as won't-do (the conditional never tripped — dark-
-hue mushrooms look fine in practice). Cards #12–14 had been promoted
-from `DESIGN_NEEDS_WORK.md` on 2026-05-21.
+hue mushrooms look fine in practice), #07 decided kept-as-is (the depth
+pass made the framed-window stance load-bearing — see card). Cards
+#12–14 had been promoted from `DESIGN_NEEDS_WORK.md` on 2026-05-21.
 
 Items added after the audit (or spun off from `DESIGN_NEEDS_WORK.md`)
 land in **Todo** with a short note about where they came from.
@@ -123,26 +124,20 @@ Don't replace serif/mono — augment.
 
 ---
 
-## Needs re-decision
+## Done
 
 ### 07 · Canvas is parsimonious on big screens
-`polish` · surface
-**Now:** `maxWidth: CANVAS_W` (1280) still in place at canvas.js:600,
-but the code grew a comment at canvas.js:594 explicitly defending the
-cap: *"maxWidth: native size — never upscale past the pixel buffer
-resolution."* That stance is the opposite of the audit's "let it scale
-up."
-**Audit decision:** Remove maxWidth. Let the canvas scale up (pixelated
-rendering preserves crispness). Do it after #04 — re-tune bloom and
-vignette as part of the change.
-**Tension:** the code now treats the cap as deliberate (preserve pixel
-buffer fidelity) rather than parsimonious. Two coherent positions; pick
-one before this becomes a ticket. Re-decide with Bjorn.
-**Gated on:** #04 regardless.
-
----
-
-## Done
+`polish` · surface · **kept-as-is**
+**Decided 2026-05-23.** Audit said remove the `maxWidth: 1280` cap and
+let the canvas scale up. Bjorn's call after the depth pass shipped:
+keep the cap. The depth pass (PR #44) added a vignette + hairline frame
+around the canvas, which makes it read as a shadow-box diorama — a
+window *into* the world. That framed-window effect only works if the
+canvas is bounded; scaling it up turns the diorama into "a big screen"
+and would force re-tuning bloom + vignette at every scale. Also fits
+the shroom voice better — something you *watch*, not a game filling
+the viewport. On ultra-wide screens, the surrounding dark space + the
+radial vignette is the feature, not the bug.
 
 ### 13 · Verify mushroom bloom alpha in live UI
 `polish` · verification

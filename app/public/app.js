@@ -1,6 +1,6 @@
 const { useEffect, useState } = React;
 
-function TopColony({ snapshot, onOpenDev }) {
+function TopColony({ snapshot }) {
   const TICKS_PER_DAY = 28800;
   const coloniesByKey = snapshot.colonies || {};
   const top = Object.entries(coloniesByKey)
@@ -15,14 +15,9 @@ function TopColony({ snapshot, onOpenDev }) {
   return (
     <DarkPanel seed={9} style={{ color: '#d4cdb8', flexShrink: 0 }}>
       <div style={{ position: 'relative', padding: '10px 14px 12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ marginBottom: 8 }}>
           <span style={{ fontFamily: mono, color: '#7a7060', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             top colony
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <EnginePageTrigger />
-            <LabPageTrigger />
-            <DevDashboardTrigger onOpen={onOpenDev} />
           </span>
         </div>
         {top.length === 0 ? (
@@ -140,11 +135,21 @@ function App() {
         padding: '12px 12px 12px 0',
         minHeight: 0,
       }}>
-        <StatusLeft snapshot={snapshot} />
+        <StatusLeft
+          snapshot={snapshot}
+          nav={
+            <>
+              <EnginePageTrigger />
+              <LabPageTrigger />
+              <ResearchPageTrigger />
+              <DevDashboardTrigger onOpen={() => setDevOpen(true)} />
+            </>
+          }
+        />
         <div style={{ flex: 1, minHeight: 80, overflow: 'hidden' }}>
           <Chronicle entries={journal?.entries} />
         </div>
-        <TopColony snapshot={snapshot} onOpenDev={() => setDevOpen(true)} />
+        <TopColony snapshot={snapshot} />
         <HallTrigger entries={hall?.entries} onOpen={() => setHallOpen(true)} />
         <StatusRight snapshot={snapshot} />
       </div>

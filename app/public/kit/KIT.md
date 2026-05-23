@@ -61,8 +61,12 @@ accumulating again.
 | `window.HallModal` | overlays | grid of inscribed colonies |
 | `window.HallDetail` | overlays | single colony detail overlay |
 | `window.DevDashboard` | overlays | dev tools panel (speed · toofan · sow · reset) |
-| `window.DevDashboardTrigger` | overlays | pixel gear button + ⌘. hotkey |
-| `window.StatusLeft` | shell | vol / era / day strip |
+| `window.DevDashboardTrigger` | overlays | labeled chip — gear + "dev" + ⌘. hotkey |
+| `window.NavLinkTrigger` | overlays | labeled chip wrapper: 9×9 glyph + mono label, hover-ember, `<a href>` |
+| `window.EnginePageTrigger` | overlays | labeled chip → `/engine` |
+| `window.LabPageTrigger` | overlays | labeled chip → `/lab` |
+| `window.ResearchPageTrigger` | overlays | labeled chip → `/research` |
+| `window.StatusLeft` | shell | vol / era / day strip; optional `nav` prop renders a second row of nav chips |
 | `window.StatusRight` | shell | season / vitals / pressure bar |
 | `window.TickPipeline` | charts | 7-stage flowchart |
 | `window.TerrainDiagram` | charts | SVG terrain cross-section |

@@ -9,10 +9,11 @@ wouldn't get served as a live route. The full reasoning per item is
 recoverable from `git show a92fcf5^:app/public/_audit.html`. This kanban
 is the live surface.
 
-**Shipped:** 0 / 14 (last reviewed 2026-05-21). Cards #12–14 promoted
-from `DESIGN_NEEDS_WORK.md` after a sweep on the same day — most of
-that pre-kanban list turned out already-resolved by code that shipped
-in earlier design-kit slices.
+**Shipped:** 3 / 14 (last reviewed 2026-05-23). Sweep on 2026-05-23
+moved #08, #09, and #11 to Done; #04 refreshed with sim-lab/03
+parked state. Cards #12–14 promoted from `DESIGN_NEEDS_WORK.md` on
+2026-05-21 after most of that pre-kanban list turned out
+already-resolved by code in earlier design-kit slices.
 
 Items added after the audit (or spun off from `DESIGN_NEEDS_WORK.md`)
 land in **Todo** with a short note about where they came from.
@@ -38,15 +39,23 @@ bucket when it adds something the bucket name doesn't.
 
 ### 04 · Hyphae grow as a mat, not a network
 `bones · bug` · sim-side
-**Now:** active on branch `sim-lab/02-carrying-capacity`. Best result is
-iter-25's config (LEADER_LIFESPAN=120, THICKNESS_MAX=2, descent depth
-lights up). iter-26 tried doubling bifurcation and was reverted; branch
-parked at iter-25 awaiting next mechanic from the buffet (apical
-dominance, or MAX_LEADERS_PER_COLONY 3→5). See
-[NOTES.md](../../app/lib/sim-lab/NOTES.md).
+**Now:** parked at sim-lab/03 iter-10 (PR #38, merged 2026-05-23).
+Aggregate **22/35** (up from 14-19/35 at iter-37). Breakthrough: founder
+gets a 50-reserve head start at sow (`world.js:254`), which unblocks
+lean-seed founders that were stalling in the bootstrap absorption
+window. Four of five seeds now reach painting size; seed 314 hits 6/7
+targets. Apical-dominance + faster leaders + frontier-gated lazy revival
+all in place. **Shape median still 0.165 vs 0.60 threshold** — the
+colonies are painting-sized but single-bundle, not the two-column root
+the painting wants. Remaining gap is structural (lateral spread), not
+volumetric. See [NOTES.md](../../app/lib/sim-lab/NOTES.md) iter-1..10
+on the `sim-lab/03-persistence` arc.
 **Decision:** Sim-side fix is the priority. Investigate root cause in
 growth/turnover balance. Use /lab to validate. Renderer halo only if sim
 alone doesn't restore legibility.
+**Next mechanic class** (open): lateral chemotaxis bias, wider apical
+dominance, or genome-variance over the seed set. The buffet in
+`sim-lab/PROCESS.md` still has untried items.
 
 ---
 
@@ -66,8 +75,11 @@ the stack.
 `bones · bug` · IA
 **Now:** /engine, /lab, dev-tools triggers still in TopColony header
 (app.js:22-26). StatusLeft (shell.jsx:36) still holds only vol/era/day.
-**Decision:** Move all three to StatusLeft as small labeled chips. Keep
-the gear visible — don't hide it behind ⌘. alone.
+**Decision:** Move to StatusLeft as small labeled chips. Keep the gear
+visible — don't hide it behind ⌘. alone. **Scope addition 2026-05-23:**
+Bjorn called out that `/research` (the sim-lab dashboard) is currently
+not surfaced anywhere in the shell — add it as a chip alongside /engine
+and /lab so the lab research surface is one click away.
 
 ### 03 · Rail names disconnected from the field
 `bones · bug` · interaction
@@ -76,8 +88,9 @@ colonies.
 **Decision:** Hover the rail entry → soft outline blooms around that
 colony on the canvas, F57 label appears with the bloom. No permanent
 labels — preserve the diorama.
-**Depends on:** #10 (F57 first use) and #11 (new names). Ship as a
-bundle so the hover-bloom debuts with the new register.
+**Depends on:** #10 (F57 first use). #11 (new names) shipped
+2026-05-22 — the hover-bloom will debut against the new cultivar register
+either way.
 
 ### 05 · ~58 hardcoded hex strings, despite COL tokens existing
 `kit · debt` · sweep
@@ -97,21 +110,6 @@ Screenshots before/after at desktop + tablet.
 **Decision:** Ship `ticksPerDay` in `/api/world/snapshot` meta. Do it
 next time we touch the snapshot shape — bundle, don't standalone.
 
-### 08 · TopColony tells you almost nothing
-`polish`
-**Now:** still just name + age-in-days + hyphae count (app.js:32-54).
-No cap-shape preview, no swatch.
-**Decision:** Add cap-shape preview (reuse `HallMushroom` at size=24)
-and age in days. Skip trend arrows. Keep the rail in service of
-"witness," not "analyst."
-
-### 09 · Loading state is off-voice
-`polish · voice` · first impression
-**Now:** "awakening…" still in dim mono — app.js:109, research.js:334,
-engine.js:38.
-**Decision:** Italic serif rewrite first ("the world stirs."). Animation
-only if it fits without feeling theatrical.
-
 ### 10 · F57 / F35 bitmap fonts are underused
 `polish`
 **Now:** F57/F35 still only in `atmosphere.jsx:54` and design-side
@@ -120,16 +118,6 @@ only if it fits without feeling theatrical.
 the natural first use). F35 micro-stats reserved for a later round.
 Don't replace serif/mono — augment.
 **Depends on:** #03.
-
-### 11 · Colony names are off-voice
-`polish · voice` · naming
-**Now:** `NAME_PREFIXES`/`NAME_SUFFIXES` in `app/lib/world.js:10-24`
-unchanged — Wiggle, Bobble, Cobble, Bramble + cap/stem/gill/spore/wort.
-**Decision:** Rewrite the generator. Made-up names in the
-psilocybin-cultivar register (place-names, physical-trait descriptors,
-mystical-or-weird). Bundle with #03 so the hover-bloom debuts with the
-new register, not the old one.
-**Depends on:** #03 (bundled).
 
 ### 12 · Mushroom min-spacing rule
 `bones · arch` · sim-side
@@ -188,7 +176,24 @@ one before this becomes a ticket. Re-decide with Bjorn.
 
 ## Done
 
-_Empty. Items move here as PRs ship._
+### 11 · Colony names are off-voice
+`polish · voice` · naming
+**Shipped:** PR #32, commit `2fade62` (2026-05-22). Generator rewritten
+in `app/lib/world.js` — made-up names in the psilocybin-cultivar
+register (place-names, physical-trait descriptors, mystical/weird) replace
+the old `Wiggle Cap` / `Bobble Spore` set.
+
+### 09 · Loading state is off-voice
+`polish · voice` · first impression
+**Shipped:** PR #31, commit `076572e` (2026-05-22). "awakening…" in dim
+mono replaced with an italic-serif passage across `app.js`, `research.js`,
+and `engine.js`.
+
+### 08 · TopColony tells you almost nothing
+`polish`
+**Shipped:** PR #33, commit `67b0234` (2026-05-22). Rail rows render a
+`HallMushroom` preview at size=24 (cap shape from genome) plus real
+age-in-days alongside the existing hyphae count.
 
 ---
 

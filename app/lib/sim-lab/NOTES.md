@@ -37,6 +37,18 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+## 2026-05-23 · post-iter-37 · [observe] · day-2 collapse
+Agent: claude-opus-4-7
+Plain: Took the parked iter-37 config from main and ran it for three full sim-days instead of one. Every seed produced a clean day-1 painting and then collapsed by day 2 — colonies that hit 148 cells at day 1 were down to 4 cells the next day, and back to 2 the day after. The same thing happens on the pre-iter-37 main config too, so it's not new — Vision 1's 1-day window has been hiding it the whole time. Auto-bootstrap masks the founder death by sowing fresh spores, which is succession, not persistence.
+Probe: `node app/lib/sim-lab/grow-extended.js <seed> <days>` — one founder, current sim.js constants, ASCII at each day boundary. Added in this branch.
+Observation:
+- seed 1337 (parked iter-37): day-1 cells=148 (2 descents, depth 8) → day-2 cells=4 → day-3 cells=2.
+- seed 555 (parked iter-37): day-1 cells=15 (depth 12) → day-2 founder dead.
+- seed 1337 (pre-iter-27 baseline): day-1 cells=139 → day-2 cells=9 → day-3 founder dead, 534 hyphae of *child* colonies via auto-bootstrap.
+Reading: Leaders senesce at LEADER_LIFESPAN=120 extensions; the non-leader extension rate (0.012) can't replace what dies. Once leaders are gone, the colony enters net-retraction. Reserves are abundant (~67k at day 1, growing) — this is a leader-renewal problem, not a substrate problem.
+Bjorn's decision: this needs fixing. Proposed Vision 2 — Week-long persistence (see RESEARCH.md). Open question: lifespan-renewal mechanic, or rethink leader senescence entirely. Picking this up another day.
+Next: not iter-38 in this branch. The right next move is a new sim-lab branch on Vision 2 (after the painting is closer on Vision 1, or as a parallel track). See RESEARCH.md "suggested first moves" for the buffet.
+
 ## 2026-05-23 · sim-lab/02-carrying-capacity · iter-27 · [tweak]
 Agent: claude-opus-4-7
 Plain: Raised the leader-slot cap from 3 to 5, hoping more concurrent threads would give the second descent column the painting wants. It barely moved the needle — one extra seed passes modestSize, one extra passes soilDispersion, and the worst seed (1337) finally hit 267 cells. But descended slipped from three seeds to two, and multipleDescents still fails on every seed. More leaders, same single descent column.

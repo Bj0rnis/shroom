@@ -165,7 +165,7 @@ function HallMushroom({ entry, size = 84, pixelScale, glow = true }) {
 function HallTrigger({ entries, onOpen }) {
   const count = entries ? entries.length : 0;
   return (
-    <DarkPanel seed={13} style={{ color: H_BODY, flexShrink: 0 }}>
+    <DarkPanel seed={13} elevation={2} style={{ color: H_BODY, flexShrink: 0 }}>
       <button
         type="button"
         onClick={onOpen}

@@ -32,13 +32,18 @@ The repo lives at `/opt/home-server/shroom`, owned by the `agent` user.
 Pull and rebuild as:
 
 ```bash
-ssh agent@shroom-server 'cd /opt/home-server/shroom && git pull && docker compose up -d --build shroom'
+ssh agent@shroom-server 'cd /opt/home-server/shroom && git pull && git log -1 --format=%H%n%s > app/BUILD_INFO && docker compose up -d --build shroom'
 ```
 
 The Dockerfile bakes the code into the image (`COPY . .`) — the container
 has no bind mount for `/app`. Any change to `app/public/` or `app/lib/`
 requires a rebuild, not just a restart. `docker compose restart shroom`
 will look like it worked but actually serves the previous image.
+
+The `git log > app/BUILD_INFO` step records the live commit + subject so
+`/api/research` can surface a LIVE badge on the matching iter card in the
+`/research` dashboard. The file is gitignored — it's a build artifact,
+written fresh on every deploy.
 
 Data persists at `/opt/shroom/data/shroom` (the repo path `/opt/home-server/...`
 is unrelated). Bind-mounted into the container at `/app/data`. Never touch
@@ -125,6 +130,27 @@ in two directions in one tick to produce Y-shaped branches. Tuned for
 
 All growth is multiplied by `growthRate` (genome) and `seasonMult` (season).
 Winter suppresses growth significantly; spring amplifies it.
+
+---
+
+## Sim lab
+
+The lab under `app/lib/sim-lab/` is where sim-tuning iterations happen. Three
+docs, three concerns:
+
+| File | What it is |
+|---|---|
+| `RESEARCH.md` | The paper — vision targets and the reasoning behind them. Update when a vision is achieved or retired. |
+| `NOTES.md` | The journal — one terse entry per iteration. Hypothesis, result, reading, next. |
+| `PROCESS.md` | The contract — how the loop runs, what the agent may decide alone, when to escalate. **Read before iterating.** |
+
+The lab is *semi-automated*: the agent runs the loop without checking in,
+but PRs to main are the surface where the maintainer sees the work. `PROCESS.md`
+defines escalation criteria — read it before assuming you need permission,
+and read it before assuming you don't.
+
+The active mechanic (leader-cells today) is a hypothesis, not a contract.
+`PROCESS.md` lists alternatives the agent is licensed to try.
 
 ---
 

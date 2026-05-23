@@ -30,18 +30,53 @@ function boundingBox(cells) {
   return { x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1, area: (x1 - x0 + 1) * (y1 - y0 + 1) };
 }
 
-// Count distinct runs of colony cells crossing the grass row.
-function grassCrossings(world, cid) {
+// Count distinct runs of colony cells crossing the grass row. A "distinct"
+// run is one that's separated from the previous by at least `minGap` empty
+// columns — so a fat 6-cell run counts as ONE descent, not three. The
+// painting has two descent columns ~4 cells apart; iter-20's blob had one
+// fat run that the old (zero-gap) version counted as multiple.
+function grassCrossings(world, cid, minGap = 3) {
   const { colony } = world.grid;
   let crossings = 0;
   let inRun = false;
+  let gap = 0;
   for (let x = 0; x < W; x++) {
     const i = GRASS_Y * W + x;
     const hit = colony[i] === cid;
-    if (hit && !inRun) { crossings++; inRun = true; }
-    else if (!hit) inRun = false;
+    if (hit) {
+      if (!inRun) {
+        if (crossings === 0 || gap >= minGap) crossings++;
+        inRun = true;
+      }
+      gap = 0;
+    } else {
+      if (inRun) inRun = false;
+      gap++;
+    }
   }
   return crossings;
+}
+
+// Runs / cells in the soil region. Lacework → ~1. Fat blob → ~0.2.
+// Replaces the old branchedDensity scorer (bbox math) which couldn't
+// tell a network from a stake.
+function soilDispersionScore(world, cid) {
+  const { colony } = world.grid;
+  let runs = 0;
+  let cells = 0;
+  for (let y = GRASS_Y + 1; y < H; y++) {
+    let inRun = false;
+    for (let x = 0; x < W; x++) {
+      const hit = colony[y * W + x] === cid;
+      if (hit) {
+        cells++;
+        if (!inRun) { runs++; inRun = true; }
+      } else {
+        inRun = false;
+      }
+    }
+  }
+  return cells === 0 ? 0 : runs / cells;
 }
 
 function descentDepth(world, cid) {
@@ -71,37 +106,39 @@ function modestSize(world, opts = {}) {
   return { ok, score: value, value, note: `cells=${value} (want [${min}, ${max}])` };
 }
 
-// branched-not-blob: cells / bounding-box area ratio in a sparse band.
-function branchedDensity(world, opts = {}) {
-  const min = opts.min ?? 0.10;
-  const max = opts.max ?? 0.40;
+// Soil dispersion — runs/cells in the soil. Painting is ~1 (lacework);
+// fat-trunk blob is ~0.2. Replaces the old branchedDensity (bbox math).
+function soilDispersion(world, opts = {}) {
+  const min = opts.min ?? 0.50;
   const c = pickFocalColony(world);
   if (!c) return { ok: false, score: 0, value: 0, note: 'no colony' };
-  const cells = colonyCells(world, c.id);
-  const bb = boundingBox(cells);
-  if (!bb) return { ok: false, score: 0, value: 0, note: 'no cells' };
-  const density = cells.length / bb.area;
-  const ok = density >= min && density <= max;
-  return { ok, score: density, value: density,
-    note: `density=${density.toFixed(3)} bbox=${bb.w}×${bb.h} (want [${min}, ${max}])` };
+  const d = soilDispersionScore(world, c.id);
+  return { ok: d >= min, score: d, value: d,
+    note: `dispersion=${d.toFixed(2)} (want ≥${min})` };
 }
 
-// descended: founder reached at least N rows below grass.
+// descended: founder reached at least N rows below grass. Floor raised
+// from 5 to 10 — the painting reaches 12 rows, 5 was a stake-passing bar.
 function descended(world, opts = {}) {
-  const min = opts.min ?? 5;
+  const min = opts.min ?? 10;
   const c = pickFocalColony(world);
   if (!c) return { ok: false, score: 0, value: 0, note: 'no colony' };
   const d = descentDepth(world, c.id);
   return { ok: d >= min, score: d, value: d, note: `depth=${d} rows below grass (want ≥${min})` };
 }
 
-// multiple-descent: at least N distinct cell-runs crossed the grass row.
+// multiple-descent: at least N descents at the grass row, where each
+// descent is separated from the next by `minGap` empty columns.
+// minGap=3 enforces real spatial separation — a fat 4-cell run is ONE
+// descent, not several.
 function multipleDescentPoints(world, opts = {}) {
   const min = opts.min ?? 2;
+  const minGap = opts.minGap ?? 3;
   const c = pickFocalColony(world);
   if (!c) return { ok: false, score: 0, value: 0, note: 'no colony' };
-  const n = grassCrossings(world, c.id);
-  return { ok: n >= min, score: n, value: n, note: `${n} grass-crossings (want ≥${min})` };
+  const n = grassCrossings(world, c.id, minGap);
+  return { ok: n >= min, score: n, value: n,
+    note: `${n} distinct descents (gap≥${minGap}) (want ≥${min})` };
 }
 
 // no-premature-fruit: first-fruit tick should be late, not in the first
@@ -131,25 +168,59 @@ function notSaturated(world, opts = {}) {
     note: `alive/substrate=${(frac * 100).toFixed(1)}% (want ≤${max * 100}%)` };
 }
 
+// Shape — the painting comparison. Takes the run's pre-rendered ASCII
+// (passed by the driver via the third arg), extracts structural
+// features, compares against the painting in RESEARCH.md. Acts as the
+// vision's gatekeeper; the other scorers below diagnose per-feature.
+let _shapeMod = null;
+function shape(world, opts = {}, ctx = {}) {
+  if (!_shapeMod) _shapeMod = require('./shape');
+  const ascii = ctx.ascii;
+  if (!ascii) {
+    return { ok: false, value: 0, note: 'shape scorer needs ctx.ascii (driver)' };
+  }
+  const runFeatures = _shapeMod.extractFeatures(ascii);
+  const painting = _shapeMod.paintingFeatures();
+  const result = _shapeMod.shapeScore(runFeatures, painting);
+  const threshold = opts.threshold ?? 0.6;
+  return {
+    ok: result.score >= threshold,
+    value: result.score,
+    note: `shape=${(result.score * 100).toFixed(0)}% (want ≥${threshold * 100}%)`,
+  };
+}
+
 // Vision 1 — "day-1 root" — bundle of targets that together describe the
 // painting-derived first vision. See RESEARCH.md for the picture.
+//
+// The headline scorer is `shape` — it judges the run by comparing its
+// ASCII against the painting's ASCII directly. The remaining three are
+// sanity gates: alive, not fruiting too early, not matted. The earlier
+// numeric proxies (branchedDensity, descended, multipleDescents) were
+// retired at the iter-21 review because a stake-with-a-cap could pass
+// them without producing any network behaviour.
 const VISION_1_DAY1_ROOT = {
   id: 'vision-1-day1-root',
-  description: 'Day-1 single colony: branched root, descended through grass, modest size, no premature fruit, no saturation.',
+  description: 'Day-1 single colony: matches the painting (root network in soil), modest size, no premature fruit, no saturation.',
   scenarioId: 'first-day-on-log',
   scorers: [
+    // The gatekeeper — overall similarity to the painting's shape.
+    { name: 'shape',           fn: shape,                 opts: { threshold: 0.6 } },
+    // Per-feature diagnostics — tell the iterating agent *what specifically*
+    // is off when the shape score is low.
     { name: 'modestSize',      fn: modestSize,            opts: { min: 150, max: 800 } },
-    { name: 'branchedDensity', fn: branchedDensity,       opts: { min: 0.10, max: 0.40 } },
-    { name: 'descended',       fn: descended,             opts: { min: 5 } },
-    { name: 'multipleDescents',fn: multipleDescentPoints, opts: { min: 2 } },
+    { name: 'soilDispersion',  fn: soilDispersion,        opts: { min: 0.50 } },
+    { name: 'descended',       fn: descended,             opts: { min: 10 } },
+    { name: 'multipleDescents',fn: multipleDescentPoints, opts: { min: 2, minGap: 3 } },
     { name: 'noPrematureFruit',fn: noPrematureFruit,      opts: { maxByEnd: 3 } },
     { name: 'notSaturated',    fn: notSaturated,          opts: { max: 0.20 } },
   ],
 };
 
 module.exports = {
-  modestSize, branchedDensity, descended, multipleDescentPoints,
-  noPrematureFruit, notSaturated,
-  colonyCells, boundingBox, grassCrossings, descentDepth, pickFocalColony,
+  modestSize, soilDispersion, descended, multipleDescentPoints,
+  noPrematureFruit, notSaturated, shape,
+  colonyCells, boundingBox, grassCrossings, descentDepth,
+  soilDispersionScore, pickFocalColony,
   VISION_1_DAY1_ROOT,
 };

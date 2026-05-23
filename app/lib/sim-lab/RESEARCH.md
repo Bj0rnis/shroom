@@ -94,7 +94,35 @@ pass on a majority of the seed set (3+ of 5).
 
 ### Status
 
-_Not yet achieved on any iteration._ Baseline run (current `main`
-constants) fails 5/6 of the targets across all 5 seeds. Saturation,
-premature fruiting, and far-overshooting cell counts are the dominant
-failure mode. See `NOTES.md` for in-flight work.
+_In progress — early scorer pass at iter-20 was misleading._
+
+iter-20 cleared all six original scorers (modestSize, branchedDensity,
+descended, multipleDescents, noPrematureFruit, notSaturated) but the
+resulting grids weren't the painting — they were dense caps on the log
+with single fat taps, not a branched root system. The scorers were
+counting "≥2 grass-crossings within the bbox" and "bbox density in
+range," which a stake-with-a-cap can pass without producing any
+network behaviour in the soil.
+
+**Real status: shape scoring is being rebuilt.** A new `shape.js`
+extracts structural features directly from the painting ASCII and
+from each run's ASCII, then compares them. The vision will pass when
+the shape score crosses a meaningful threshold, not when arbitrary
+numeric proxies clear. See `NOTES.md` for the in-flight work; the
+sim-side mechanic stack from iter-1..20 stays as a reasonable
+starting point for the next iter cycle.
+
+#### Configurations explored so far (not yet passing the real bar)
+
+- **Leader-cells** (sim-lab/01 iter-1, iter-5): a few designated tips
+  extend fast, rest crawl, leaders age out after 60 grows.
+- **Colony carrying capacity** (sim-lab/02 iter-13): soft brake
+  `cap=1500`, `softness=1` on extension prob.
+- **Substrate-aware sow** (sim-lab/02 iter-17): plant on richest log
+  cell in each spore's column.
+- **Pinned genome for tests** (sim-lab/02 iter-20): lab seeds use a
+  fixed reference genome. Removes the genome lottery from the test
+  signal.
+
+Live world still uses `randomGenome()` — natural variance preserved
+outside the lab.

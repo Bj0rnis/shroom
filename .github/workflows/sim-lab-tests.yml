@@ -1,0 +1,33 @@
+name: sim-lab tests
+
+on:
+  pull_request:
+    paths:
+      - 'app/lib/**'
+      - 'app/lib/sim-lab/**'
+      - '.github/workflows/sim-lab-tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/lib/**'
+      - 'app/lib/sim-lab/**'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        working-directory: app
+        run: npm ci
+
+      - name: Run sim-lab smoke tests
+        working-directory: app
+        run: node lib/sim-lab/test.js

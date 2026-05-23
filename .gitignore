@@ -10,3 +10,7 @@ app/.npm-cache/
 
 # local lab driver / iteration workspace
 scratch/
+
+# Build artifact written by the deploy script — surfaces the live commit
+# on /research via /api/research's `live` block.
+app/BUILD_INFO

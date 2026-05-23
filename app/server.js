@@ -144,6 +144,7 @@ app.get('/lab', (req, res) => {
 // of truth stays in markdown; this is a view on it.
 const fs = require('fs');
 const { renderPage } = require('./lib/sim-lab/render');
+const labParser = require('./lib/sim-lab/notes-parser');
 function serveJournal(filename, title) {
   return (req, res) => {
     const p = path.join(__dirname, 'lib', 'sim-lab', filename);
@@ -152,8 +153,65 @@ function serveJournal(filename, title) {
     res.type('html').send(renderPage(title, md));
   };
 }
-app.get('/research', serveJournal('RESEARCH.md', 'research'));
-app.get('/notes',    serveJournal('NOTES.md',    'notes'));
+
+// /research = dashboard (kit-based React page). The raw RESEARCH.md
+// stays accessible at /research/paper for when you want the source view.
+app.get('/research', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'research.html'));
+});
+app.get('/research/paper', serveJournal('RESEARCH.md', 'research'));
+app.get('/notes',          serveJournal('NOTES.md',    'notes'));
+app.get('/process',        serveJournal('PROCESS.md', 'process'));
+
+// Live-version read: parse BUILD_INFO (written by deploy) or fall back to
+// spawning git locally. Two lines: commit hash, then commit subject. The
+// subject's "iter-N" + "branch · iter-N" tags let the dashboard match the
+// live commit to an iter card in the timeline.
+function readLiveVersion() {
+  let raw = null;
+  try { raw = fs.readFileSync(path.join(__dirname, 'BUILD_INFO'), 'utf8'); } catch {}
+  if (!raw) {
+    try {
+      const { execSync } = require('child_process');
+      raw = execSync('git log -1 --format=%H%n%s', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+    } catch { return null; }
+  }
+  const [commit, subject = ''] = raw.split('\n');
+  if (!commit) return null;
+  const iterMatch = subject.match(/iter-(\d+)/);
+  const branchMatch = subject.match(/sim-lab\/[^\s:·]+/);
+  return {
+    commit,
+    commitShort: commit.slice(0, 7),
+    subject: subject.trim(),
+    iter: iterMatch ? `iter-${iterMatch[1]}` : null,
+    branch: branchMatch ? branchMatch[0] : null,
+  };
+}
+
+// /api/research — structured view over the three sim-lab markdown files +
+// recent lab runs, for the /research dashboard.
+app.get('/api/research', (req, res) => {
+  const docs = labParser.readLabDocs();
+  const notes = labParser.parseNotes(docs.notes);
+  const hypotheses = labParser.parseHypotheses(docs.process, notes);
+  const version = readLiveVersion();
+  res.json({
+    research: docs.research,
+    process:  docs.process,
+    notes:    notes,
+    hypotheses,
+    runs:     lab.listRuns().slice(0, 12),
+    live: version && {
+      ...version,
+      tick:    world.meta.tick,
+      day:     +(world.meta.tick / TICKS_PER_SIM_DAY).toFixed(2),
+      season:  world.meta.season,
+      seed:    world.meta.seed,
+      volume:  world.meta.volume,
+    },
+  });
+});
 
 app.get('/api/engine-spec', (req, res) => {
   res.json({

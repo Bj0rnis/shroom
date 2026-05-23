@@ -130,7 +130,7 @@ function renderPage(title, md) {
   .nav a:hover { color: var(--hi); }
 </style>
 </head><body><main>
-<div class="nav"><a href="/research">research</a><a href="/notes">notes</a><a href="/">live</a></div>
+<div class="nav"><a href="/research">research</a><a href="/research/paper">paper</a><a href="/notes">notes</a><a href="/process">process</a><a href="/">live</a></div>
 ${body}
 </main></body></html>`;
 }

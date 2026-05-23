@@ -33,6 +33,36 @@ function randomGenome(rng) {
   });
 }
 
+// Pinned reference genome — used by sim-lab vision tests so the loop can
+// iterate on the mechanic without rolling the genome lottery. Live world
+// still uses randomGenome with rng for natural variance; lab scenarios
+// that want a pinned founder explicitly opt in.
+//
+// Values come from seed 1337's natural roll at iter-13 — the only genome
+// that produced the painting (421 cells, 6/6 targets). Pinning all lab
+// seeds to this DNA means we're testing the mechanic against a known-
+// working phenotype rather than against the genome midpoint. iter-20.
+const PINNED_DEFAULTS = {
+  growth_rate:          1.95,
+  spread_bias_nutrient: 0.51,
+  vertical_bias:        0.06,
+  fruit_threshold:      0.18,
+  decay_resistance:     0.90,
+  spore_count:          6.43,
+  cap_hue:              359,
+  cap_shape:            2,
+  cap_size:             0.68,
+  stem_length:          0.94,
+};
+function pinnedGenome(overrides = {}) {
+  return GENES.map(g => {
+    if (g.name in overrides) return overrides[g.name];
+    if (g.name in PINNED_DEFAULTS) return PINNED_DEFAULTS[g.name];
+    if (g.continuous) return (g.min + g.max) / 2;
+    return g.min;
+  });
+}
+
 function mutate(parent, rng) {
   const r = rng || Math.random;
   const child = parent.slice();
@@ -83,6 +113,7 @@ function phenotypeWords(genome) {
 module.exports = {
   GENES,
   randomGenome,
+  pinnedGenome,
   mutate,
   genomeToObj,
   phenotypeWords,

@@ -28,7 +28,7 @@ const NUTRIENT_CONSUMPTION   = 1;
 const SIDE_ABSORPTION        = 1;
 const SIDE_ABSORPTION_FLOOR  = 10;   // lowered from 20 — frontier cells can
 const THICKNESS_BOX_RADIUS   = 1;    // 3×3 density check; see BALANCE.md 2026-05-17
-const THICKNESS_MAX          = 3;
+const THICKNESS_MAX          = 2;    // sim-lab iter-23: one neighbour beyond source (1 was too strict, 3 fattened)
 const NUTRIENT_MAX           = 100;  // soft cap matching world.js generators
 
 // ── Decay-feeds-substrate ───────────────────────────────
@@ -44,7 +44,7 @@ const DECAY_NEIGHBOR_DEPOSIT = 4;
 // extension roll (~30% at a tip) this yields an effective fork rate of
 // ~12%/tick — first Y-branch by cell ~8 on a healthy colony. Tuned for
 // "roots, not worms" with THICKNESS_MAX still capping mature density.
-const TIP_BIFURCATION_PROB = 0.20;
+const TIP_BIFURCATION_PROB = 0.30;   // sim-lab iter-28: was 0.20, milder bump than iter-26's 0.40 paired with cap=5
 
 // Extension probability decays with cell age. Real mycelium has a small
 // number of *leading* hyphal tips that explore outward — once a tip has
@@ -67,11 +67,17 @@ const TIP_AGE_DECAY = 400;
 // the cap — so a young colony's leader count ramps from 1 to MAX as the
 // network forks out. When all leaders of a colony die, the next alive cell
 // encountered in growHyphae is promoted (lazy revival). Sim-lab iter-1.
-const LEADER_EXTEND_PROB      = 0.12;   // leader at freeCount >= 3
-const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (rare — leader squeezed)
-const NON_LEADER_EXTEND_PROB  = 0.012;  // any non-leader cell with freeCount >= 3
-const NON_LEADER_EXTEND_JUNC  = 0.002;  // any non-leader cell with freeCount = 2
-const MAX_LEADERS_PER_COLONY  = 3;
+const LEADER_EXTEND_PROB      = 0.15;   // sim-lab iter-34: was 0.12, compensate for forced separation under dominance radius=15
+const LEADER_EXTEND_JUNCTION  = 0.05;   // leader at freeCount = 2 (sim-lab iter-25: reverted from iter-24's 0.08)
+// Sim-lab iter-13: restored lead-cell asymmetry (back to iter-5 values).
+// Leaders concentrate reserves at the frontier; non-leaders crawl. Cap
+// shapes the volume; leaders shape the spatial concentration.
+const NON_LEADER_EXTEND_PROB  = 0.012;
+const NON_LEADER_EXTEND_JUNC  = 0.002;
+const MAX_LEADERS_PER_COLONY  = 5;   // sim-lab iter-30: reverted to iter-27/28 sweet spot
+// Apical dominance — a new bif-born leader cannot be added within this many
+// cells of an existing leader. Forces spatial separation between active threads.
+const APICAL_DOMINANCE_RADIUS = 15;  // sim-lab iter-33: was 5, aggressive separation now that sibling-exemption fix is in
 // Leader senescence: a leader stops being a leader after this many extensions.
 // Real hyphal tips age out — their vigour decays as they age, and growth
 // passes to younger forks. Without this cap the leader-mechanic still
@@ -82,7 +88,23 @@ const MAX_LEADERS_PER_COLONY  = 3;
 // inherit the frontier. When all leaders senesce, growth halts until a new
 // frontier cell is lazily promoted — which only happens after one of the
 // senesced cells eventually dies. Sim-lab iter-5.
-const LEADER_LIFESPAN          = 60;
+const LEADER_LIFESPAN          = 120;   // sim-lab iter-25: was 60, give leaders more reach under THICKNESS_MAX=2 (iter-35 no-op: bump to 200 had zero effect)
+
+// ── Colony carrying capacity ────────────────────────────
+// A soft cap on colony size — the brake the leader mechanic alone couldn't
+// reliably provide. Extension probability is multiplied by (1 - cells/cap)²
+// when below cap and zero at or above it. Same idea as logistic growth in
+// ecology: a colony slows as it approaches its limit, regardless of how
+// rich the substrate is. Sim-lab iter-11.
+//
+// The cap is fixed for now — the painting-target ("modest size: 150-800
+// cells") is consistent regardless of seed, so the cap should be too.
+// Substrate-derived variants are on the buffet if a fixed cap proves too
+// crude. CARRYING_SOFTNESS controls how sharply the brake bites: 1 = linear
+// drop-off, 2 = (1-x)² (gentle for most of the range, hard near the cap),
+// higher = sharper.
+const COLONY_CARRYING_CAPACITY = 1500;
+const CARRYING_SOFTNESS        = 1;
 
 // ── Substrate slow regeneration ─────────────────────────
 // Decomposer microbes and rainfall slowly restore substrate richness between
@@ -527,6 +549,12 @@ function growHyphae(world) {
       // control is the leader mechanic above. See sim-lab iter-1 notes.
       const ageFactor = Math.exp(-age[i] / TIP_AGE_DECAY);
       baseExtend *= ageFactor;
+      // Carrying-capacity soft brake. Multiplier eases extension toward zero
+      // as the colony approaches CAP. Below cap: smooth taper; at or above:
+      // zero. Same factor applied to bifurcation below.
+      const capFill = (col.cellCount || 0) / COLONY_CARRYING_CAPACITY;
+      const capFactor = capFill >= 1 ? 0 : Math.pow(1 - capFill, CARRYING_SOFTNESS);
+      baseExtend *= capFactor;
       if (rng() <= baseExtend) {
         let r = rng() * totalW;
         let chosen = candidates[0].j;
@@ -556,7 +584,7 @@ function growHyphae(world) {
         // MAX_LEADERS_PER_COLONY; otherwise it joins the static network. A
         // young fork inherits the frontier when the parent leader senesces.
         if (isLeader && freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
-          if (rng() < TIP_BIFURCATION_PROB) {
+          if (rng() < TIP_BIFURCATION_PROB * capFactor) {
             const others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
             if (others.length > 0) {
               const ow = others.reduce((s, c) => s + c.w, 0);
@@ -567,8 +595,23 @@ function growHyphae(world) {
               age[chosen2] = 0;
               col.reserves -= EXTEND_COST;
               if (col.leaders.length < MAX_LEADERS_PER_COLONY) {
-                col.leaders.push(chosen2);
-                col.leaderExt.push(0);
+                // Apical dominance: skip promotion if too close to an existing
+                // leader OTHER than the just-moved parent (at `chosen`). Cell
+                // still grows; it just doesn't become a new leader thread.
+                const cx = chosen2 % W, cy = (chosen2 / W) | 0;
+                let tooClose = false;
+                for (let li = 0; li < col.leaders.length; li++) {
+                  const lj = col.leaders[li];
+                  if (lj === chosen) continue; // sibling exemption (iter-32 fix)
+                  const dx = (lj % W) - cx, dy = ((lj / W) | 0) - cy;
+                  if (dx * dx + dy * dy < APICAL_DOMINANCE_RADIUS * APICAL_DOMINANCE_RADIUS) {
+                    tooClose = true; break;
+                  }
+                }
+                if (!tooClose) {
+                  col.leaders.push(chosen2);
+                  col.leaderExt.push(0);
+                }
               }
             }
           }
@@ -1304,6 +1347,7 @@ const CONSTANTS = {
   LEADER_EXTEND_PROB, LEADER_EXTEND_JUNCTION,
   NON_LEADER_EXTEND_PROB, NON_LEADER_EXTEND_JUNC,
   MAX_LEADERS_PER_COLONY, LEADER_LIFESPAN,
+  COLONY_CARRYING_CAPACITY, CARRYING_SOFTNESS,
   FRUIT_COST, FRUIT_COST_FLOOR, FRUIT_DISCOUNT_PER_FRUIT,
   FRUIT_MATURE_TICKS, FRUIT_CAP_DECAY_TICKS, FRUIT_MIN_X_SPACING,
   FRUIT_SUBSTRATE_MULT_LOG, FRUIT_SUBSTRATE_MULT_GRASS, FRUIT_SUBSTRATE_MULT_SOIL,

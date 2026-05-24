@@ -39,6 +39,19 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/07-lattice-mature begins · iter-77 · vision 1 (close shape gap)
 
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-78 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Reverted iter-77's perpendicular scaling and tried DLA-edge intensity scaling instead — founder uses the parked 0.15, mature colonies push to 0.30 (stronger crowding penalty → finer lacework). Shape recovered partway (0.20 from iter-77's 0.12, vs parked 0.28) but aggregate fell to 23 — worse than parked iter-74 and worse than iter-77. 271 lost its rescue (96 cells, 2/7) and 42 fragmented (5 colonies). DLA-K scaling alone is not the shape lever.
+Hypothesis: scaling DLA_EDGE_K from 0.15 (founder) to 0.30 (mature) produces finer lacework in mature colonies without the column-separation tension of perpendicular scaling.
+Setup: `PERP_BIAS_SOIL_MATURE` 8 → 4 (reverted to iter-74 baseline). New `DLA_EDGE_K_SOIL_MATURE = 0.30`. DLA application in growHyphae scales K with `sizeT = min(1, cellCount/FALLOFF)`.
+Result: shape 0/5 median **0.195** (up from 0.116, down from 0.282 parked), max 0.314. modestSize 3/5 (down from 5/5 at iter-77). soilDispersion 4/5. descended 4/5. multipleDescents 3/5 (down from 4/5 record). noPrematureFruit 4/5 (10 fruits). notSaturated 5/5. Per-seed: 42=5/7 (823 across 5 — fragmented), 1337=5/7 (145), 314=5/7 (209), **271=2/7 (96 — lost rescue)**, 555=6/7 (457). **Aggregate 23/35** (was 27 iter-77, 25 parked).
+Reading: scaling DLA K up in mature colonies penalizes mature growth too aggressively — it doesn't selectively cull "fat clumps" the way I hoped; it just adds friction everywhere mature cells try to extend. 271's mature founder gets penalized once it reaches 96+ cells (where sizeT starts ramping up to MATURE), preventing further growth. The mechanic conflicts with the founder-rescue's intent. Not the right lever.
+Next: iter-79 — pivot to **stacking mechanic classes via size-gating**. Keep iter-74's founder-rescue boost (small colonies). For mature colonies only (past FALLOFF), apply iter-71-style substrate-field source-sink (boost growth in rich pockets — the mechanic that hit shape max RECORD 0.461). Founder phase and mature phase don't overlap, so the iter-72 stacking-disaster shouldn't repeat. Revive `localSourceField` (still in sim.js). Revert DLA scaling.
+
+---
+
+
+
 ## 2026-05-24 · sim-lab/07-lattice-mature · iter-77 · [mechanic]
 Agent: claude-sonnet-4-6
 Plain: Made the lateral-branching bias scale with colony size — small founders still use the iter-74 baseline of 4×, mature colonies (past 300 cells) crank to 8×. Aggregate hit **27 of 35 — a new arc record** (+2 over iter-74's parked 25). But the gain came from the wrong scorer: multiple-descents climbed to 4 of 5 (also an arc record) while shape match collapsed from 0.28 to 0.12. The lateral bias is producing separated columns instead of connected lacework — exactly the shape-vs-multipleDescents tension sim-lab/04 iter-5 already noted at perp=8×. Tuning the perp weight further isn't going to fix shape.

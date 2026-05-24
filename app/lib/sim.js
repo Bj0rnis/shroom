@@ -90,7 +90,14 @@ const FOUNDER_BOOST_FALLOFF_SOIL = 300;
 // has already established the trunk. Scale linearly with colony size —
 // founder uses FOUNDER, ramps to MATURE at FOUNDER_BOOST_FALLOFF_SOIL.
 const PERP_BIAS_SOIL_FOUNDER     = 4;
-const PERP_BIAS_SOIL_MATURE      = 8;
+const PERP_BIAS_SOIL_MATURE      = 4;   // iter-78: reverted (perp scaling produced columns, not lattice)
+
+// DLA edge preference, scaled by colony size (sim-lab/07 iter-78). The base
+// DLA_EDGE_K_SOIL = 0.15 was the sim-lab/05 iter-64 sweet spot. iter-78
+// scales the K up for mature colonies — stronger crowding penalty in larger
+// networks should produce finer lacework as the network ages. Founder uses
+// the parked 0.15 (preserves iter-74 baseline); mature ramps to MATURE.
+const DLA_EDGE_K_SOIL_MATURE     = 0.30;
 
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
@@ -587,13 +594,18 @@ function growHyphae(world) {
       if (kind[i] === SOIL && j === i + W) {
         w *= (1 + verticalBias * VERTICAL_BIAS_SOIL_MULT);
       }
-      // DLA edge preference (sim-lab/05 iter-63): in SOIL, downweight candidates
-      // surrounded by already-filled neighbours so tips prefer open space.
-      // Count colony-occupied cells in the 3×3 box around j. Divide by
-      // (1 + K * filled).  Soil only.
+      // DLA edge preference (sim-lab/05 iter-63, size-scaled sim-lab/07 iter-78):
+      // in SOIL, downweight candidates surrounded by already-filled neighbours
+      // so tips prefer open space. Count colony-occupied cells in the 3×3 box
+      // around j. Divide by (1 + K * filled). Soil only. K scales linearly from
+      // DLA_EDGE_K_SOIL (founder) to DLA_EDGE_K_SOIL_MATURE (mature) using the
+      // same FOUNDER_BOOST_FALLOFF_SOIL window — stronger crowding penalty as
+      // the network grows produces finer lacework in mature colonies.
       if (kind[i] === SOIL) {
         const filled = occupiedInBox(startSnapshot, j);
-        w /= (1 + DLA_EDGE_K_SOIL * filled);
+        const sizeT = Math.min(1, (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
+        const k = DLA_EDGE_K_SOIL + sizeT * (DLA_EDGE_K_SOIL_MATURE - DLA_EDGE_K_SOIL);
+        w /= (1 + k * filled);
       }
       candidates.push({ j, w });
       totalW += w;

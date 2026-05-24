@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-69 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Reframed the local-food check as a two-way curve — tips in rich pockets push 50% faster, tips in starved zones push 50% slower. **Edge seed 271 finally escaped its floor (35 → 164 cells, 5 of 7 targets — first time it's broken out in the whole arc.)** Stress seed 1337 also jumped (91 → 296 across 4 colonies). But the shape match regressed (median 0.16 vs the parked 0.25), the fair-log seed (42) lost ground, and the boost let two seeds fruit too early. Aggregate still 22 of 35 — same count, very different shape.
+Hypothesis: replace the one-sided brake with a symmetric multiplier 0.5 + (sum/THRESHOLD)·1.0, range [0.5, 1.5]. Strong tips push faster, weak tips slow.
+Setup: `SOURCE_SINK_THRESHOLD_SOIL` 100 → 200. New constants `SOURCE_SINK_FACTOR_MIN = 0.5`, `SOURCE_SINK_FACTOR_MAX = 1.5`. flowFactor computed as `MIN + (MAX-MIN) * min(1, sum/THRESHOLD)`. Baseline guards updated: 42 199→477, 1337 260→391, 555 358→417.
+Result: shape 0/5 median **0.155** (DOWN from 0.252), max **0.342** (down from 0.441). modestSize 2/5 (was 3/5). soilDispersion 3/5 (was 4/5). descended 4/5 max 33 (was 3/5 max 59). **multipleDescents 3/5** (was 2/5 — ties arc record). noPrematureFruit **3/5** (was 5/5, 14 fruits max — fruit blowout). notSaturated 5/5. Per-seed: 42=3/7 (97, was 277), 1337=2/7 (296 across 4 colonies, founder=133), 314=5/7 (520 across 4 colonies, founder=406), **271=5/7 (164, was 35 → ARC FIRST)**, 555=5/7 (142, was 293). **Aggregate 22/35** (flat count, different distribution).
+Reading: source-sink is real — 271 broke its floor for the first time and multipleDescents tied the record. But the [0.5, 1.5] range is saturated at MAX through most of the run (R=4 box of healthy soil sums to ~2000, THRESHOLD=200 means t=1.0 trivially). That means every tip gets the +50% boost early, colonies overshoot the fruit gate, and seed 42 (which prefers calm growth) collapses. The symmetric framing imported a penalty side that wasn't in the original hypothesis. The Vision 1 gatekeeper (shape) regressed because deeper-faster columns replaced lattice spread.
+Next: iter-70 — go pure-boost. range [1.0, 1.5]: starved tips at 1.0 (no penalty), rich-zone tips +50%. Tests whether the 271 rescue survives without hurting 42. If shape median climbs back toward 0.25 with 271 still escaping floor, the mechanic class is finally producing both.
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-68 · [tweak]
 Agent: claude-sonnet-4-6
 Plain: Lowered the local-food threshold from 400 to 100 to confine the brake to truly drained soil. Every number snapped back to the iter-66 park: aggregate 22 of 35, seed 42 recovered to 277 cells. But 1337 and 271 didn't move either — at threshold 100 the brake basically never engages. Mechanism present, doing nothing. Need a different curve to actually rescue the stress and edge seeds.

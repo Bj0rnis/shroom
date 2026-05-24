@@ -78,7 +78,13 @@ const DLA_EDGE_K_SOIL = 0.15;
 // ~25 nutrient/cell, untapped soil hits sum ≈ 2000 (factor 1.0); cells deep
 // in a tapped-out zone fall toward 0.
 const SOURCE_SINK_RADIUS_SOIL    = 4;
-const SOURCE_SINK_THRESHOLD_SOIL = 100;
+const SOURCE_SINK_THRESHOLD_SOIL = 200;
+// Symmetric flow curve range (sim-lab/06 iter-69). The clamp version
+// (iter-67/68) was a one-sided brake; this version both penalizes starved
+// tips and rewards rich-zone tips. flowFactor = MIN + (MAX-MIN) * min(1, sum/THRESHOLD).
+// MIN=0.5 / MAX=1.5: starved tips half-rate, mid-soil ≈1.0, rich-pocket tips +50%.
+const SOURCE_SINK_FACTOR_MIN     = 0.5;
+const SOURCE_SINK_FACTOR_MAX     = 1.5;
 
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
@@ -637,7 +643,8 @@ function growHyphae(world) {
       let flowFactor = 1;
       if (kind[i] === SOIL) {
         const flow = localSourceField(nutrient, i, SOURCE_SINK_RADIUS_SOIL);
-        flowFactor = Math.min(1, flow / SOURCE_SINK_THRESHOLD_SOIL);
+        const t = Math.min(1, flow / SOURCE_SINK_THRESHOLD_SOIL);
+        flowFactor = SOURCE_SINK_FACTOR_MIN + (SOURCE_SINK_FACTOR_MAX - SOURCE_SINK_FACTOR_MIN) * t;
         baseExtend *= flowFactor;
       }
       if (rng() <= baseExtend) {

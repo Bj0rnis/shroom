@@ -74,9 +74,9 @@ process.stdout.write('sim determinism\n');
 process.stdout.write('baseline guards\n');
 {
   const BASELINES = [
-    { seed: 42,   ticks: 5000, cells: 199, fruits: 0, deaths: 0 },
-    { seed: 1337, ticks: 5000, cells: 260, fruits: 0, deaths: 0 }, // updated sim-lab/05 iter-63: DLA edge preference in soil
-    { seed: 555,  ticks: 5000, cells: 358, fruits: 0, deaths: 0 }, // updated sim-lab/05 iter-63
+    { seed: 42,   ticks: 5000, cells: 477, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-69: symmetric source-sink boost (was 199)
+    { seed: 1337, ticks: 5000, cells: 391, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-69 (was 260)
+    { seed: 555,  ticks: 5000, cells: 417, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-69 (was 358)
   ];
   for (const b of BASELINES) {
     const w = createWorld(b.seed);

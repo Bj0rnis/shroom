@@ -56,7 +56,7 @@ The mechanism lives in two places. `IThermodynamicPolicy` (`spi/thermodynamics/`
 
 The `permille` mechanic (per-thousand) lets costs scale with the molecule's value. PEEK-ing an `ENERGY:10000` cell with `energy-permille = -1000` returns 10000 units of energy. POKE-ing a high-value DATA cell costs proportionally more. Five sibling policies exist (`FixedCostPolicy`, `PeekThermodynamicPolicy`, `PokeThermodynamicPolicy`, `PeekPokeThermodynamicPolicy`, `UniversalThermodynamicPolicy`); the universal one subsumes the others and is what the default config uses.
 
-The deep idea here — **selection without a fitness function** — is the part of Evochora's philosophy that the shroom handover already endorsed (§3 of HANDOVER.md). We are *not* doing thermodynamic accounting at the molecule level, but the principle is the same: no global score, no culling, survival emerges from environmental fit.
+The deep idea here — **selection without a fitness function** — is the part of Evochora's philosophy that shroom adopts. We are *not* doing thermodynamic accounting at the molecule level, but the principle is the same: no global score, no culling, survival emerges from environmental fit.
 
 ### What to port
 
@@ -177,4 +177,4 @@ The H2 visualizer DB growing at ~1 GB/hr was the symptom we noticed first. It wo
 
 ---
 
-*End of notes. Next step: build per HANDOVER.md §8 Task 2.*
+*End of notes.*

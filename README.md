@@ -233,6 +233,30 @@ node app/lib/sim-lab/test.js                   # smoke tests + baseline guards
 
 ---
 
+## How it's built
+
+Shroom is a vibe-coding project. The maintainer drives the design;
+Claude does most of the typing. They sit together at a session — talk
+the problem through, change code, run tests, open PRs. The maintainer
+makes the big calls: what the world should look like, when a mechanic
+isn't earning its keep, what ships and what doesn't.
+
+The pattern is most visible in the lab. Each research iteration is one
+move — an agent reads `NOTES.md`, forms a hypothesis, changes one
+constant or one mechanic, runs the lab, writes the entry, opens a PR.
+The maintainer reviews. `PROCESS.md` is the contract that says what the
+agent may decide alone and what it must escalate.
+
+If the journals read like a research diary, that's because they are.
+Most iterations don't move the needle. The ones that do are the reason
+the project exists.
+
+PRs from outside contributors are welcome. Open an issue first, agree
+on what's in scope, then put up the PR. Reviews go through the
+maintainer and Claude together — same as the writing.
+
+---
+
 ## Changelog
 
 A loose list of milestones. Day-to-day commits live in `git log`; this

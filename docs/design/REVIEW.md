@@ -16,10 +16,10 @@ change needed), #12 retired as won't-do (sim-engine side, deferred per
 the maintainer), #14 retired as won't-do (the conditional never tripped — dark-
 hue mushrooms look fine in practice), #07 decided kept-as-is (the depth
 pass made the framed-window stance load-bearing — see card). Cards
-#12–14 had been promoted from `DESIGN_NEEDS_WORK.md` on 2026-05-21.
+#12–14 came from an earlier design-backlog pre-kanban.
 
-Items added after the audit (or spun off from `DESIGN_NEEDS_WORK.md`)
-land in **Todo** with a short note about where they came from.
+Items added after the audit land in **Todo** with a short note about
+where they came from.
 
 ---
 

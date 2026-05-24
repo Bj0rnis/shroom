@@ -212,8 +212,8 @@ process.stdout.write('driver pipeline\n');
   expect('driver returns 2 results for 2 seeds', outcome.results.length === 2);
   expect('aggregate has both scorers',
     Object.keys(outcome.aggregate).length === 2);
-  expect('seed 42 tagged nominal',
-    outcome.results.find(r => r.seed === 42).tag === 'nominal');
+  expect('seed 42 tagged fair-log',
+    outcome.results.find(r => r.seed === 42).tag === 'fair-log');
   expect('seed 99 tagged unknown',
     outcome.results.find(r => r.seed === 99).tag === 'unknown');
   const md = renderReport(outcome, { label: 'test' });

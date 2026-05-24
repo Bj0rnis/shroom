@@ -2,9 +2,11 @@
 
 How the lab is run. The *vision* (what the world should look like) lives in
 `RESEARCH.md`. The *journal* (what was tried, what was read) lives in
-`NOTES.md`. This file is the *contract* between the maintainer and the agent running
-the loop — what the agent may decide alone, what it must escalate, and what
-the iteration shape looks like.
+`NOTES.md`. Direction-setting chats between the maintainer and the agent
+that happen *outside* the iteration loop live in `1-1.md` — read the most
+recent entry there before opening a new branch. This file is the *contract*
+between the maintainer and the agent running the loop — what the agent may
+decide alone, what it must escalate, and what the iteration shape looks like.
 
 ---
 
@@ -122,10 +124,20 @@ The point is to keep the design space open.
 | **Carrying capacity** | Hard or soft cap on cells per colony, derived from substrate quality. Cap is the brake; mechanics underneath are simple. |
 | **Genome variance** | Push growth-rate gene variance way up. Some founders mat, some die fast — and that's fine. Selection across seeds, not within. |
 | **Diffusion-limited aggregation** | Bias extension toward strongest local nutrient gradient. Sharpens fronts, naturally branched. |
+| **Many slow leaders** | Raise `MAX_LEADERS_PER_COLONY` from 5 to ~30, drop `LEADER_EXTEND_PROB` proportionally. Same total growth rate, recursive topology — the painting has 15-20+ active tips at once, not 5. |
+| **Branch hunger** | Bif-children inherit a fraction of parent reserves and starve quickly if they don't find substrate. Frivolous bifurcations die back automatically; no global cap needed. |
+| **Tip-only economy** | Only leader cells absorb nutrient. Non-leaders are pure transport. Reframes the whole reserve flow — mature cells are pipes, not pumps. |
+| **Pulse growth** | Colony grows in bursts every N ticks instead of every tick. Each burst has a budget; once spent, dormant until next burst. Could force the "build then halt" mushroom shape naturally. |
 
-Tried: Leader cells (parked sim-lab/01–02–03), Apical dominance (parked
-sim-lab/02), Carrying capacity (parked sim-lab/02), Substrate-aware
-bifurcation + perpendicular bias (parked sim-lab/04).
+Tried (parked or live in sim today — see NOTES.md branches for detail):
+
+Tried: leader cells
+Tried: apical dominance
+Tried: carrying capacity
+Tried: source–sink transport
+Tried: periphery–interior asymmetry
+Tried: genome variance
+Tried: diffusion-limited aggregation
 
 The agent picks one per iteration. The agent may also pick "no mechanism
 yet — first observe" if the prior iteration's failure mode is unclear.

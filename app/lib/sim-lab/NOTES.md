@@ -37,6 +37,55 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+### sim-lab/07-lattice-mature begins · iter-77 · vision 1 (close shape gap)
+
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-82 · [park] · [closed-without-new-park]
+Agent: claude-sonnet-4-6
+Plain: Five iterations into sim-lab/07, every mechanic class probed (size-scaled perpendicular bias, size-scaled DLA-K, phased substrate-field stacking, periphery-interior at two gates) traded one scorer for another with no net Vision 1 progress. The Vision 1 gatekeeper — shape median — never beat the sim-lab/06 park of 0.282. Stuck signal across the whole branch. Closing the branch and reverting sim.js to iter-74's parking state. Two findings to keep for future agents: (a) the shape-vs-multipleDescents tension is intrinsic to perpendicular-bias levers (sim-lab/04 iter-5 finding confirmed); (b) the mature-phase substrate-field boost can produce shape max RECORD 0.461 but the magnitude that does so also overshoots the fruit gate — needs a fundamentally different stop condition, not just a curve.
+Hypothesis: sim-lab/07's best run was iter-77 (aggregate 27 — branch record, +2 over parked 25) but it traded the Vision 1 gatekeeper for the trade. iter-78/79/80/81 explored alternative mechanics — none beat parked aggregate AND none beat parked shape median.
+Setup: branch revert to commit e677ae3 (sim-lab/06 iter-74 parked).
+Result: bit-identical to iter-74 — shape median 0.282, modestSize 4/5, soilDispersion 5/5, multipleDescents 2/5, noPrematureFruit 5/5, notSaturated 5/5. **Aggregate 25/35** (sim-lab/06 park). All five seeds productive at 4+ of 7 each.
+Reading: the Vision 1 gate (shape median ≥ 0.60) is unlikely to be reachable inside the current single-substrate-per-seed framework. Three branches now (sim-lab/04, sim-lab/05, sim-lab/06) closed the gap from 0.165 → 0.282 — meaningful movement but the remaining distance (0.32 absolute, 2× relative) hasn't moved under any in-physics tuning. Either Vision 1 needs a different physical model (variable substrate density, multi-founder dynamics, or a separate aesthetic-shape-matching pass), or the threshold itself needs to drop — both maintainer calls.
+Next: hand off. Branch parked at iter-74 baseline. Open Vision 1 problems unchanged. Hypothesis-buffet leftovers still untried in their original form: (a) age stratification (currently only partial via TIP_AGE_DECAY); (b) mushroom-shape (network builds then halts); (c) true per-leader transport (each leader has its own reserve pool rather than shared col.reserves). The next branch should consider whether Vision 1 needs retargeting before another in-physics attempt.
+
+
+
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-79 · [mechanic] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Tried "phased stacking" — small colonies still get the founder-rescue boost, mature colonies (past 300 cells) get iter-71's substrate-field boost on top. Shape recovered partway (median 0.25, max 0.41 close to iter-71's record) but aggregate collapsed to 18 — the mature substrate boost pushes seeds past the 800-cell fruit gate, fragmenting them (16 fruits across the seed set). Phasing didn't prevent the issue because the mature boost is too strong in productive ground.
+Hypothesis: founder-rescue handles small colonies, mature substrate-field source-sink handles shape — size-gating prevents the iter-72 multiplicative disaster.
+Setup: in growHyphae, soil extension splits on cellCount<FALLOFF vs ≥FALLOFF. Founder branch identical to iter-74. Mature branch: `flowFactor = 1 + 0.5 × min(1, sum/4000)` (iter-71's curve). DLA-K scaling reverted to flat 0.15. PERP weight reverted to flat 4×.
+Result: shape 0/5 median **0.254** (recovered toward parked 0.282), max **0.407** (close to record 0.461). modestSize 3/5. soilDispersion 2/5 (collapse from 5/5). descended 3/5. multipleDescents 2/5 (down from record 4/5). noPrematureFruit 3/5 (**16 fruits!** — 314 has 5 fruits/5 colonies, 555 has 3 colonies). notSaturated 5/5. Per-seed: 42=5/7 (344 single), 1337=5/7 (381 single), 314=2/7 (468 across 5), 271=2/7 (99 — also lost), 555=4/7 (286 across 3). **Aggregate 18/35**.
+Reading: phasing worked structurally — 42 and 1337 mature beautifully into single founders with shape. But 314's substrate must enter the rich-pocket regime in a way that triggers runaway extension. 271 also regressed (99 cells, not the iter-74 161) — unexpected since 271 stays under FALLOFF; possibly a stream-position effect from the changed code paths, worth investigating. Substrate-field as a mature-only mechanic still produces overshoot.
+Next: iter-80 — drop mature substrate-field. Try **periphery-interior asymmetry** instead: in mature colonies (cellCount ≥ 300), non-leader extension probabilities go to 0. Only leaders drive mature growth. Should clean up interior churn without adding bulk; aligns with the "active tips only" biology.
+
+---
+
+
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-78 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Reverted iter-77's perpendicular scaling and tried DLA-edge intensity scaling instead — founder uses the parked 0.15, mature colonies push to 0.30 (stronger crowding penalty → finer lacework). Shape recovered partway (0.20 from iter-77's 0.12, vs parked 0.28) but aggregate fell to 23 — worse than parked iter-74 and worse than iter-77. 271 lost its rescue (96 cells, 2/7) and 42 fragmented (5 colonies). DLA-K scaling alone is not the shape lever.
+Hypothesis: scaling DLA_EDGE_K from 0.15 (founder) to 0.30 (mature) produces finer lacework in mature colonies without the column-separation tension of perpendicular scaling.
+Setup: `PERP_BIAS_SOIL_MATURE` 8 → 4 (reverted to iter-74 baseline). New `DLA_EDGE_K_SOIL_MATURE = 0.30`. DLA application in growHyphae scales K with `sizeT = min(1, cellCount/FALLOFF)`.
+Result: shape 0/5 median **0.195** (up from 0.116, down from 0.282 parked), max 0.314. modestSize 3/5 (down from 5/5 at iter-77). soilDispersion 4/5. descended 4/5. multipleDescents 3/5 (down from 4/5 record). noPrematureFruit 4/5 (10 fruits). notSaturated 5/5. Per-seed: 42=5/7 (823 across 5 — fragmented), 1337=5/7 (145), 314=5/7 (209), **271=2/7 (96 — lost rescue)**, 555=6/7 (457). **Aggregate 23/35** (was 27 iter-77, 25 parked).
+Reading: scaling DLA K up in mature colonies penalizes mature growth too aggressively — it doesn't selectively cull "fat clumps" the way I hoped; it just adds friction everywhere mature cells try to extend. 271's mature founder gets penalized once it reaches 96+ cells (where sizeT starts ramping up to MATURE), preventing further growth. The mechanic conflicts with the founder-rescue's intent. Not the right lever.
+Next: iter-79 — pivot to **stacking mechanic classes via size-gating**. Keep iter-74's founder-rescue boost (small colonies). For mature colonies only (past FALLOFF), apply iter-71-style substrate-field source-sink (boost growth in rich pockets — the mechanic that hit shape max RECORD 0.461). Founder phase and mature phase don't overlap, so the iter-72 stacking-disaster shouldn't repeat. Revive `localSourceField` (still in sim.js). Revert DLA scaling.
+
+---
+
+
+
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-77 · [mechanic]
+Agent: claude-sonnet-4-6
+Plain: Made the lateral-branching bias scale with colony size — small founders still use the iter-74 baseline of 4×, mature colonies (past 300 cells) crank to 8×. Aggregate hit **27 of 35 — a new arc record** (+2 over iter-74's parked 25). But the gain came from the wrong scorer: multiple-descents climbed to 4 of 5 (also an arc record) while shape match collapsed from 0.28 to 0.12. The lateral bias is producing separated columns instead of connected lacework — exactly the shape-vs-multipleDescents tension sim-lab/04 iter-5 already noted at perp=8×. Tuning the perp weight further isn't going to fix shape.
+Hypothesis: bif-child perpendicular weight scales linearly with `cellCount / FOUNDER_BOOST_FALLOFF_SOIL` from 4 (founder) to 8 (mature), giving mature colonies stronger lateral push without disrupting founder geometry.
+Setup: new constants `PERP_BIAS_SOIL_FOUNDER = 4`, `PERP_BIAS_SOIL_MATURE = 8` in sim.js. The bif block at line ~683 multiplies perpendicular candidates by a sizeT-interpolated weight. Baseline guards unchanged — 5000-tick numbers within tolerance.
+Result: shape 0/5 median **0.116** (DOWN from 0.282), max 0.346 (down from 0.308 — wait, up; but median is the gatekeeper). **modestSize 5/5 (ARC FIRST all-pass)**. soilDispersion 5/5. descended 4/5 max 61. **multipleDescents 4/5 (ARC RECORD — prev best 3/5 at iter-61)**. noPrematureFruit 4/5 (8 fruits — 42 fragmented). notSaturated 5/5. Per-seed: 42=5/7 (466 across 5 colonies — fragmented), **1337=6/7 (289 single — best 1337 ever)**, 314=5/7 (557 single — recovered from iter-74's 111), 271=5/7 (161 single — held), **555=6/7 (460 single — held)**. **Aggregate 27/35** (NEW ARC RECORD).
+Reading: the perpendicular-bias lever moved aggregate +2 and multipleDescents +2, but at the cost of shape — same tension sim-lab/04 iter-5 noted. The two scorers read two different geometric basins: 4× perp produces connected lattice (high shape, fewer columns), ≥6× perp produces separated columns (more columns, lower lattice match). Vision 1's gatekeeper is shape median ≥ 0.60 — multipleDescents helps aggregate but doesn't move the gate. To fix shape we need a different mechanism — possibly DLA-edge intensity scaling with size (finer lacework in mature colonies) or substrate-field bif-direction bias (the iter-71 mechanism that produced shape max 0.461, but applied selectively).
+Next: iter-78 — revert PERP_BIAS_SOIL_MATURE to 4 (back to iter-74 perp baseline), scale `DLA_EDGE_K_SOIL` with colony size instead — founder uses 0.15, mature uses 0.30. Tests whether DLA-edge scaling alone (without perp scaling) recovers shape while keeping the modestSize 5/5 gain. If shape median climbs back toward 0.25+ with aggregate ≥ 25, lock that in. If not, try stacking.
+
+---
+
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
 ## 2026-05-24 · sim-lab/06-source-sink · iter-76 · [park]

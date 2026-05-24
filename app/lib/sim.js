@@ -64,27 +64,20 @@ const TIP_BIFURCATION_PROB_SOIL = 0.55;
 // iter-65: K = 0.10 — too mild, shape collapsed to 0.126, fruit chaos on seed 42.
 const DLA_EDGE_K_SOIL = 0.15;
 
-// Source-sink reserve flow (sim-lab/06 iter-67). The colony's reserves are
-// pooled at col.reserves, but real mycelium transports nutrient locally — a
-// tip can only push forward when its absorbing kin are still feeding the
-// network. We model this by gating SOIL extension on the local nutrient field
-// around the extending cell. If the surrounding substrate is depleted, the
-// "flow" to the tip is dampened and extension probability shrinks
-// proportionally. Tips follow productive ground instead of churning through
-// pooled reserves into dead zones. Soil only — log/grass have rich,
-// churn-fast economies and don't need this brake.
-// Sum of nutrient[] in a (2R+1)² box around the extending cell; flow factor
-// is sum / THRESHOLD clamped to 1. With R=4 (9×9=81 cells) and base soil
-// ~25 nutrient/cell, untapped soil hits sum ≈ 2000 (factor 1.0); cells deep
-// in a tapped-out zone fall toward 0.
-const SOURCE_SINK_RADIUS_SOIL    = 4;
-const SOURCE_SINK_THRESHOLD_SOIL = 4000;
-// Symmetric flow curve range (sim-lab/06 iter-69). The clamp version
-// (iter-67/68) was a one-sided brake; this version both penalizes starved
-// tips and rewards rich-zone tips. flowFactor = MIN + (MAX-MIN) * min(1, sum/THRESHOLD).
-// MIN=0.5 / MAX=1.5: starved tips half-rate, mid-soil ≈1.0, rich-pocket tips +50%.
-const SOURCE_SINK_FACTOR_MIN     = 1.15;
-const SOURCE_SINK_FACTOR_MAX     = 1.5;
+// Founder-rescue boost (sim-lab/06 iter-73). Replaces the substrate-field
+// source-sink lever (iter-67 through iter-72) — that curve never showed a
+// selective basin and six iters of tuning didn't beat parked aggregate.
+// New framing: in SOIL, give *small* colonies an extension boost, scaled
+// down to zero as the colony grows. Tells the right story — founder needs
+// escape velocity on lean substrate (seed 271 dies tiny because its first
+// ~25 extensions exhaust reserves before finding a productive column);
+// mature colonies already have a network and don't need the boost (and the
+// boost would push them past the 800-cell fruit gate, fragmenting them
+// into child colonies — see iter-69/70/72 fruit blowouts).
+// flowFactor = 1 + FOUNDER_BOOST_MAX × max(0, 1 - cellCount / FOUNDER_BOOST_FALLOFF).
+// Boost falls linearly from MAX at 0 cells to 0 at FALLOFF cells.
+const FOUNDER_BOOST_MAX_SOIL     = 0.5;
+const FOUNDER_BOOST_FALLOFF_SOIL = 300;
 
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
@@ -640,11 +633,13 @@ function growHyphae(world) {
       // ground slow proportionally; tips next to rich pockets keep their full
       // rate. flowFactor stays declared at 1.0 above grass so the bif block
       // below can reuse it without a substrate check.
+      // Founder-rescue boost (sim-lab/06 iter-73). In soil, small colonies
+      // get an extra extension boost that tapers to zero at FALLOFF cells.
+      // flowFactor stays at 1.0 above grass and for mature colonies.
       let flowFactor = 1;
       if (kind[i] === SOIL) {
-        const flow = localSourceField(nutrient, i, SOURCE_SINK_RADIUS_SOIL);
-        const t = Math.min(1, flow / SOURCE_SINK_THRESHOLD_SOIL);
-        flowFactor = SOURCE_SINK_FACTOR_MIN + (SOURCE_SINK_FACTOR_MAX - SOURCE_SINK_FACTOR_MIN) * t;
+        const sizeT = Math.max(0, 1 - (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
+        flowFactor = 1 + FOUNDER_BOOST_MAX_SOIL * sizeT;
         baseExtend *= flowFactor;
       }
       if (rng() <= baseExtend) {

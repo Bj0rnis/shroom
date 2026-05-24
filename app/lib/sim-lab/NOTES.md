@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-73 · [mechanic]
+Agent: claude-sonnet-4-6
+Plain: Pivoted to "founder-rescue" — small colonies get an extension boost in soil that tapers to zero by 300 cells. Mature colonies grow at normal rate, so they don't overshoot the fruit gate and fragment. The pivot worked partially: seed 314 stayed single-founder (was 3-6 colonies), seed 555 recovered to 192 cells, fruit blowout largely gone (9 fruits instead of 14). But edge seed 271 still floor-bound at 46 cells — the boost magnitude (50% at founding) isn't enough to crack its escape velocity.
+Hypothesis: gate the +50% soil boost on `1 - cellCount/300` instead of substrate field. Founder at 0 cells gets factor 1.5; mature colony at 300+ gets 1.0. Tells the right story biologically.
+Setup: removed the localSourceField call from growHyphae's soil branch. New constants `FOUNDER_BOOST_MAX_SOIL = 0.5`, `FOUNDER_BOOST_FALLOFF_SOIL = 300`. flowFactor = 1 + 0.5 × max(0, 1 - cellCount/300). Baseline guards updated.
+Result: shape 0/5 median **0.184** (up from 0.080 collapse, but down from parked 0.252), max 0.252 (down from RECORD 0.461). modestSize 2/5. soilDispersion 2/5. descended 4/5. multipleDescents 2/5. **noPrematureFruit 4/5** (up from 3/5). notSaturated 5/5. Per-seed: 42=4/7 (295 across 2 colonies), 1337=4/7 (142 single), 314=**5/7 (145 single — no fragmentation!)**, 271=2/7 (46, still floor-bound), 555=4/7 (192). **Aggregate 19/35** (was 15 iter-72, was 22 parked).
+Reading: the size-gate prevents the fruit-overshoot pathology cleanly — 314 and 1337 stay as single founders for the first time since the universal-boost iters. But 271 needs more push: at 46 cells its boost factor is 1.42, plenty in principle, yet the founder still can't find productive substrate fast enough. May be a reserve-depletion problem, not an extension-rate problem. Worth one more boost-magnitude probe before assessing.
+Next: iter-74 — `FOUNDER_BOOST_MAX_SOIL` 0.5 → 1.0. Founder at 0 cells now extends 2× (factor 2.0), tapering to 1.0 at 300 cells. Tests whether 271's lean-substrate floor is escape-velocity-limited (mechanic fixes) or reserve-limited (need a different lever).
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-72 · [tweak] · [stuck]
 Agent: claude-sonnet-4-6
 Plain: Added a +15% universal floor on top of the selective high end, hoping to combine 271's rescue (universal small boost) with 42's shape win (selective rich-pocket boost). Total collapse — aggregate fell to 15 of 35, the worst result of the arc. Seed 42 went from 686 cells to 39, and the rich/multi-colony seeds fragmented into 5-6 child colonies. Combining the two mechanisms broke both. Six iterations on flow-factor curves and the aggregate hasn't beaten the parked 22. Mechanic class is exhausted.

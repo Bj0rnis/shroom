@@ -100,6 +100,9 @@ Result: shape 0/5 median **0.185** (record from 0.165), max **0.282** (record). 
 Reading: mechanism is real — shape median +12%, depth median +82%. But unbounded leader promotion in soil burns rich-substrate seeds (1337 drops 285→50). The dominance check served a real purpose; can't just remove it. Either dial it back gradually (iter-3) or find a way to promote bif-children without spawning concurrent leaders (e.g. perpendicular extension preference instead).
 Next: iter-3 — try APICAL_DOMINANCE_RADIUS_SOIL = 5 (milder than the 0-radius free-for-all of iter-2). Preserves some separation pressure but should let lattice form.
 
+### sim-lab/04-shape-geometry begins · 2026-05-23 · vision 1 (shape)
+(numbering restarted from iter-1 — branch-scoped, would have been iter-49 under the continuous rule introduced 2026-05-24)
+
 ## 2026-05-23 · sim-lab/04-shape-geometry · iter-1 · [tweak]
 Agent: claude-sonnet-4-6
 Plain: Boosted how often growing tips split into Y-branches, but only when they're already underground in soil (kept the cleaner above-ground growth alone). Aggregate stayed put at 22 of 35, but the shape-match peak climbed to its best-ever value of 0.25, and one seed reached 38 rows down — also a record. The stress seed stopped overshooting and finally hit 6/7 targets without fruiting too early. Trade-off: the branch seed regressed because over-branching depleted reserves before the network could spread properly.
@@ -110,6 +113,9 @@ Reading: the mechanic class is right — shape peak +33% and depth record both s
 Next: iter-2 — drop apical dominance check for in-soil bifurcations. Let bif-children become leaders even close to existing leaders when they're in soil. The dominance check was tuned for log-band leader separation; in soil we want bif-children to follow up the divergent path.
 
 ---
+
+### sim-lab/03-persistence begins · 2026-05-23 · vision 2 (week-long)
+(numbering restarted from iter-1 — branch-scoped, would have been iter-38 under the continuous rule introduced 2026-05-24)
 
 ## 2026-05-23 · sim-lab/03-persistence · iter-1 · [rewrite]
 Agent: claude-opus-4-7
@@ -552,6 +558,8 @@ Result: modestSize 1/5, branchedDensity 3/5, descended 3/5, multipleDescents 1/5
 Reading: non-leader-bifurcation kills the Y-fork signal — multipleDescents dropped 3/5 → 1/5. And the lazy-init path still revives leaders forever, so 1337 mats anyway.
 Next: remove lazy-init revival entirely (iter-7).
 
+### sim-lab/02-carrying-capacity begins · 2026-05-19 · vision 1 (continued from sim-lab/01 — iter-11)
+
 ## 2026-05-19 · sim-lab/02-carrying-capacity · iter-11 · [mechanic]
 Agent: claude-opus-4-7
 Plain: First try with a colony-wide soft cap (500 cells, on top of lead cells). The brake works — no matting and no early fruiting on any seed — but cap-plus-lead-cells is too much braking. Colonies came out as small lumps (1-94 cells) and didn't reach down into the soil at all. Next move is to try the cap on its own, without lead cells underneath.
@@ -627,6 +635,8 @@ so total ~3 × 0.12 × 28800 = ~10k cells. The fix is in bifurcation: it must
 *not* add a new leader. Then founder has 1 leader for life of that leader,
 and after senescence the colony slows to non-leader rates (~10× less).
 
+### sim-lab/01-leading-hyphae begins · 2026-05-18 · vision 1 (first mechanic loop)
+
 ## 2026-05-18 · sim-lab/01-leading-hyphae · iter-1 · [mechanic]
 Plain: First try with "lead cells" — a few tips grow fast, the rest crawl. Shape looked right (root-like on the median seed), but rich seeds still matted and colonies fruited too early.
 Hypothesis: every cell-with-a-free-neighbour rolls extension every tick → liquid mat.
@@ -645,6 +655,8 @@ Reading: leaders work. The shape is real (see seed 555 ASCII — root-like).
 Failure modes left: (a) some seeds the founder still saturates, (b) fruit gate
 of 300 cells is reachable inside a sim-day on log-rich substrate.
 Next: raise FRUIT_MIN_CELL_COUNT well past day-1 founder size (500+).
+
+### sim-lab/foundation begins · 2026-05-18 · baseline (pipeline + vision 1 written)
 
 ## 2026-05-18 · sim-lab/foundation · [mechanic]
 Plain: Baseline run on stock numbers. The world matted exactly the way we'd expect — that's the problem we're trying to solve. Lab pipeline itself works (same seed gives the same world every time).

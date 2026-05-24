@@ -28,6 +28,30 @@ counts, then update the `BASELINES` array in the same PR.
 
 ---
 
+## Iteration numbering
+
+`iter-N` is **continuous across the entire research arc**, not per-branch.
+The next entry's N is one more than the previous entry's N regardless of
+which sim-lab/NN branch you're on. The first entry was `iter-1`; we are
+at `iter-56` (sim-lab/04-shape-geometry park) at time of writing, and
+the next iteration is `iter-57` even though it begins a new branch.
+
+When a new branch starts, prepend a one-line header to NOTES.md before
+the first entry on that branch:
+
+```
+### sim-lab/NN-name begins · iter-X · <vision or focus>
+```
+
+This makes branch transitions visible without restarting the count, so
+future-you can read NOTES.md as one continuous story.
+
+Historical note: entries before 2026-05-24 used branch-scoped numbering
+(each branch restarted from iter-1). Don't renumber the past — the
+branch headers in NOTES.md show where each segment of the count sat.
+
+---
+
 ## The loop
 
 One iteration is one move:
@@ -155,6 +179,9 @@ Result: aggregate pass-counts + the surprising number.
 Reading: what I now think.
 Next: one move.
 ```
+
+`iter-N` is the global, continuous number (see "Iteration numbering"
+above). Not branch-scoped.
 
 Tags:
 

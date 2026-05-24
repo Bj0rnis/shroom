@@ -78,7 +78,7 @@ const DLA_EDGE_K_SOIL = 0.15;
 // ~25 nutrient/cell, untapped soil hits sum ≈ 2000 (factor 1.0); cells deep
 // in a tapped-out zone fall toward 0.
 const SOURCE_SINK_RADIUS_SOIL    = 4;
-const SOURCE_SINK_THRESHOLD_SOIL = 200;
+const SOURCE_SINK_THRESHOLD_SOIL = 4000;
 // Symmetric flow curve range (sim-lab/06 iter-69). The clamp version
 // (iter-67/68) was a one-sided brake; this version both penalizes starved
 // tips and rewards rich-zone tips. flowFactor = MIN + (MAX-MIN) * min(1, sum/THRESHOLD).

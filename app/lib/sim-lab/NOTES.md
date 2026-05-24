@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-71 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Raised the threshold to 4000 so only genuinely rich pockets get the full +50% boost. **Shape max climbed to 0.461 — a new arc record (was 0.441).** The fair-log seed 42 grew into a beautiful 686-cell colony, 5 of 7 targets, and the stress seed 1337 kept its founder small at 118 cells (no fragmenting child colonies). But the edge seed 271 lost its escape — back to 41 cells. Lean substrate has no rich pockets to trigger the boost, so 271 gets no help at this threshold.
+Hypothesis: `SOURCE_SINK_THRESHOLD_SOIL` 200 → 4000 (≈ 50 nutrient/cell × 81-cell box) makes the boost selective. Untapped soil sits mid-curve (factor ≈ 1.25), rich pockets at the top (1.5), depleted near 1.0.
+Setup: `SOURCE_SINK_THRESHOLD_SOIL` 200 → 4000. Baseline guards updated: 42 477→197, 1337 391→291, 555 417→420.
+Result: shape 0/5 median **0.141** (down from 0.155), **max 0.461 (ARC RECORD)**. modestSize 2/5. soilDispersion 3/5. descended 2/5 max 77 (was 4/5 max 33 — depth lost but record holder dug deep). multipleDescents 1/5 (was 3/5 — collapse). **noPrematureFruit 5/5** (was 3/5 — recovered!). notSaturated 5/5. Per-seed: **42=5/7 (686 cells, single colony)**, 1337=5/7 (118, single founder rescued), 314=3/7 (332 across 3 colonies), 271=2/7 (**41 — lost rescue**), 555=3/7 (100). **Aggregate 18/35** (was 22).
+Reading: the selective curve produced the best shape result of the whole research arc on seed 42 (686 cells, single founder, shape ≈ 0.46). Vision 1's gatekeeper finally touched 0.46. But the multipleDescents collapse and 271's lost rescue mean the selective form alone isn't the win. The mechanic needs BOTH: a universal small boost (for lean-substrate escape velocity, 271) AND the selective high-end boost (for shape, 42). iter-69/70's universal +50% rescued 271 but broke 1337/314 by fruit overshoot; iter-71's selective +50% saves 1337 but abandons 271.
+Next: iter-72 — `SOURCE_SINK_FACTOR_MIN` 1.0 → 1.15. Floor of +15% on all soil tips, selective +50% in rich pockets. Tests whether the universal floor restores 271's escape while the selective high end keeps 42's shape and 1337's founder-rescue. If both rescues survive AND shape median climbs above iter-66's 0.252, that's the parking candidate.
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-70 · [tweak]
 Agent: claude-sonnet-4-6
 Plain: Removed the penalty side — tips never go below their normal rate, but tips in rich ground push 50% faster. Result was bit-identical to iter-69 — same shape, same cell counts. Diagnosis: with threshold 200, the multiplier was already pinned at MAX=1.5 for every tip in healthy soil, so the 0.5 floor in iter-69 was never reached. The mechanic isn't being selective; it's a universal +50% soil boost masquerading as source-sink. 271 still escapes (164 cells, 5 of 7); 1337's "rescue" is actually 3 child colonies from premature fruiting (14 fruits across the seed set). Founder rescue isn't happening.

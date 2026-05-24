@@ -50,3 +50,31 @@ canvas { display: block; }
   image-rendering: pixelated;
   display: block;
 }
+
+/* Portrait gate — index is desktop/tablet/landscape only. Below a phone-ish
+   width in portrait we cover the page with a quiet rotate prompt. Landscape
+   phones get the squished layout; canvas adapts, rail content gets dense. */
+.shroom-portrait-gate {
+  display: none;
+}
+@media (orientation: portrait) and (max-width: 640px) {
+  .shroom-portrait-gate {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #0a0908;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+  .shroom-portrait-gate > span {
+    font-family: "IM Fell DW Pica", serif;
+    font-style: italic;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #b8a98a;
+    max-width: 22ch;
+  }
+}

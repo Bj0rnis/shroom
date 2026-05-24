@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-68 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Lowered the local-food threshold from 400 to 100 to confine the brake to truly drained soil. Every number snapped back to the iter-66 park: aggregate 22 of 35, seed 42 recovered to 277 cells. But 1337 and 271 didn't move either — at threshold 100 the brake basically never engages. Mechanism present, doing nothing. Need a different curve to actually rescue the stress and edge seeds.
+Hypothesis: THRESHOLD 400 was a uniform damper, not a directional brake. THRESHOLD 100 reserves the brake for actually-dead pockets and lets healthy soil run at full rate.
+Setup: `SOURCE_SINK_THRESHOLD_SOIL` 400 → 100. No other changes.
+Result: shape 0/5 median **0.252** (flat), max **0.441** (flat). modestSize 3/5 (back from 2/5). soilDispersion 4/5 (back from 3/5). descended 3/5 (back from 2/5). multipleDescents 2/5 (back from 1/5). noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=**6/7** (277, was 87), 1337=3/7 (91, flat), 314=5/7 (575, flat), 271=2/7 (35, flat), 555=6/7 (293, flat). **Aggregate 22/35** (back to parked).
+Reading: with R=4 and THRESHOLD=100, sum ≥100 in a 9×9 box requires only ~1.2 nutrient/cell average — even half-drained soil clears that. flowFactor sits at 1.0 for virtually every tip → mechanic is in standby. The original framing was a one-sided brake (penalize weak tips). The actual source-sink hypothesis is bidirectional: strong tips push HARDER on rich substrate, redistributing the colony's growth budget toward productive ground. That needs a multiplier curve that goes both below and above 1.0.
+Next: iter-69 — replace the clamp with a symmetric multiplier. flowFactor = 0.5 + min(1.0, sum / 200) gives starved tips a 0.5× penalty and rich-zone tips a 1.5× boost. THRESHOLD raised to 200 so most cells sit near 1.0 but the edges of the curve bite. If 1337 climbs above 91 cells, the source-sink hypothesis is finally engaging.
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-67 · [mechanic]
 Agent: claude-sonnet-4-6
 Plain: Added a "local food field" check — in soil, a growing tip slows down if the substrate around it has been mostly eaten. The idea was to make tips follow productive ground instead of churning into dead zones. The mid-substrate seed (42) collapsed from 277 cells to 87 — the threshold is too high, so even healthy soil registers as "starved". Stress seed 1337 and edge seed 271 didn't move. Lean 555 held its 6/7.

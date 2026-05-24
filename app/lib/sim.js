@@ -78,7 +78,7 @@ const DLA_EDGE_K_SOIL = 0.15;
 // ~25 nutrient/cell, untapped soil hits sum ≈ 2000 (factor 1.0); cells deep
 // in a tapped-out zone fall toward 0.
 const SOURCE_SINK_RADIUS_SOIL    = 4;
-const SOURCE_SINK_THRESHOLD_SOIL = 400;
+const SOURCE_SINK_THRESHOLD_SOIL = 100;
 
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in

@@ -49,6 +49,8 @@ two new mechanics on top of the long-standing leader-cell foundation:
 Nigehban writes when the world moves him. The Hall of Fame keeps the
 oldest colonies inscribed across volumes.
 
+<img src="shroom-world.png" width="100%" alt="A screenshot of the shroom index. Autumn sun over two fallen logs and bare trees; soil below; a young mycelium colony descending. The right rail shows the volume and day, navigation chips, the journal, the top colony, the hall of fame, and a season status strip." />
+
 ---
 
 ## Stack

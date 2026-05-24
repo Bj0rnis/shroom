@@ -37,7 +37,115 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
-### sim-lab/05-genome-variance begins · iter-57 · vision 1 (close shape gap)
+### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-76 · [park]
+Agent: claude-sonnet-4-6
+Plain: Reverted to iter-74's exact config (FALLOFF back to 300). Confirms the parking config — aggregate **25 of 35**, all five seeds at 4+ of 7 targets, soilDispersion all-pass, noPrematureFruit clean. **Parking sim-lab/06 here.** The arc opened with the source-sink hypothesis (substrate-field flow), spent five iters discovering it was a noisy lever that never beat parked aggregate, then pivoted at iter-73 to founder-rescue (size-gated boost). iter-74 cranked the boost to 2× at founding and broke through. iter-75 tested longer fall-off (300 → 400) — regressed (aggregate 23, colonies starve themselves through too-fast early growth). 300 is the right window.
+Hypothesis: confirm iter-74's `FOUNDER_BOOST_FALLOFF_SOIL = 300` reproduces with the current sim.js state.
+Setup: `FOUNDER_BOOST_FALLOFF_SOIL` 400 → 300. Otherwise identical to iter-74.
+Result: bit-identical to iter-74. shape 0/5 median **0.282**, max 0.308. modestSize 4/5. **soilDispersion 5/5**. descended 4/5 max 50. multipleDescents 2/5. **noPrematureFruit 5/5**. notSaturated 5/5. Per-seed: 42=5/7 (329), 1337=5/7 (255), 314=4/7 (111), 271=5/7 (161), 555=6/7 (460). **Aggregate 25/35** (parked at iter-66 was 22, parked at iter-56 was 22 — this is +3 over the previous-best park).
+Reading: this is the new parking point. Vision 1 still not achieved (shape median 0.282 vs 0.60 threshold) but the curve has moved positively for the second branch in a row and every other scorer is either at all-pass or one seed away. The mechanic class that wins is **founder-rescue** — small colonies get an early-growth boost in soil, mature colonies grow at normal rate. Tells the right biological story (small networks need to find productive substrate fast) and is the cleanest single lever the arc has produced.
+Next: hand off to the maintainer. Open Vision 1 problems: (a) shape median 0.282 vs 0.60 — gap closed by another ~10% this branch, but the remaining distance needs a third mechanism class. (b) 314 at 111 cells is the only seed missing modestSize — sits just below the [150, 800] range. (c) multipleDescents 2/5 hasn't moved since iter-61's record 3/5. Future directions: substrate-field source-sink CAN be salvaged (iter-71 hit shape max 0.461, an arc record), but only when stacked properly — combining with founder-rescue produced disaster in iter-72. The two mechanic classes appear to be incompatible at this implementation. A different shape mechanism — maybe directional chemotaxis variance, or a true per-leader transport — is the next surface to explore.
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-75 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Probed letting the founder boost run longer (300 → 400 cells). Aggregate dropped from 25 to 23. The edge seed 271 jumped from 161 to 649 cells (best 271 result ever!) but the lean/fair seeds collapsed back to floor-ish levels — their founders grew too fast early, hit substrate exhaustion, then died back via the starvation cascade. Confirms iter-74's FALLOFF=300 is the sweet spot.
+Hypothesis: `FOUNDER_BOOST_FALLOFF_SOIL` 300 → 400 keeps the boost active longer, gives 1337 more growth runway without hurting 271/555.
+Setup: only FALLOFF changed.
+Result: shape median **0.137** (regression from 0.282), max 0.264. modestSize 3/5 (was 4/5). soilDispersion 4/5 (was 5/5). descended 3/5. multipleDescents 3/5 (up from 2/5). noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=5/7 (**76**), 1337=3/7 (**118**), 314=5/7 (749 across 3 colonies), **271=6/7 (649 single — record)**, 555=4/7 (151). **Aggregate 23/35**.
+Reading: 100 extra cells of boost is enough to push the founder past substrate carrying capacity in the local zone. The colony grows fast, then loses perimeter cells when absorption can't keep up. 314 fragmented again. The 300-cell boundary is matched to how big a single founder can grow on the local substrate before needing to slow. Sweet-spot confirmed.
+Next: iter-76 — revert FALLOFF to 300 and confirm bit-identical reproduction. Park sim-lab/06 at iter-74's config. Open PR.
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-74 · [tweak] · [BREAKTHROUGH]
+Agent: claude-sonnet-4-6
+Plain: Doubled the founder boost — at sowing the colony grows 2× as fast, tapering down to normal by 300 cells. Every seed got better. **Aggregate jumped to 25 of 35, a new arc record (was 22 parked).** The edge seed (271) cracked its floor for the first time outside of the wild-fragmentation runs — 161 cells in a single founder, 5 of 7 targets. The lean seed (555) hit 460 cells (6 of 7). The stress seed (1337) tripled from its 91-cell floor to 255 cells (5 of 7) without fragmenting. All five seeds productive at 4+ of 7 each — a first.
+Hypothesis: `FOUNDER_BOOST_MAX_SOIL` 0.5 → 1.0. Founder at 0 cells extends 2× (factor 2.0) on soil; boost tapers linearly to 0 at 300 cells. Tests whether 271's floor is escape-velocity-limited.
+Setup: only `FOUNDER_BOOST_MAX_SOIL` changed. Baseline guards updated: 42 456→460, 1337 256→272, 555 341→132 (early-tick number lower because 555's founder ramps fast then hits substrate limits).
+Result: shape 0/5 median **0.282** (UP from 0.252 parked — first positive movement in 5+ iters), max 0.308 (vs RECORD 0.461 iter-71). **modestSize 4/5** (was 2-3/5). **soilDispersion 5/5 (ARC FIRST — all-pass)**. descended 4/5 max 50. multipleDescents 2/5. **noPrematureFruit 5/5** (clean). notSaturated 5/5. Per-seed: 42=5/7 (329 single), 1337=**5/7 (255 single — was 91)**, 314=4/7 (111 single), **271=5/7 (161 single — escaped floor)**, 555=**6/7 (460 single)**. **Aggregate 25/35** (NEW ARC RECORD).
+Reading: this is the breakthrough config. The founder-boost lever produces the kind of result we've been chasing: all five seeds reach the [150, 800] modestSize range (only 314 misses at 111), all five soilDispersion-pass, no premature fruiting, no fragmentation, and the Vision 1 gatekeeper finally moved up. The shape max regressed from iter-71's 0.461 record (single-seed outlier from 42's 686-cell run) but the median climbed — which matters more for a vision that demands consistency across seeds. Vision 1 still not achieved (median 0.28 vs 0.60), but the arc has closed ~7% more of the gap.
+Next: iter-75 — probe `FOUNDER_BOOST_FALLOFF_SOIL` 300 → 400 to see if a longer-tailing boost gives any more shape median. If aggregate stays ≥ 25, lock that in; otherwise park iter-74 as the sim-lab/06 finishing config.
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-73 · [mechanic]
+Agent: claude-sonnet-4-6
+Plain: Pivoted to "founder-rescue" — small colonies get an extension boost in soil that tapers to zero by 300 cells. Mature colonies grow at normal rate, so they don't overshoot the fruit gate and fragment. The pivot worked partially: seed 314 stayed single-founder (was 3-6 colonies), seed 555 recovered to 192 cells, fruit blowout largely gone (9 fruits instead of 14). But edge seed 271 still floor-bound at 46 cells — the boost magnitude (50% at founding) isn't enough to crack its escape velocity.
+Hypothesis: gate the +50% soil boost on `1 - cellCount/300` instead of substrate field. Founder at 0 cells gets factor 1.5; mature colony at 300+ gets 1.0. Tells the right story biologically.
+Setup: removed the localSourceField call from growHyphae's soil branch. New constants `FOUNDER_BOOST_MAX_SOIL = 0.5`, `FOUNDER_BOOST_FALLOFF_SOIL = 300`. flowFactor = 1 + 0.5 × max(0, 1 - cellCount/300). Baseline guards updated.
+Result: shape 0/5 median **0.184** (up from 0.080 collapse, but down from parked 0.252), max 0.252 (down from RECORD 0.461). modestSize 2/5. soilDispersion 2/5. descended 4/5. multipleDescents 2/5. **noPrematureFruit 4/5** (up from 3/5). notSaturated 5/5. Per-seed: 42=4/7 (295 across 2 colonies), 1337=4/7 (142 single), 314=**5/7 (145 single — no fragmentation!)**, 271=2/7 (46, still floor-bound), 555=4/7 (192). **Aggregate 19/35** (was 15 iter-72, was 22 parked).
+Reading: the size-gate prevents the fruit-overshoot pathology cleanly — 314 and 1337 stay as single founders for the first time since the universal-boost iters. But 271 needs more push: at 46 cells its boost factor is 1.42, plenty in principle, yet the founder still can't find productive substrate fast enough. May be a reserve-depletion problem, not an extension-rate problem. Worth one more boost-magnitude probe before assessing.
+Next: iter-74 — `FOUNDER_BOOST_MAX_SOIL` 0.5 → 1.0. Founder at 0 cells now extends 2× (factor 2.0), tapering to 1.0 at 300 cells. Tests whether 271's lean-substrate floor is escape-velocity-limited (mechanic fixes) or reserve-limited (need a different lever).
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-72 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Added a +15% universal floor on top of the selective high end, hoping to combine 271's rescue (universal small boost) with 42's shape win (selective rich-pocket boost). Total collapse — aggregate fell to 15 of 35, the worst result of the arc. Seed 42 went from 686 cells to 39, and the rich/multi-colony seeds fragmented into 5-6 child colonies. Combining the two mechanisms broke both. Six iterations on flow-factor curves and the aggregate hasn't beaten the parked 22. Mechanic class is exhausted.
+Hypothesis: `SOURCE_SINK_FACTOR_MIN` 1.0 → 1.15 restores 271's escape while the selective high end keeps 42's shape.
+Setup: only MIN changed. Baseline guards bumped: 1337 291→330, 555 420→434.
+Result: shape 0/5 median **0.080** (collapse from 0.141), max **0.110** (collapse from RECORD 0.461). modestSize 2/5. soilDispersion 2/5. descended 2/5. multipleDescents 1/5. noPrematureFruit 3/5 (10 fruits). notSaturated 5/5. Per-seed: 42=2/7 (**39** cells), 1337=5/7 (663 across 5 colonies — heavy frag), 314=4/7 (1180 across 6 colonies), 271=2/7 (69), 555=2/7 (85). **Aggregate 15/35** (worst yet).
+Reading: at threshold=4000, untapped soil sits at flowFactor ≈ 1.325 (sum~2000, t=0.5, factor=1.15+0.35×0.5). Add the +15% floor and the universal boost runs at ~32% in healthy soil — enough to push 42's founder past the fruit gate, fragment 1337/314, and starve 42 in the post-fruit dieback. Combining the universal and selective levers doesn't add — it multiplies. The flow-factor curve is the wrong family of levers. Six iterations exhausted.
+Next: iter-73 — pivot mechanic class. **Colony-size-gated boost** (per PROCESS hypothesis buffet). Small founders get the boost (escape velocity for 271), mature colonies don't (no overshoot for 1337). `flowFactor = 1 + 0.5 × max(0, 1 - cellCount/300)`. Drop the substrate field check entirely — the local-field signal was noise. If 271 escapes AND aggregate climbs past 22, source-sink class is salvaged in a different form. If not, revert to parked iter-66 and ship iter-71 as a noted shape-max record.
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-71 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Raised the threshold to 4000 so only genuinely rich pockets get the full +50% boost. **Shape max climbed to 0.461 — a new arc record (was 0.441).** The fair-log seed 42 grew into a beautiful 686-cell colony, 5 of 7 targets, and the stress seed 1337 kept its founder small at 118 cells (no fragmenting child colonies). But the edge seed 271 lost its escape — back to 41 cells. Lean substrate has no rich pockets to trigger the boost, so 271 gets no help at this threshold.
+Hypothesis: `SOURCE_SINK_THRESHOLD_SOIL` 200 → 4000 (≈ 50 nutrient/cell × 81-cell box) makes the boost selective. Untapped soil sits mid-curve (factor ≈ 1.25), rich pockets at the top (1.5), depleted near 1.0.
+Setup: `SOURCE_SINK_THRESHOLD_SOIL` 200 → 4000. Baseline guards updated: 42 477→197, 1337 391→291, 555 417→420.
+Result: shape 0/5 median **0.141** (down from 0.155), **max 0.461 (ARC RECORD)**. modestSize 2/5. soilDispersion 3/5. descended 2/5 max 77 (was 4/5 max 33 — depth lost but record holder dug deep). multipleDescents 1/5 (was 3/5 — collapse). **noPrematureFruit 5/5** (was 3/5 — recovered!). notSaturated 5/5. Per-seed: **42=5/7 (686 cells, single colony)**, 1337=5/7 (118, single founder rescued), 314=3/7 (332 across 3 colonies), 271=2/7 (**41 — lost rescue**), 555=3/7 (100). **Aggregate 18/35** (was 22).
+Reading: the selective curve produced the best shape result of the whole research arc on seed 42 (686 cells, single founder, shape ≈ 0.46). Vision 1's gatekeeper finally touched 0.46. But the multipleDescents collapse and 271's lost rescue mean the selective form alone isn't the win. The mechanic needs BOTH: a universal small boost (for lean-substrate escape velocity, 271) AND the selective high-end boost (for shape, 42). iter-69/70's universal +50% rescued 271 but broke 1337/314 by fruit overshoot; iter-71's selective +50% saves 1337 but abandons 271.
+Next: iter-72 — `SOURCE_SINK_FACTOR_MIN` 1.0 → 1.15. Floor of +15% on all soil tips, selective +50% in rich pockets. Tests whether the universal floor restores 271's escape while the selective high end keeps 42's shape and 1337's founder-rescue. If both rescues survive AND shape median climbs above iter-66's 0.252, that's the parking candidate.
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-70 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Removed the penalty side — tips never go below their normal rate, but tips in rich ground push 50% faster. Result was bit-identical to iter-69 — same shape, same cell counts. Diagnosis: with threshold 200, the multiplier was already pinned at MAX=1.5 for every tip in healthy soil, so the 0.5 floor in iter-69 was never reached. The mechanic isn't being selective; it's a universal +50% soil boost masquerading as source-sink. 271 still escapes (164 cells, 5 of 7); 1337's "rescue" is actually 3 child colonies from premature fruiting (14 fruits across the seed set). Founder rescue isn't happening.
+Hypothesis: dropping MIN 0.5 → 1.0 preserves 271's rescue without hurting fair-log seed 42.
+Setup: `SOURCE_SINK_FACTOR_MIN` 0.5 → 1.0. Range now [1.0, 1.5]. No other changes. Baseline guards unchanged from iter-69 — tests pass.
+Result: shape 0/5 median **0.155** (flat from iter-69), max **0.342** (flat). modestSize 2/5. soilDispersion 3/5. descended 4/5. multipleDescents 3/5. noPrematureFruit 3/5 (still broken). notSaturated 5/5. Per-seed: 42=3/7 (97), 1337=2/7 (296 across 4 colonies), 314=5/7 (520 across 4), **271=5/7 (164)**, 555=5/7 (142). **Aggregate 22/35**.
+Reading: the local-field signal is doing nothing useful — flowFactor saturates at MAX for virtually every soil tip because R=4 box of healthy soil sums to ~2000 against THRESHOLD=200. What we have is just "soil extension +50% across the board." That helps 271 (founder escape velocity) but pushes 1337/314 past the 800-cell fruit gate, fragmenting them into child colonies. The shape regression is the +50% boost producing deeper-faster columns instead of lattice. To make the mechanic actually selective: raise THRESHOLD so most cells sit in the middle of the curve.
+Next: iter-71 — `SOURCE_SINK_THRESHOLD_SOIL` 200 → 4000. With base soil ~25 nutrient/cell × 81-cell box ≈ 2025, factor sits at 1.25 (mid-curve) for untapped soil and only 1.5 for genuinely rich pockets (>50 nutrient/cell). Tests whether selective boost preserves 271's escape while letting the shape mechanic recover.
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-69 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Reframed the local-food check as a two-way curve — tips in rich pockets push 50% faster, tips in starved zones push 50% slower. **Edge seed 271 finally escaped its floor (35 → 164 cells, 5 of 7 targets — first time it's broken out in the whole arc.)** Stress seed 1337 also jumped (91 → 296 across 4 colonies). But the shape match regressed (median 0.16 vs the parked 0.25), the fair-log seed (42) lost ground, and the boost let two seeds fruit too early. Aggregate still 22 of 35 — same count, very different shape.
+Hypothesis: replace the one-sided brake with a symmetric multiplier 0.5 + (sum/THRESHOLD)·1.0, range [0.5, 1.5]. Strong tips push faster, weak tips slow.
+Setup: `SOURCE_SINK_THRESHOLD_SOIL` 100 → 200. New constants `SOURCE_SINK_FACTOR_MIN = 0.5`, `SOURCE_SINK_FACTOR_MAX = 1.5`. flowFactor computed as `MIN + (MAX-MIN) * min(1, sum/THRESHOLD)`. Baseline guards updated: 42 199→477, 1337 260→391, 555 358→417.
+Result: shape 0/5 median **0.155** (DOWN from 0.252), max **0.342** (down from 0.441). modestSize 2/5 (was 3/5). soilDispersion 3/5 (was 4/5). descended 4/5 max 33 (was 3/5 max 59). **multipleDescents 3/5** (was 2/5 — ties arc record). noPrematureFruit **3/5** (was 5/5, 14 fruits max — fruit blowout). notSaturated 5/5. Per-seed: 42=3/7 (97, was 277), 1337=2/7 (296 across 4 colonies, founder=133), 314=5/7 (520 across 4 colonies, founder=406), **271=5/7 (164, was 35 → ARC FIRST)**, 555=5/7 (142, was 293). **Aggregate 22/35** (flat count, different distribution).
+Reading: source-sink is real — 271 broke its floor for the first time and multipleDescents tied the record. But the [0.5, 1.5] range is saturated at MAX through most of the run (R=4 box of healthy soil sums to ~2000, THRESHOLD=200 means t=1.0 trivially). That means every tip gets the +50% boost early, colonies overshoot the fruit gate, and seed 42 (which prefers calm growth) collapses. The symmetric framing imported a penalty side that wasn't in the original hypothesis. The Vision 1 gatekeeper (shape) regressed because deeper-faster columns replaced lattice spread.
+Next: iter-70 — go pure-boost. range [1.0, 1.5]: starved tips at 1.0 (no penalty), rich-zone tips +50%. Tests whether the 271 rescue survives without hurting 42. If shape median climbs back toward 0.25 with 271 still escaping floor, the mechanic class is finally producing both.
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-68 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Lowered the local-food threshold from 400 to 100 to confine the brake to truly drained soil. Every number snapped back to the iter-66 park: aggregate 22 of 35, seed 42 recovered to 277 cells. But 1337 and 271 didn't move either — at threshold 100 the brake basically never engages. Mechanism present, doing nothing. Need a different curve to actually rescue the stress and edge seeds.
+Hypothesis: THRESHOLD 400 was a uniform damper, not a directional brake. THRESHOLD 100 reserves the brake for actually-dead pockets and lets healthy soil run at full rate.
+Setup: `SOURCE_SINK_THRESHOLD_SOIL` 400 → 100. No other changes.
+Result: shape 0/5 median **0.252** (flat), max **0.441** (flat). modestSize 3/5 (back from 2/5). soilDispersion 4/5 (back from 3/5). descended 3/5 (back from 2/5). multipleDescents 2/5 (back from 1/5). noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=**6/7** (277, was 87), 1337=3/7 (91, flat), 314=5/7 (575, flat), 271=2/7 (35, flat), 555=6/7 (293, flat). **Aggregate 22/35** (back to parked).
+Reading: with R=4 and THRESHOLD=100, sum ≥100 in a 9×9 box requires only ~1.2 nutrient/cell average — even half-drained soil clears that. flowFactor sits at 1.0 for virtually every tip → mechanic is in standby. The original framing was a one-sided brake (penalize weak tips). The actual source-sink hypothesis is bidirectional: strong tips push HARDER on rich substrate, redistributing the colony's growth budget toward productive ground. That needs a multiplier curve that goes both below and above 1.0.
+Next: iter-69 — replace the clamp with a symmetric multiplier. flowFactor = 0.5 + min(1.0, sum / 200) gives starved tips a 0.5× penalty and rich-zone tips a 1.5× boost. THRESHOLD raised to 200 so most cells sit near 1.0 but the edges of the curve bite. If 1337 climbs above 91 cells, the source-sink hypothesis is finally engaging.
+
+
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-67 · [mechanic]
+Agent: claude-sonnet-4-6
+Plain: Added a "local food field" check — in soil, a growing tip slows down if the substrate around it has been mostly eaten. The idea was to make tips follow productive ground instead of churning into dead zones. The mid-substrate seed (42) collapsed from 277 cells to 87 — the threshold is too high, so even healthy soil registers as "starved". Stress seed 1337 and edge seed 271 didn't move. Lean 555 held its 6/7.
+Hypothesis: gating extension on a (2R+1)² box-sum of nutrient[] around the extending cell rescues 1337 (overshoot into dead ground) and 271 (initial reserves wasted on lean spread) by slowing tips when their local field is depleted.
+Setup: New `SOURCE_SINK_RADIUS_SOIL = 4` (9×9 box) and `SOURCE_SINK_THRESHOLD_SOIL = 400` in `sim.js`. New `localSourceField(nutrient, i, R)` helper. In `growHyphae`, when `kind[i] === SOIL`, compute `flowFactor = min(1, sum / THRESHOLD)` and multiply baseExtend by it. Bifurcation prob multiplied by the same `flowFactor` for consistency.
+Result: shape 0/5 median **0.252** (flat from parked 0.252), max **0.441** (flat). modestSize **2/5** (was 3/5). soilDispersion 3/5 (was 4/5). descended 2/5 (was 3/5). multipleDescents 1/5 (was 2/5). noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=2/7 (**87**, was 277), 1337=3/7 (91, flat), 314=5/7 (575, flat), 271=2/7 (35, flat), 555=6/7 (293, flat). **Aggregate 18/35** (was 22/35, -4).
+Reading: threshold 400 + radius 4 means the 9×9 box needs ~5 nutrient/cell average to give flowFactor=1. But absorbing cells drain their column to ~0 quickly via SIDE_ABSORPTION_FLOOR, and the 9×9 box around a frontier tip in actively-grown soil hovers at ~200-300 sum — so flow factor sits at 0.5-0.75 for most cells, halving extension uniformly. The mechanic is acting like a global growth damper, not a directional brake. Threshold needs to be much lower (the "starved" condition is sum→0, not sum<400).
+Next: iter-68 — drop THRESHOLD 400 → 100 so only genuinely depleted areas (most cells in box already drained) brake the tip. If aggregate climbs back toward 22 while 42 recovers, the mechanic class is viable.
+
+
 
 ## 2026-05-24 · sim-lab/05-genome-variance · iter-66 · [park]
 Agent: claude-opus-4-7

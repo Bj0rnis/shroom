@@ -64,6 +64,21 @@ const TIP_BIFURCATION_PROB_SOIL = 0.55;
 // iter-65: K = 0.10 — too mild, shape collapsed to 0.126, fruit chaos on seed 42.
 const DLA_EDGE_K_SOIL = 0.15;
 
+// Founder-rescue boost (sim-lab/06 iter-73). Replaces the substrate-field
+// source-sink lever (iter-67 through iter-72) — that curve never showed a
+// selective basin and six iters of tuning didn't beat parked aggregate.
+// New framing: in SOIL, give *small* colonies an extension boost, scaled
+// down to zero as the colony grows. Tells the right story — founder needs
+// escape velocity on lean substrate (seed 271 dies tiny because its first
+// ~25 extensions exhaust reserves before finding a productive column);
+// mature colonies already have a network and don't need the boost (and the
+// boost would push them past the 800-cell fruit gate, fragmenting them
+// into child colonies — see iter-69/70/72 fruit blowouts).
+// flowFactor = 1 + FOUNDER_BOOST_MAX × max(0, 1 - cellCount / FOUNDER_BOOST_FALLOFF).
+// Boost falls linearly from MAX at 0 cells to 0 at FALLOFF cells.
+const FOUNDER_BOOST_MAX_SOIL     = 1.0;
+const FOUNDER_BOOST_FALLOFF_SOIL = 300;
+
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
 // SOIL picks which neighbour to extend into, south-ward candidates (j === i+W)
@@ -613,6 +628,20 @@ function growHyphae(world) {
       const capFill = (col.cellCount || 0) / COLONY_CARRYING_CAPACITY;
       const capFactor = capFill >= 1 ? 0 : Math.pow(1 - capFill, CARRYING_SOFTNESS);
       baseExtend *= capFactor;
+      // Source-sink flow (sim-lab/06 iter-67): in SOIL, gate extension on the
+      // local nutrient field around this cell. Tips embedded in tapped-out
+      // ground slow proportionally; tips next to rich pockets keep their full
+      // rate. flowFactor stays declared at 1.0 above grass so the bif block
+      // below can reuse it without a substrate check.
+      // Founder-rescue boost (sim-lab/06 iter-73). In soil, small colonies
+      // get an extra extension boost that tapers to zero at FALLOFF cells.
+      // flowFactor stays at 1.0 above grass and for mature colonies.
+      let flowFactor = 1;
+      if (kind[i] === SOIL) {
+        const sizeT = Math.max(0, 1 - (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
+        flowFactor = 1 + FOUNDER_BOOST_MAX_SOIL * sizeT;
+        baseExtend *= flowFactor;
+      }
       if (rng() <= baseExtend) {
         let r = rng() * totalW;
         let chosen = candidates[0].j;
@@ -643,7 +672,7 @@ function growHyphae(world) {
         // young fork inherits the frontier when the parent leader senesces.
         if (isLeader && freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
           const bifProb = kind[i] === SOIL ? TIP_BIFURCATION_PROB_SOIL : TIP_BIFURCATION_PROB;
-          if (rng() < bifProb * capFactor) {
+          if (rng() < bifProb * capFactor * flowFactor) {
             let others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
             // sim-lab/04 iter-4: in soil, prefer the bif-child to go
             // perpendicular to the parent's extension. If `chosen` was a
@@ -708,6 +737,28 @@ function growHyphae(world) {
       }
     }
   }
+}
+
+// Sum of substrate nutrient in a (2R+1)² box around cell i. Drives the
+// source-sink flow factor in growHyphae — see SOURCE_SINK_THRESHOLD_SOIL.
+// Reads the *substrate field* (nutrient[]), not occupancy. Cheap enough at
+// R=4 because we only call it on cells that already passed the freeCount
+// and reserves gates, i.e. a few hundred per tick.
+function localSourceField(nutrient, i, R) {
+  const cx = i % W;
+  const cy = (i - cx) / W;
+  let sum = 0;
+  const y0 = Math.max(0, cy - R);
+  const y1 = Math.min(H - 1, cy + R);
+  const x0 = Math.max(0, cx - R);
+  const x1 = Math.min(W - 1, cx + R);
+  for (let y = y0; y <= y1; y++) {
+    const row = y * W;
+    for (let x = x0; x <= x1; x++) {
+      sum += nutrient[row + x];
+    }
+  }
+  return sum;
 }
 
 function occupiedInBox(snapshot, j) {

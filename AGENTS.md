@@ -120,6 +120,7 @@ When the PR merges, the branch is auto-deleted (squash + delete).
 | `app/lib/sim-lab/NOTES.md` | Lab iteration journal. One entry per iter. | Before any lab work. |
 | `app/lib/sim-lab/RESEARCH.md` | Vision targets and why. | When you're unsure what "good" means. |
 | `app/lib/sim-lab/PROCESS.md` | Lab agent contract. | Before iterating. |
+| `app/lib/sim-lab/1-1.md` | Maintainer/agent direction-setting chats. | Before opening a new branch. |
 | `BALANCE.md` | Sim balance decisions. | Before tuning a sim constant. |
 | `CLAUDE.md` | Working contract for the whole repo. | First. Always first. |
 | `docs/archive/design-review.md` | The May 2026 UI audit kanban (archived; record only). | If a code comment points you here for design rationale. |

@@ -9,7 +9,7 @@ const { createRng } = require('./rng');
 // adjective + archetypal noun, spaced, capitalised. Examples produced:
 // "Pale Bell", "Hollow Teacher", "Ember Witness", "Wormwood Throne".
 // All made up — no real cultivar names. Combinatorial (25 × 16 = 400) so
-// collisions are rare. See docs/design/REVIEW.md #11.
+// collisions are rare. See docs/archive/design-review.md #11.
 const NAME_PREFIXES = [
   'Pale', 'Hollow', 'Ember', 'Briar', 'Marrow', 'Mourner', 'Quiet', 'Vow',
   'Bone', 'Ash', 'Tallow', 'Sundown', 'Wormwood', 'Wither', 'Salt', 'Iron',

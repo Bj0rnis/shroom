@@ -75,8 +75,8 @@ process.stdout.write('baseline guards\n');
 {
   const BASELINES = [
     { seed: 42,   ticks: 5000, cells: 199, fruits: 0, deaths: 0 },
-    { seed: 1337, ticks: 5000, cells: 230, fruits: 0, deaths: 0 },
-    { seed: 555,  ticks: 5000, cells: 427, fruits: 0, deaths: 0 },
+    { seed: 1337, ticks: 5000, cells: 260, fruits: 0, deaths: 0 }, // updated sim-lab/05 iter-63: DLA edge preference in soil
+    { seed: 555,  ticks: 5000, cells: 358, fruits: 0, deaths: 0 }, // updated sim-lab/05 iter-63
   ];
   for (const b of BASELINES) {
     const w = createWorld(b.seed);

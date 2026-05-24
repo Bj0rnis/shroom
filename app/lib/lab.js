@@ -16,7 +16,7 @@ const fs   = require('fs');
 const path = require('path');
 
 const { createWorld, sowAt, W, H, GRASS_Y, AIR, SOIL, GRASS, LOG, FRUIT, TREE } = require('./world');
-const { randomGenome, pinnedGenome, phenotypeWords } = require('./genome');
+const { randomGenome, pinnedGenome, variedGenome, phenotypeWords } = require('./genome');
 const { tick, setHooks, CONSTANTS, TICKS_PER_SIM_DAY } = require('./sim');
 const { buildGridSnapshot } = require('./grid-snapshot');
 const { DATA_DIR } = require('./persistence');
@@ -132,7 +132,11 @@ function sowOnLog(world, count) {
       // on growth_rate (0.5-2.0) was the dominant cause of seed-to-seed
       // variance. Pinning to the midpoint lets us iterate on the mechanic
       // without "doomed by birth" seeds. Live world still uses random.
-      sowAt(world, x, y, pinnedGenome());
+      // Sim-lab/05 iter-59: genome variance with isolated RNG. Each colony
+      // gets a per-seed tilt on growth_rate drawn from a separate RNG seeded
+      // from world.meta.seed (not world.rng), so the simulation stream stays
+      // identical to the pinned baseline. See genome.js variedGenome.
+      sowAt(world, x, y, variedGenome(world.meta.seed));
     }
   }
 }

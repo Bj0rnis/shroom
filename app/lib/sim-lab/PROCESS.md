@@ -91,7 +91,7 @@ The agent may, without asking:
 The agent must escalate before:
 
 - **Retargeting the vision.** Changing what "day-1 root" means, or starting
-  a new vision, is a the maintainer call.
+  a new vision, is the maintainer's call.
 - **Removing a passed scorer.** If a scorer is currently passing on the
   baseline and the agent wants it gone, ask first.
 - **Spending more than ~10 iterations on a single mechanic class.** If

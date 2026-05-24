@@ -79,6 +79,9 @@ MOCK=true npm run dev   # → http://localhost:3000
 ANTHROPIC_API_KEY=sk-ant-… MOCK=true npm run dev
 ```
 
+For the full install walkthrough — prereqs, troubleshooting, what to do
+when things go wrong — see `INSTALL.md`.
+
 ---
 
 ## Self-hosting (Docker)
@@ -190,7 +193,8 @@ to build on or easier to run are welcome. Changes that add complexity without
 adding life are not.
 
 Read `CLAUDE.md` before working on the code. Read `app/public/kit/KIT.md`
-before working on the UI.
+before working on the UI. If you're an LLM agent — Claude or otherwise —
+`AGENTS.md` is the orientation map.
 
 ---
 

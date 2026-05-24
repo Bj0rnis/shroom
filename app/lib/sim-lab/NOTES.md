@@ -37,6 +37,19 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
+### sim-lab/07-lattice-mature begins · iter-77 · vision 1 (close shape gap)
+
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-77 · [mechanic]
+Agent: claude-sonnet-4-6
+Plain: Made the lateral-branching bias scale with colony size — small founders still use the iter-74 baseline of 4×, mature colonies (past 300 cells) crank to 8×. Aggregate hit **27 of 35 — a new arc record** (+2 over iter-74's parked 25). But the gain came from the wrong scorer: multiple-descents climbed to 4 of 5 (also an arc record) while shape match collapsed from 0.28 to 0.12. The lateral bias is producing separated columns instead of connected lacework — exactly the shape-vs-multipleDescents tension sim-lab/04 iter-5 already noted at perp=8×. Tuning the perp weight further isn't going to fix shape.
+Hypothesis: bif-child perpendicular weight scales linearly with `cellCount / FOUNDER_BOOST_FALLOFF_SOIL` from 4 (founder) to 8 (mature), giving mature colonies stronger lateral push without disrupting founder geometry.
+Setup: new constants `PERP_BIAS_SOIL_FOUNDER = 4`, `PERP_BIAS_SOIL_MATURE = 8` in sim.js. The bif block at line ~683 multiplies perpendicular candidates by a sizeT-interpolated weight. Baseline guards unchanged — 5000-tick numbers within tolerance.
+Result: shape 0/5 median **0.116** (DOWN from 0.282), max 0.346 (down from 0.308 — wait, up; but median is the gatekeeper). **modestSize 5/5 (ARC FIRST all-pass)**. soilDispersion 5/5. descended 4/5 max 61. **multipleDescents 4/5 (ARC RECORD — prev best 3/5 at iter-61)**. noPrematureFruit 4/5 (8 fruits — 42 fragmented). notSaturated 5/5. Per-seed: 42=5/7 (466 across 5 colonies — fragmented), **1337=6/7 (289 single — best 1337 ever)**, 314=5/7 (557 single — recovered from iter-74's 111), 271=5/7 (161 single — held), **555=6/7 (460 single — held)**. **Aggregate 27/35** (NEW ARC RECORD).
+Reading: the perpendicular-bias lever moved aggregate +2 and multipleDescents +2, but at the cost of shape — same tension sim-lab/04 iter-5 noted. The two scorers read two different geometric basins: 4× perp produces connected lattice (high shape, fewer columns), ≥6× perp produces separated columns (more columns, lower lattice match). Vision 1's gatekeeper is shape median ≥ 0.60 — multipleDescents helps aggregate but doesn't move the gate. To fix shape we need a different mechanism — possibly DLA-edge intensity scaling with size (finer lacework in mature colonies) or substrate-field bif-direction bias (the iter-71 mechanism that produced shape max 0.461, but applied selectively).
+Next: iter-78 — revert PERP_BIAS_SOIL_MATURE to 4 (back to iter-74 perp baseline), scale `DLA_EDGE_K_SOIL` with colony size instead — founder uses 0.15, mature uses 0.30. Tests whether DLA-edge scaling alone (without perp scaling) recovers shape while keeping the modestSize 5/5 gain. If shape median climbs back toward 0.25+ with aggregate ≥ 25, lock that in. If not, try stacking.
+
+---
+
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
 ## 2026-05-24 · sim-lab/06-source-sink · iter-76 · [park]

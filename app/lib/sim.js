@@ -79,6 +79,19 @@ const DLA_EDGE_K_SOIL = 0.15;
 const FOUNDER_BOOST_MAX_SOIL     = 1.0;
 const FOUNDER_BOOST_FALLOFF_SOIL = 300;
 
+// Perpendicular bifurcation weight (sim-lab/04 iter-4, scaled in sim-lab/07
+// iter-77). In soil, the bif-child gets a weight multiplier toward neighbours
+// perpendicular to the parent's extension direction — produces L-shapes /
+// lateral lacework instead of fat single bundles. sim-lab/04's flat 4×
+// produced shape median 0.258 at park; sim-lab/06's founder-rescue baseline
+// kept that 4× and reached aggregate 25/35 / shape median 0.282. sim-lab/07
+// hypothesis: mature colonies (past the founder phase) can take a stronger
+// lateral bias without disrupting founder shape, since their early growth
+// has already established the trunk. Scale linearly with colony size —
+// founder uses FOUNDER, ramps to MATURE at FOUNDER_BOOST_FALLOFF_SOIL.
+const PERP_BIAS_SOIL_FOUNDER     = 4;
+const PERP_BIAS_SOIL_MATURE      = 8;
+
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
 // SOIL picks which neighbour to extend into, south-ward candidates (j === i+W)
@@ -683,11 +696,17 @@ function growHyphae(world) {
             if (kind[i] === SOIL && others.length > 1) {
               const parentDx = (chosen % W) - (i % W);
               const parentVertical = parentDx === 0;
+              // Perpendicular weight ramps from FOUNDER to MATURE as the
+              // colony grows. sim-lab/07 iter-77: founder=4 (preserves
+              // iter-74 baseline), mature=8.
+              const sizeT = Math.min(1, (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
+              const perpWeight = PERP_BIAS_SOIL_FOUNDER +
+                sizeT * (PERP_BIAS_SOIL_MATURE - PERP_BIAS_SOIL_FOUNDER);
               others = others.map(c => {
                 const dx = (c.j % W) - (i % W);
                 const candVertical = dx === 0;
                 const perpendicular = (parentVertical !== candVertical);
-                return perpendicular ? { j: c.j, w: c.w * 4 } : c;
+                return perpendicular ? { j: c.j, w: c.w * perpWeight } : c;
               });
             }
             if (others.length > 0) {

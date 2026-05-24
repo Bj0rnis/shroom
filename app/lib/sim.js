@@ -83,7 +83,7 @@ const SOURCE_SINK_THRESHOLD_SOIL = 4000;
 // (iter-67/68) was a one-sided brake; this version both penalizes starved
 // tips and rewards rich-zone tips. flowFactor = MIN + (MAX-MIN) * min(1, sum/THRESHOLD).
 // MIN=0.5 / MAX=1.5: starved tips half-rate, mid-soil ≈1.0, rich-pocket tips +50%.
-const SOURCE_SINK_FACTOR_MIN     = 1.0;
+const SOURCE_SINK_FACTOR_MIN     = 1.15;
 const SOURCE_SINK_FACTOR_MAX     = 1.5;
 
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)

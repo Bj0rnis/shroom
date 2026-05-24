@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-72 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Added a +15% universal floor on top of the selective high end, hoping to combine 271's rescue (universal small boost) with 42's shape win (selective rich-pocket boost). Total collapse — aggregate fell to 15 of 35, the worst result of the arc. Seed 42 went from 686 cells to 39, and the rich/multi-colony seeds fragmented into 5-6 child colonies. Combining the two mechanisms broke both. Six iterations on flow-factor curves and the aggregate hasn't beaten the parked 22. Mechanic class is exhausted.
+Hypothesis: `SOURCE_SINK_FACTOR_MIN` 1.0 → 1.15 restores 271's escape while the selective high end keeps 42's shape.
+Setup: only MIN changed. Baseline guards bumped: 1337 291→330, 555 420→434.
+Result: shape 0/5 median **0.080** (collapse from 0.141), max **0.110** (collapse from RECORD 0.461). modestSize 2/5. soilDispersion 2/5. descended 2/5. multipleDescents 1/5. noPrematureFruit 3/5 (10 fruits). notSaturated 5/5. Per-seed: 42=2/7 (**39** cells), 1337=5/7 (663 across 5 colonies — heavy frag), 314=4/7 (1180 across 6 colonies), 271=2/7 (69), 555=2/7 (85). **Aggregate 15/35** (worst yet).
+Reading: at threshold=4000, untapped soil sits at flowFactor ≈ 1.325 (sum~2000, t=0.5, factor=1.15+0.35×0.5). Add the +15% floor and the universal boost runs at ~32% in healthy soil — enough to push 42's founder past the fruit gate, fragment 1337/314, and starve 42 in the post-fruit dieback. Combining the universal and selective levers doesn't add — it multiplies. The flow-factor curve is the wrong family of levers. Six iterations exhausted.
+Next: iter-73 — pivot mechanic class. **Colony-size-gated boost** (per PROCESS hypothesis buffet). Small founders get the boost (escape velocity for 271), mature colonies don't (no overshoot for 1337). `flowFactor = 1 + 0.5 × max(0, 1 - cellCount/300)`. Drop the substrate field check entirely — the local-field signal was noise. If 271 escapes AND aggregate climbs past 22, source-sink class is salvaged in a different form. If not, revert to parked iter-66 and ship iter-71 as a noted shape-max record.
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-71 · [tweak]
 Agent: claude-sonnet-4-6
 Plain: Raised the threshold to 4000 so only genuinely rich pockets get the full +50% boost. **Shape max climbed to 0.461 — a new arc record (was 0.441).** The fair-log seed 42 grew into a beautiful 686-cell colony, 5 of 7 targets, and the stress seed 1337 kept its founder small at 118 cells (no fragmenting child colonies). But the edge seed 271 lost its escape — back to 41 cells. Lean substrate has no rich pockets to trigger the boost, so 271 gets no help at this threshold.

@@ -6,24 +6,33 @@
 
 const lab = require('../lab');
 
-// Seed personalities — observed regimes across iters 1-10 of sim-lab/01.
-// `nominal` produces a clean branched founder; `stress` saturates into mat;
-// `lean` tends to die or stay tiny; `branch` is the painting-shape outlier;
-// `edge` is the noisy boundary case. Used by the report to group results
-// by regime instead of by raw seed number.
+// Seed names — each seed determines an entire world (log position, substrate
+// richness, every random decision the sim makes). We run the same mechanic
+// across all five so improvements don't ride on a lucky world. Names describe
+// what the world IS, not how it behaves under any particular mechanic.
+//
+//   fair-log     — typical log, balanced conditions, baseline world
+//   rich-log     — log overflowing with food, prone to matting
+//   multi-colony — founder splits into many over time, branching test
+//   edge-spawn   — founder placed at edge geometry, boundary case
+//   lean-log     — sparse food, starvation test
+//
+// Old names (nominal/stress/branch/edge/lean) appear in historical NOTES
+// entries — preserved unrenamed for the audit trail. Going forward, use
+// these descriptive names in reports, PRs, and new NOTES entries.
 const SEED_PERSONALITIES = {
-  42:   'nominal',
-  1337: 'stress',
-  555:  'lean',
-  314:  'branch',
-  271:  'edge',
+  42:   'fair-log',
+  1337: 'rich-log',
+  555:  'lean-log',
+  314:  'multi-colony',
+  271:  'edge-spawn',
 };
 
 const DEFAULT_SEEDS = [42, 1337, 314, 271, 555];
 
 async function runVisionTarget(vision, opts = {}) {
   const seedSpec = opts.seeds ?? DEFAULT_SEEDS;
-  // Normalize: accept [42, 1337, …] or [{seed: 42, tag: 'nominal'}, …]
+  // Normalize: accept [42, 1337, …] or [{seed: 42, tag: 'fair-log'}, …]
   const seeds = seedSpec.map(s => typeof s === 'number'
     ? { seed: s, tag: SEED_PERSONALITIES[s] || 'unknown' }
     : { seed: s.seed, tag: s.tag || SEED_PERSONALITIES[s.seed] || 'unknown' });

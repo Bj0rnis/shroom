@@ -39,6 +39,26 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-76 · [park]
+Agent: claude-sonnet-4-6
+Plain: Reverted to iter-74's exact config (FALLOFF back to 300). Confirms the parking config — aggregate **25 of 35**, all five seeds at 4+ of 7 targets, soilDispersion all-pass, noPrematureFruit clean. **Parking sim-lab/06 here.** The arc opened with the source-sink hypothesis (substrate-field flow), spent five iters discovering it was a noisy lever that never beat parked aggregate, then pivoted at iter-73 to founder-rescue (size-gated boost). iter-74 cranked the boost to 2× at founding and broke through. iter-75 tested longer fall-off (300 → 400) — regressed (aggregate 23, colonies starve themselves through too-fast early growth). 300 is the right window.
+Hypothesis: confirm iter-74's `FOUNDER_BOOST_FALLOFF_SOIL = 300` reproduces with the current sim.js state.
+Setup: `FOUNDER_BOOST_FALLOFF_SOIL` 400 → 300. Otherwise identical to iter-74.
+Result: bit-identical to iter-74. shape 0/5 median **0.282**, max 0.308. modestSize 4/5. **soilDispersion 5/5**. descended 4/5 max 50. multipleDescents 2/5. **noPrematureFruit 5/5**. notSaturated 5/5. Per-seed: 42=5/7 (329), 1337=5/7 (255), 314=4/7 (111), 271=5/7 (161), 555=6/7 (460). **Aggregate 25/35** (parked at iter-66 was 22, parked at iter-56 was 22 — this is +3 over the previous-best park).
+Reading: this is the new parking point. Vision 1 still not achieved (shape median 0.282 vs 0.60 threshold) but the curve has moved positively for the second branch in a row and every other scorer is either at all-pass or one seed away. The mechanic class that wins is **founder-rescue** — small colonies get an early-growth boost in soil, mature colonies grow at normal rate. Tells the right biological story (small networks need to find productive substrate fast) and is the cleanest single lever the arc has produced.
+Next: hand off to the maintainer. Open Vision 1 problems: (a) shape median 0.282 vs 0.60 — gap closed by another ~10% this branch, but the remaining distance needs a third mechanism class. (b) 314 at 111 cells is the only seed missing modestSize — sits just below the [150, 800] range. (c) multipleDescents 2/5 hasn't moved since iter-61's record 3/5. Future directions: substrate-field source-sink CAN be salvaged (iter-71 hit shape max 0.461, an arc record), but only when stacked properly — combining with founder-rescue produced disaster in iter-72. The two mechanic classes appear to be incompatible at this implementation. A different shape mechanism — maybe directional chemotaxis variance, or a true per-leader transport — is the next surface to explore.
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-75 · [tweak] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Probed letting the founder boost run longer (300 → 400 cells). Aggregate dropped from 25 to 23. The edge seed 271 jumped from 161 to 649 cells (best 271 result ever!) but the lean/fair seeds collapsed back to floor-ish levels — their founders grew too fast early, hit substrate exhaustion, then died back via the starvation cascade. Confirms iter-74's FALLOFF=300 is the sweet spot.
+Hypothesis: `FOUNDER_BOOST_FALLOFF_SOIL` 300 → 400 keeps the boost active longer, gives 1337 more growth runway without hurting 271/555.
+Setup: only FALLOFF changed.
+Result: shape median **0.137** (regression from 0.282), max 0.264. modestSize 3/5 (was 4/5). soilDispersion 4/5 (was 5/5). descended 3/5. multipleDescents 3/5 (up from 2/5). noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=5/7 (**76**), 1337=3/7 (**118**), 314=5/7 (749 across 3 colonies), **271=6/7 (649 single — record)**, 555=4/7 (151). **Aggregate 23/35**.
+Reading: 100 extra cells of boost is enough to push the founder past substrate carrying capacity in the local zone. The colony grows fast, then loses perimeter cells when absorption can't keep up. 314 fragmented again. The 300-cell boundary is matched to how big a single founder can grow on the local substrate before needing to slow. Sweet-spot confirmed.
+Next: iter-76 — revert FALLOFF to 300 and confirm bit-identical reproduction. Park sim-lab/06 at iter-74's config. Open PR.
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-74 · [tweak] · [BREAKTHROUGH]
 Agent: claude-sonnet-4-6
 Plain: Doubled the founder boost — at sowing the colony grows 2× as fast, tapering down to normal by 300 cells. Every seed got better. **Aggregate jumped to 25 of 35, a new arc record (was 22 parked).** The edge seed (271) cracked its floor for the first time outside of the wild-fragmentation runs — 161 cells in a single founder, 5 of 7 targets. The lean seed (555) hit 460 cells (6 of 7). The stress seed (1337) tripled from its 91-cell floor to 255 cells (5 of 7) without fragmenting. All five seeds productive at 4+ of 7 each — a first.

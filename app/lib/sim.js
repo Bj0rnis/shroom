@@ -51,6 +51,28 @@ const TIP_BIFURCATION_PROB = 0.30;   // sim-lab iter-28: was 0.20, milder bump t
 // sim-lab/04 iter-1: was uniform 0.30, soil 0.55.
 const TIP_BIFURCATION_PROB_SOIL = 0.55;
 
+// DLA-style edge preference (sim-lab/05 iter-63). In soil, candidates that
+// have many already-filled neighbours get downweighted, so tips prefer to
+// extend into open space. This is meant to produce the painting's airy
+// lacework — fine lateral filaments — without blocking growth (thickness
+// check already does that). Weight is divided by (1 + K * filledNeighbors).
+// Soil only; above grass keeps the existing chemotaxis-dominated behavior.
+// iter-63: K = 0.6 — too aggressive (parent-cell always in 3×3 box, so every
+//          extension takes 0.625× hit). Aggregate collapsed to 16/35.
+// iter-64: K = 0.15 — sweet spot. Shape median 0.252 (near parked 0.258),
+//          shape max 0.441 (RECORD), aggregate 22/35. PARKED here (iter-66).
+// iter-65: K = 0.10 — too mild, shape collapsed to 0.126, fruit chaos on seed 42.
+const DLA_EDGE_K_SOIL = 0.15;
+
+// Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
+// is re-activated as a directional weight multiplier in soil. When a cell in
+// SOIL picks which neighbour to extend into, south-ward candidates (j === i+W)
+// get their weight multiplied by (1 + gene[2] * VERTICAL_BIAS_SOIL_MULT).
+// Above grass the gene has no effect — soil descent only. A genome with
+// vertical_bias=0.8 and MULT=3.0 gives south neighbours a 3.4× weight boost.
+// Variance across seeds comes from variedGenome in genome.js (iter-60).
+const VERTICAL_BIAS_SOIL_MULT = 3.0;
+
 // Extension probability decays with cell age. Real mycelium has a small
 // number of *leading* hyphal tips that explore outward — once a tip has
 // extended a few times, it becomes part of the static transport network and
@@ -503,8 +525,7 @@ function growHyphae(world) {
     const gene = col.genome;
     const growthRate   = gene[0]; // 0.5–2.0
     const chemotaxis   = gene[1]; // 0–1
-    // gene[2] is reserved (formerly verticalBias — kept in the genome shape
-    // so existing colonies load cleanly, but no longer drives growth).
+    const verticalBias = gene[2]; // 0–1 re-activated in sim-lab/05 iter-60 as soil descent bias
 
     // Walk 4 neighbors once. Each substrate-non-colony neighbor is:
     //   • a side-absorption target (drain at end of cell step), and
@@ -530,9 +551,22 @@ function growHyphae(world) {
       if (occupiedInBox(startSnapshot, j) > THICKNESS_MAX) continue;
 
       freeCount++;
-      // Pure chemotaxis: weight by neighbor nutrient, no directional bias.
-      // Substrate design (pockets, log richness) does all the steering.
+      // Chemotaxis: weight by neighbor nutrient.
       let w = 1 + chemotaxis * (nutrient[j] / 50);
+      // Vertical bias (sim-lab/05 iter-60): in SOIL, boost southward neighbours
+      // by the colony's vertical_bias gene. j === i+W means one row down (south).
+      // Above grass (LOG, GRASS) the gene has no directional effect.
+      if (kind[i] === SOIL && j === i + W) {
+        w *= (1 + verticalBias * VERTICAL_BIAS_SOIL_MULT);
+      }
+      // DLA edge preference (sim-lab/05 iter-63): in SOIL, downweight candidates
+      // surrounded by already-filled neighbours so tips prefer open space.
+      // Count colony-occupied cells in the 3×3 box around j. Divide by
+      // (1 + K * filled).  Soil only.
+      if (kind[i] === SOIL) {
+        const filled = occupiedInBox(startSnapshot, j);
+        w /= (1 + DLA_EDGE_K_SOIL * filled);
+      }
       candidates.push({ j, w });
       totalW += w;
     }

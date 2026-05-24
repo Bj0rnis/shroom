@@ -2,6 +2,8 @@
 // 10-float gene vector per colony. Substitution-only mutation with
 // scale-proportional perturbation (Evochora archaeology verdict #1).
 
+const { createRng } = require('./rng');
+
 const GENES = [
   { name: 'growth_rate',           min: 0.5, max: 2.0,   continuous: true },
   { name: 'spread_bias_nutrient',  min: 0,   max: 1,     continuous: true },
@@ -63,6 +65,55 @@ function pinnedGenome(overrides = {}) {
   });
 }
 
+// Genome variance (sim-lab/05). Starts from the pinned reference genome but
+// applies per-colony tilts on selected genes so each founder has a distinct
+// phenotype. Draws tilt values from an isolated RNG (not world.rng) seeded
+// from the world seed — deterministic per (seed, scenario) without touching
+// the simulation stream.
+//
+// iter-57: ±0.40 growth_rate and ±0.15 chemotaxis — too wide, most seeds collapsed.
+// iter-58: ±0.20 growth_rate — still regressed; extra world.rng() call shuffled sim.
+// iter-59: isolated RNG (worldSeed ^ 0xDEADCAFE); growth_rate ±0.30.
+//          Confirmed isolation works, but growth_rate is a bifurcation parameter —
+//          2.6% difference compounded over 28800 ticks → 4× cell count difference.
+//          Not a useful lever; pivot needed.
+// iter-60: pivot to vertical_bias (gene[2]). Re-activated in sim.js as a soil
+//          descent weight multiplier. Vary it in [0, 0.8] per seed. This is a
+//          directional geometry gene, not a probability scalar — effect is
+//          predictable and monotone: higher value → stronger southward pull in soil.
+//          growth_rate stays pinned at 1.95.
+// iter-61: range tightened [0, 0.8] → [0, 0.3]. Max south-boost goes from 3.4×
+//          to 1.9×. Hypothesis: lower ceiling preserves perpendicular-bias
+//          lattice at the high end while still varying depth.
+// iter-62: middle ground at [0, 0.5]. Max south-boost 2.5×. Probing whether
+//          shape median recovers without losing iter-61's multipleDescents win.
+//          Result: aggregate flat at 23, multipleDescents regressed — revert.
+// iter-63: back to [0, 0.3] and stack a new mechanic (DLA edge preference) on top.
+const GENOME_VARIANCE_VERTICAL_BIAS_MIN = 0.0;
+const GENOME_VARIANCE_VERTICAL_BIAS_MAX = 0.3;
+
+// Draw a varied genome for lab use. `worldSeed` is world.meta.seed — used to
+// seed a separate RNG that doesn't touch the simulation's world.rng stream.
+// The simulation plays out identically to the pinned baseline except the
+// founder's vertical_bias (gene[2]) is drawn uniformly in [0, 0.8].
+function variedGenome(worldSeed, overrides = {}) {
+  // Mix the world seed with a magic constant so this stream is decorrelated
+  // from the main simulation stream (which starts at createRng(worldSeed)).
+  // The constant 0xDEAD_CAFE is arbitrary; what matters is it differs from 0.
+  const r = createRng((worldSeed ^ 0xDEADCAFE) >>> 0);
+  const tilts = {
+    vertical_bias: GENOME_VARIANCE_VERTICAL_BIAS_MIN
+      + r() * (GENOME_VARIANCE_VERTICAL_BIAS_MAX - GENOME_VARIANCE_VERTICAL_BIAS_MIN),
+  };
+  return GENES.map(g => {
+    if (g.name in overrides) return overrides[g.name];
+    if (g.name in tilts) return tilts[g.name];
+    if (g.name in PINNED_DEFAULTS) return PINNED_DEFAULTS[g.name];
+    if (g.continuous) return (g.min + g.max) / 2;
+    return g.min;
+  });
+}
+
 function mutate(parent, rng) {
   const r = rng || Math.random;
   const child = parent.slice();
@@ -114,6 +165,7 @@ module.exports = {
   GENES,
   randomGenome,
   pinnedGenome,
+  variedGenome,
   mutate,
   genomeToObj,
   phenotypeWords,

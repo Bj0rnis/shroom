@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-70 · [tweak]
+Agent: claude-sonnet-4-6
+Plain: Removed the penalty side — tips never go below their normal rate, but tips in rich ground push 50% faster. Result was bit-identical to iter-69 — same shape, same cell counts. Diagnosis: with threshold 200, the multiplier was already pinned at MAX=1.5 for every tip in healthy soil, so the 0.5 floor in iter-69 was never reached. The mechanic isn't being selective; it's a universal +50% soil boost masquerading as source-sink. 271 still escapes (164 cells, 5 of 7); 1337's "rescue" is actually 3 child colonies from premature fruiting (14 fruits across the seed set). Founder rescue isn't happening.
+Hypothesis: dropping MIN 0.5 → 1.0 preserves 271's rescue without hurting fair-log seed 42.
+Setup: `SOURCE_SINK_FACTOR_MIN` 0.5 → 1.0. Range now [1.0, 1.5]. No other changes. Baseline guards unchanged from iter-69 — tests pass.
+Result: shape 0/5 median **0.155** (flat from iter-69), max **0.342** (flat). modestSize 2/5. soilDispersion 3/5. descended 4/5. multipleDescents 3/5. noPrematureFruit 3/5 (still broken). notSaturated 5/5. Per-seed: 42=3/7 (97), 1337=2/7 (296 across 4 colonies), 314=5/7 (520 across 4), **271=5/7 (164)**, 555=5/7 (142). **Aggregate 22/35**.
+Reading: the local-field signal is doing nothing useful — flowFactor saturates at MAX for virtually every soil tip because R=4 box of healthy soil sums to ~2000 against THRESHOLD=200. What we have is just "soil extension +50% across the board." That helps 271 (founder escape velocity) but pushes 1337/314 past the 800-cell fruit gate, fragmenting them into child colonies. The shape regression is the +50% boost producing deeper-faster columns instead of lattice. To make the mechanic actually selective: raise THRESHOLD so most cells sit in the middle of the curve.
+Next: iter-71 — `SOURCE_SINK_THRESHOLD_SOIL` 200 → 4000. With base soil ~25 nutrient/cell × 81-cell box ≈ 2025, factor sits at 1.25 (mid-curve) for untapped soil and only 1.5 for genuinely rich pockets (>50 nutrient/cell). Tests whether selective boost preserves 271's escape while letting the shape mechanic recover.
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-69 · [tweak]
 Agent: claude-sonnet-4-6
 Plain: Reframed the local-food check as a two-way curve — tips in rich pockets push 50% faster, tips in starved zones push 50% slower. **Edge seed 271 finally escaped its floor (35 → 164 cells, 5 of 7 targets — first time it's broken out in the whole arc.)** Stress seed 1337 also jumped (91 → 296 across 4 colonies). But the shape match regressed (median 0.16 vs the parked 0.25), the fair-log seed (42) lost ground, and the boost let two seeds fruit too early. Aggregate still 22 of 35 — same count, very different shape.

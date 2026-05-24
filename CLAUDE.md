@@ -31,13 +31,14 @@ The server is reached via the SSH alias `shroom-server` (configured in
 the maintainer's `~/.ssh/config` — not committed). The alias resolves to
 the home server's hostname/port/user, so `ssh shroom-server` is enough.
 
-The repo lives at `/opt/home-server/shroom` on that host, owned by the
-`agent` user that the alias logs in as.
+The repo lives at `~/shroom` on that host (a symlink to the actual
+checkout, set up so the deploy path is clean). The `agent` user that
+the alias logs in as owns it.
 
 Pull and rebuild:
 
 ```bash
-ssh shroom-server 'cd /opt/home-server/shroom && git pull && git log -1 --format=%H%n%s > app/BUILD_INFO && docker compose up -d --build shroom'
+ssh shroom-server 'cd ~/shroom && git pull && git log -1 --format=%H%n%s > app/BUILD_INFO && docker compose up -d --build shroom'
 ```
 
 The Dockerfile bakes the code into the image (`COPY . .`) — the container
@@ -50,8 +51,8 @@ The `git log > app/BUILD_INFO` step records the live commit + subject so
 `/research` dashboard. The file is gitignored — it's a build artifact,
 written fresh on every deploy.
 
-Data persists at `/opt/shroom/data/shroom` (the repo path `/opt/home-server/...`
-is unrelated). Bind-mounted into the container at `/app/data`. Never touch
+Data persists at `/opt/shroom/data/shroom` (separate from the repo path).
+Bind-mounted into the container at `/app/data`. Never touch
 it during a deploy unless explicitly migrating. The world.json is the
 living state of the sim — treat it with care.
 

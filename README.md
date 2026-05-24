@@ -34,6 +34,23 @@ check on.
 
 ---
 
+## Where the world is right now
+
+The sim runs continuously on the maintainer's server. The current world is
+**volume 1**, somewhere around day 233 at the time of writing. Mycelium
+grows under the rules shipped in sim-lab iter-66 (see `The lab` below) —
+two new mechanics on top of the long-standing leader-cell foundation:
+
+- a per-colony **vertical bias** that lets some founders favour going
+  deeper than others
+- a **DLA-style edge preference** in soil so tips lean toward open space
+  instead of crowding
+
+Nigehban writes when the world moves him. The Hall of Fame keeps the
+oldest colonies inscribed across volumes.
+
+---
+
 ## Stack
 
 - **Backend** — Node.js + Express. No database. State is a JSON file, written
@@ -172,6 +189,81 @@ adding life are not.
 
 Read `CLAUDE.md` before working on the code. Read `app/public/kit/KIT.md`
 before working on the UI.
+
+---
+
+## The lab
+
+Shroom is also a small research project. The live sim has a sibling — a
+deterministic, headless lab that runs the same simulation against five
+hand-picked seed worlds and scores the result against a *vision* of what
+the world should look like.
+
+Lives under `app/lib/sim-lab/`. Three documents matter:
+
+- `RESEARCH.md` — the paper. What we're trying to grow, and why.
+- `NOTES.md` — the journal. One entry per iteration. Public, terse.
+- `PROCESS.md` — the contract. How the loop runs, what an agent may
+  decide alone, when to escalate.
+
+The five seed worlds are:
+
+| world | what it is |
+|---|---|
+| `fair-log` | typical log, balanced conditions |
+| `rich-log` | log overflowing with food, prone to matting |
+| `multi-colony` | founder splits into many over time |
+| `edge-spawn` | founder placed at edge geometry |
+| `lean-log` | sparse food, starvation test |
+
+The active target is **Vision 1**: a day-old colony that *looks like* the
+painting on the maintainer's wall — root-like, descended, laterally
+spread, not a blob and not a thread. The gatekeeper is a shape-match
+score, threshold 0.60 across all five worlds. As of iter-66 the median is
+0.252 and the best single seed reached 0.441 — closer than any earlier
+iteration. Still a way to go.
+
+Run the lab locally with:
+
+```bash
+node app/cli/lab.js baseline                   # full vision-1 report
+node app/cli/lab.js baseline --label "iter-N"  # tagged for the journal
+node app/lib/sim-lab/test.js                   # smoke tests + baseline guards
+```
+
+---
+
+## Changelog
+
+A loose list of milestones. Day-to-day commits live in `git log`; this
+section is for the moments that changed what the world is.
+
+- **2026-05-24** — Open-sourced under GPLv3. Self-host docker-compose added.
+- **2026-05-24** — sim-lab/05 parked at iter-66. Two new mechanics stack
+  on sim-lab/04's lattice work: per-colony vertical-bias variance and
+  DLA-style edge preference. Shape match hits a new max of 0.441; the
+  lean-log seed comes alive for the first time.
+- **2026-05-24** — Continuous iteration numbering across all sim-lab
+  branches (was branch-scoped, drifted). Past entries keep their old
+  numbers; new entries pick up from iter-57 onward.
+- **2026-05-24** — Portrait gate on phones. The index is desktop and
+  landscape only; narrow portrait shows a quiet prompt to turn the device.
+- **2026-05-23** — sim-lab/04 parked. Substrate-aware bifurcation and
+  perpendicular branching in soil produce the painting's lateral lacework.
+  Shape match jumps +56% in one branch — the biggest single-branch gain
+  in the research arc.
+- **2026-05-22** — sim-lab/03. Vision 2 (week-long persistence) scoped
+  and scored, with auto-bootstrap to keep dead worlds alive for measurement.
+- **2026-05-19** — sim-lab/02. Colony-wide carrying capacity, apical
+  dominance, leader-lifespan tuning. The painting-similarity scorer is
+  rebuilt to read structural features from ASCII.
+- **2026-05-18** — sim-lab/01. The leader-cell mechanic ships. A few tips
+  grow fast, the rest stay quiet. Seed 1337 (rich-log) breaks open for
+  the first time.
+- **2026-05-18** — sim-lab foundation. Deterministic RNG threaded through
+  the sim, lab scaffolding, vision 1 written.
+- **earlier** — design pass on the index, the engine page, the kit. The
+  diorama, the rail, the Chronicle, the Hall.
 
 ---
 

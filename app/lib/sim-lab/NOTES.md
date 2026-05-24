@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/07-lattice-mature begins · iter-77 · vision 1 (close shape gap)
 
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-82 · [park] · [closed-without-new-park]
+Agent: claude-sonnet-4-6
+Plain: Five iterations into sim-lab/07, every mechanic class probed (size-scaled perpendicular bias, size-scaled DLA-K, phased substrate-field stacking, periphery-interior at two gates) traded one scorer for another with no net Vision 1 progress. The Vision 1 gatekeeper — shape median — never beat the sim-lab/06 park of 0.282. Stuck signal across the whole branch. Closing the branch and reverting sim.js to iter-74's parking state. Two findings to keep for future agents: (a) the shape-vs-multipleDescents tension is intrinsic to perpendicular-bias levers (sim-lab/04 iter-5 finding confirmed); (b) the mature-phase substrate-field boost can produce shape max RECORD 0.461 but the magnitude that does so also overshoots the fruit gate — needs a fundamentally different stop condition, not just a curve.
+Hypothesis: sim-lab/07's best run was iter-77 (aggregate 27 — branch record, +2 over parked 25) but it traded the Vision 1 gatekeeper for the trade. iter-78/79/80/81 explored alternative mechanics — none beat parked aggregate AND none beat parked shape median.
+Setup: branch revert to commit e677ae3 (sim-lab/06 iter-74 parked).
+Result: bit-identical to iter-74 — shape median 0.282, modestSize 4/5, soilDispersion 5/5, multipleDescents 2/5, noPrematureFruit 5/5, notSaturated 5/5. **Aggregate 25/35** (sim-lab/06 park). All five seeds productive at 4+ of 7 each.
+Reading: the Vision 1 gate (shape median ≥ 0.60) is unlikely to be reachable inside the current single-substrate-per-seed framework. Three branches now (sim-lab/04, sim-lab/05, sim-lab/06) closed the gap from 0.165 → 0.282 — meaningful movement but the remaining distance (0.32 absolute, 2× relative) hasn't moved under any in-physics tuning. Either Vision 1 needs a different physical model (variable substrate density, multi-founder dynamics, or a separate aesthetic-shape-matching pass), or the threshold itself needs to drop — both maintainer calls.
+Next: hand off. Branch parked at iter-74 baseline. Open Vision 1 problems unchanged. Hypothesis-buffet leftovers still untried in their original form: (a) age stratification (currently only partial via TIP_AGE_DECAY); (b) mushroom-shape (network builds then halts); (c) true per-leader transport (each leader has its own reserve pool rather than shared col.reserves). The next branch should consider whether Vision 1 needs retargeting before another in-physics attempt.
+
+
+
 ## 2026-05-24 · sim-lab/07-lattice-mature · iter-79 · [mechanic] · [stuck]
 Agent: claude-sonnet-4-6
 Plain: Tried "phased stacking" — small colonies still get the founder-rescue boost, mature colonies (past 300 cells) get iter-71's substrate-field boost on top. Shape recovered partway (median 0.25, max 0.41 close to iter-71's record) but aggregate collapsed to 18 — the mature substrate boost pushes seeds past the 800-cell fruit gate, fragmenting them (16 fruits across the seed set). Phasing didn't prevent the issue because the mature boost is too strong in productive ground.

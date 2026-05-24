@@ -79,37 +79,6 @@ const DLA_EDGE_K_SOIL = 0.15;
 const FOUNDER_BOOST_MAX_SOIL     = 1.0;
 const FOUNDER_BOOST_FALLOFF_SOIL = 300;
 
-// Perpendicular bifurcation weight (sim-lab/04 iter-4, scaled in sim-lab/07
-// iter-77). In soil, the bif-child gets a weight multiplier toward neighbours
-// perpendicular to the parent's extension direction — produces L-shapes /
-// lateral lacework instead of fat single bundles. sim-lab/04's flat 4×
-// produced shape median 0.258 at park; sim-lab/06's founder-rescue baseline
-// kept that 4× and reached aggregate 25/35 / shape median 0.282. sim-lab/07
-// hypothesis: mature colonies (past the founder phase) can take a stronger
-// lateral bias without disrupting founder shape, since their early growth
-// has already established the trunk. Scale linearly with colony size —
-// founder uses FOUNDER, ramps to MATURE at FOUNDER_BOOST_FALLOFF_SOIL.
-const PERP_BIAS_SOIL_FOUNDER     = 4;
-const PERP_BIAS_SOIL_MATURE      = 4;   // iter-78: reverted (perp scaling produced columns, not lattice)
-
-// DLA edge preference K reverted to flat (sim-lab/07 iter-79) — iter-78's
-// size scaling penalised mature growth too uniformly.
-const DLA_EDGE_K_SOIL_MATURE     = 0.15;
-
-// Mature-only substrate-field source-sink (sim-lab/07 iter-79). Revives
-// iter-71's mechanism — boost extension probability in rich-pocket areas —
-// but applies only to MATURE colonies (past founder-rescue falloff). The
-// founder-rescue boost handles small-colony rescue; this fills the shape
-// gap by redirecting mature growth toward food clusters (iter-71 hit shape
-// max RECORD 0.461 with this curve). Size-gating prevents the iter-72
-// disaster where founder boost × substrate boost multiplied catastrophically.
-// flowFactor_mature = 1 + MATURE_RICH_MAX * min(1, sum / THRESHOLD), applied
-// on top of the founder-rescue factor (which is ≈1.0 for mature colonies, so
-// the two factors don't actually compound).
-const MATURE_RICH_MAX_SOIL       = 0.5;   // up to +50% boost at full rich pocket
-const MATURE_RICH_THRESHOLD_SOIL = 4000;  // iter-71's sweet spot
-const SOURCE_SINK_RADIUS_SOIL    = 4;     // 9×9 box for localSourceField
-
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
 // SOIL picks which neighbour to extend into, south-ward candidates (j === i+W)
@@ -607,6 +576,8 @@ function growHyphae(world) {
       }
       // DLA edge preference (sim-lab/05 iter-63): in SOIL, downweight candidates
       // surrounded by already-filled neighbours so tips prefer open space.
+      // Count colony-occupied cells in the 3×3 box around j. Divide by
+      // (1 + K * filled).  Soil only.
       if (kind[i] === SOIL) {
         const filled = occupiedInBox(startSnapshot, j);
         w /= (1 + DLA_EDGE_K_SOIL * filled);
@@ -664,26 +635,12 @@ function growHyphae(world) {
       // below can reuse it without a substrate check.
       // Founder-rescue boost (sim-lab/06 iter-73). In soil, small colonies
       // get an extra extension boost that tapers to zero at FALLOFF cells.
-      // Reverted to iter-74's exact form in sim-lab/07 iter-80 — phased
-      // stacking with substrate-field at iter-79 caused fruit overshoot.
+      // flowFactor stays at 1.0 above grass and for mature colonies.
       let flowFactor = 1;
       if (kind[i] === SOIL) {
         const sizeT = Math.max(0, 1 - (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
         flowFactor = 1 + FOUNDER_BOOST_MAX_SOIL * sizeT;
         baseExtend *= flowFactor;
-      }
-
-      // Periphery-interior asymmetry (sim-lab/07 iter-81). In genuinely old
-      // colonies (cellCount ≥ PERIPHERY_GATE), non-leader extension is muted
-      // entirely. iter-80 set the gate at 300 (founder-rescue boundary) and
-      // killed every mature colony — non-leader extension is load-bearing for
-      // sustained growth past founder. iter-81 pushes the gate to 600 — well
-      // past founder, past iter-77's modestSize range — to test whether the
-      // mechanic helps only in the very-mature regime where the painting
-      // wants the network to stop adding bulk.
-      const PERIPHERY_GATE = 600;
-      if (kind[i] === SOIL && !isLeader && (col.cellCount || 0) >= PERIPHERY_GATE) {
-        baseExtend = 0;
       }
       if (rng() <= baseExtend) {
         let r = rng() * totalW;
@@ -726,17 +683,11 @@ function growHyphae(world) {
             if (kind[i] === SOIL && others.length > 1) {
               const parentDx = (chosen % W) - (i % W);
               const parentVertical = parentDx === 0;
-              // Perpendicular weight ramps from FOUNDER to MATURE as the
-              // colony grows. sim-lab/07 iter-77: founder=4 (preserves
-              // iter-74 baseline), mature=8.
-              const sizeT = Math.min(1, (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
-              const perpWeight = PERP_BIAS_SOIL_FOUNDER +
-                sizeT * (PERP_BIAS_SOIL_MATURE - PERP_BIAS_SOIL_FOUNDER);
               others = others.map(c => {
                 const dx = (c.j % W) - (i % W);
                 const candVertical = dx === 0;
                 const perpendicular = (parentVertical !== candVertical);
-                return perpendicular ? { j: c.j, w: c.w * perpWeight } : c;
+                return perpendicular ? { j: c.j, w: c.w * 4 } : c;
               });
             }
             if (others.length > 0) {

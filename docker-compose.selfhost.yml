@@ -1,0 +1,32 @@
+# Shroom — self-host docker-compose
+#
+# Simple example for running shroom on your own server. Maps port 3000
+# directly; no Traefik, no external networks. If you want HTTPS or a
+# domain, put a reverse proxy (Caddy, nginx, Traefik) in front of this.
+#
+# Usage:
+#   1. cp .env.example .env  and fill in ANTHROPIC_API_KEY
+#   2. mkdir -p ./data
+#   3. docker compose -f docker-compose.selfhost.yml up -d
+#   4. http://localhost:3000
+
+services:
+  shroom:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: shroom
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NIGEHBAN_MODEL=claude-haiku-4-5
+      - TICK_INTERVAL_MS=3000
+      - NIGEHBAN_INTERVAL_TICKS=600
+      - NIGEHBAN_MIN_GAP_TICKS=200
+      - NIGEHBAN_DAILY_CAP=48
+    ports:
+      - "3000:3000"
+    volumes:
+      # World state persists here. Survives container rebuilds.
+      # Back this up if the world matters to you.
+      - ./data:/app/data

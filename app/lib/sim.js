@@ -64,6 +64,22 @@ const TIP_BIFURCATION_PROB_SOIL = 0.55;
 // iter-65: K = 0.10 — too mild, shape collapsed to 0.126, fruit chaos on seed 42.
 const DLA_EDGE_K_SOIL = 0.15;
 
+// Source-sink reserve flow (sim-lab/06 iter-67). The colony's reserves are
+// pooled at col.reserves, but real mycelium transports nutrient locally — a
+// tip can only push forward when its absorbing kin are still feeding the
+// network. We model this by gating SOIL extension on the local nutrient field
+// around the extending cell. If the surrounding substrate is depleted, the
+// "flow" to the tip is dampened and extension probability shrinks
+// proportionally. Tips follow productive ground instead of churning through
+// pooled reserves into dead zones. Soil only — log/grass have rich,
+// churn-fast economies and don't need this brake.
+// Sum of nutrient[] in a (2R+1)² box around the extending cell; flow factor
+// is sum / THRESHOLD clamped to 1. With R=4 (9×9=81 cells) and base soil
+// ~25 nutrient/cell, untapped soil hits sum ≈ 2000 (factor 1.0); cells deep
+// in a tapped-out zone fall toward 0.
+const SOURCE_SINK_RADIUS_SOIL    = 4;
+const SOURCE_SINK_THRESHOLD_SOIL = 400;
+
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
 // SOIL picks which neighbour to extend into, south-ward candidates (j === i+W)
@@ -613,6 +629,17 @@ function growHyphae(world) {
       const capFill = (col.cellCount || 0) / COLONY_CARRYING_CAPACITY;
       const capFactor = capFill >= 1 ? 0 : Math.pow(1 - capFill, CARRYING_SOFTNESS);
       baseExtend *= capFactor;
+      // Source-sink flow (sim-lab/06 iter-67): in SOIL, gate extension on the
+      // local nutrient field around this cell. Tips embedded in tapped-out
+      // ground slow proportionally; tips next to rich pockets keep their full
+      // rate. flowFactor stays declared at 1.0 above grass so the bif block
+      // below can reuse it without a substrate check.
+      let flowFactor = 1;
+      if (kind[i] === SOIL) {
+        const flow = localSourceField(nutrient, i, SOURCE_SINK_RADIUS_SOIL);
+        flowFactor = Math.min(1, flow / SOURCE_SINK_THRESHOLD_SOIL);
+        baseExtend *= flowFactor;
+      }
       if (rng() <= baseExtend) {
         let r = rng() * totalW;
         let chosen = candidates[0].j;
@@ -643,7 +670,7 @@ function growHyphae(world) {
         // young fork inherits the frontier when the parent leader senesces.
         if (isLeader && freeCount >= 3 && candidates.length >= 2 && (col.reserves || 0) >= EXTEND_COST) {
           const bifProb = kind[i] === SOIL ? TIP_BIFURCATION_PROB_SOIL : TIP_BIFURCATION_PROB;
-          if (rng() < bifProb * capFactor) {
+          if (rng() < bifProb * capFactor * flowFactor) {
             let others = candidates.filter(c => c.j !== chosen && colony[c.j] === 0);
             // sim-lab/04 iter-4: in soil, prefer the bif-child to go
             // perpendicular to the parent's extension. If `chosen` was a
@@ -708,6 +735,28 @@ function growHyphae(world) {
       }
     }
   }
+}
+
+// Sum of substrate nutrient in a (2R+1)² box around cell i. Drives the
+// source-sink flow factor in growHyphae — see SOURCE_SINK_THRESHOLD_SOIL.
+// Reads the *substrate field* (nutrient[]), not occupancy. Cheap enough at
+// R=4 because we only call it on cells that already passed the freeCount
+// and reserves gates, i.e. a few hundred per tick.
+function localSourceField(nutrient, i, R) {
+  const cx = i % W;
+  const cy = (i - cx) / W;
+  let sum = 0;
+  const y0 = Math.max(0, cy - R);
+  const y1 = Math.min(H - 1, cy + R);
+  const x0 = Math.max(0, cx - R);
+  const x1 = Math.min(W - 1, cx + R);
+  for (let y = y0; y <= y1; y++) {
+    const row = y * W;
+    for (let x = x0; x <= x1; x++) {
+      sum += nutrient[row + x];
+    }
+  }
+  return sum;
 }
 
 function occupiedInBox(snapshot, j) {

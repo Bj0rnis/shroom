@@ -37,7 +37,18 @@ us will want to A/B model choices; this is the audit trail.
 
 ---
 
-### sim-lab/05-genome-variance begins · iter-57 · vision 1 (close shape gap)
+### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
+
+## 2026-05-24 · sim-lab/06-source-sink · iter-67 · [mechanic]
+Agent: claude-sonnet-4-6
+Plain: Added a "local food field" check — in soil, a growing tip slows down if the substrate around it has been mostly eaten. The idea was to make tips follow productive ground instead of churning into dead zones. The mid-substrate seed (42) collapsed from 277 cells to 87 — the threshold is too high, so even healthy soil registers as "starved". Stress seed 1337 and edge seed 271 didn't move. Lean 555 held its 6/7.
+Hypothesis: gating extension on a (2R+1)² box-sum of nutrient[] around the extending cell rescues 1337 (overshoot into dead ground) and 271 (initial reserves wasted on lean spread) by slowing tips when their local field is depleted.
+Setup: New `SOURCE_SINK_RADIUS_SOIL = 4` (9×9 box) and `SOURCE_SINK_THRESHOLD_SOIL = 400` in `sim.js`. New `localSourceField(nutrient, i, R)` helper. In `growHyphae`, when `kind[i] === SOIL`, compute `flowFactor = min(1, sum / THRESHOLD)` and multiply baseExtend by it. Bifurcation prob multiplied by the same `flowFactor` for consistency.
+Result: shape 0/5 median **0.252** (flat from parked 0.252), max **0.441** (flat). modestSize **2/5** (was 3/5). soilDispersion 3/5 (was 4/5). descended 2/5 (was 3/5). multipleDescents 1/5 (was 2/5). noPrematureFruit 5/5. notSaturated 5/5. Per-seed: 42=2/7 (**87**, was 277), 1337=3/7 (91, flat), 314=5/7 (575, flat), 271=2/7 (35, flat), 555=6/7 (293, flat). **Aggregate 18/35** (was 22/35, -4).
+Reading: threshold 400 + radius 4 means the 9×9 box needs ~5 nutrient/cell average to give flowFactor=1. But absorbing cells drain their column to ~0 quickly via SIDE_ABSORPTION_FLOOR, and the 9×9 box around a frontier tip in actively-grown soil hovers at ~200-300 sum — so flow factor sits at 0.5-0.75 for most cells, halving extension uniformly. The mechanic is acting like a global growth damper, not a directional brake. Threshold needs to be much lower (the "starved" condition is sum→0, not sum<400).
+Next: iter-68 — drop THRESHOLD 400 → 100 so only genuinely depleted areas (most cells in box already drained) brake the tip. If aggregate climbs back toward 22 while 42 recovers, the mechanic class is viable.
+
+
 
 ## 2026-05-24 · sim-lab/05-genome-variance · iter-66 · [park]
 Agent: claude-opus-4-7

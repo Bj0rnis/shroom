@@ -27,12 +27,17 @@ more complex.
 
 ## Deploy
 
-The server is at `the maintainer@shroom-server`.
-The repo lives at `/opt/home-server/shroom`, owned by the `agent` user.
-Pull and rebuild as:
+The server is reached via the SSH alias `shroom-server` (configured in
+the maintainer's `~/.ssh/config` — not committed). The alias resolves to
+the home server's hostname/port/user, so `ssh shroom-server` is enough.
+
+The repo lives at `/opt/home-server/shroom` on that host, owned by the
+`agent` user that the alias logs in as.
+
+Pull and rebuild:
 
 ```bash
-ssh agent@shroom-server 'cd /opt/home-server/shroom && git pull && git log -1 --format=%H%n%s > app/BUILD_INFO && docker compose up -d --build shroom'
+ssh shroom-server 'cd /opt/home-server/shroom && git pull && git log -1 --format=%H%n%s > app/BUILD_INFO && docker compose up -d --build shroom'
 ```
 
 The Dockerfile bakes the code into the image (`COPY . .`) — the container

@@ -92,12 +92,23 @@ const FOUNDER_BOOST_FALLOFF_SOIL = 300;
 const PERP_BIAS_SOIL_FOUNDER     = 4;
 const PERP_BIAS_SOIL_MATURE      = 4;   // iter-78: reverted (perp scaling produced columns, not lattice)
 
-// DLA edge preference, scaled by colony size (sim-lab/07 iter-78). The base
-// DLA_EDGE_K_SOIL = 0.15 was the sim-lab/05 iter-64 sweet spot. iter-78
-// scales the K up for mature colonies — stronger crowding penalty in larger
-// networks should produce finer lacework as the network ages. Founder uses
-// the parked 0.15 (preserves iter-74 baseline); mature ramps to MATURE.
-const DLA_EDGE_K_SOIL_MATURE     = 0.30;
+// DLA edge preference K reverted to flat (sim-lab/07 iter-79) — iter-78's
+// size scaling penalised mature growth too uniformly.
+const DLA_EDGE_K_SOIL_MATURE     = 0.15;
+
+// Mature-only substrate-field source-sink (sim-lab/07 iter-79). Revives
+// iter-71's mechanism — boost extension probability in rich-pocket areas —
+// but applies only to MATURE colonies (past founder-rescue falloff). The
+// founder-rescue boost handles small-colony rescue; this fills the shape
+// gap by redirecting mature growth toward food clusters (iter-71 hit shape
+// max RECORD 0.461 with this curve). Size-gating prevents the iter-72
+// disaster where founder boost × substrate boost multiplied catastrophically.
+// flowFactor_mature = 1 + MATURE_RICH_MAX * min(1, sum / THRESHOLD), applied
+// on top of the founder-rescue factor (which is ≈1.0 for mature colonies, so
+// the two factors don't actually compound).
+const MATURE_RICH_MAX_SOIL       = 0.5;   // up to +50% boost at full rich pocket
+const MATURE_RICH_THRESHOLD_SOIL = 4000;  // iter-71's sweet spot
+const SOURCE_SINK_RADIUS_SOIL    = 4;     // 9×9 box for localSourceField
 
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)
 // is re-activated as a directional weight multiplier in soil. When a cell in
@@ -594,18 +605,11 @@ function growHyphae(world) {
       if (kind[i] === SOIL && j === i + W) {
         w *= (1 + verticalBias * VERTICAL_BIAS_SOIL_MULT);
       }
-      // DLA edge preference (sim-lab/05 iter-63, size-scaled sim-lab/07 iter-78):
-      // in SOIL, downweight candidates surrounded by already-filled neighbours
-      // so tips prefer open space. Count colony-occupied cells in the 3×3 box
-      // around j. Divide by (1 + K * filled). Soil only. K scales linearly from
-      // DLA_EDGE_K_SOIL (founder) to DLA_EDGE_K_SOIL_MATURE (mature) using the
-      // same FOUNDER_BOOST_FALLOFF_SOIL window — stronger crowding penalty as
-      // the network grows produces finer lacework in mature colonies.
+      // DLA edge preference (sim-lab/05 iter-63): in SOIL, downweight candidates
+      // surrounded by already-filled neighbours so tips prefer open space.
       if (kind[i] === SOIL) {
         const filled = occupiedInBox(startSnapshot, j);
-        const sizeT = Math.min(1, (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
-        const k = DLA_EDGE_K_SOIL + sizeT * (DLA_EDGE_K_SOIL_MATURE - DLA_EDGE_K_SOIL);
-        w /= (1 + k * filled);
+        w /= (1 + DLA_EDGE_K_SOIL * filled);
       }
       candidates.push({ j, w });
       totalW += w;
@@ -658,13 +662,24 @@ function growHyphae(world) {
       // ground slow proportionally; tips next to rich pockets keep their full
       // rate. flowFactor stays declared at 1.0 above grass so the bif block
       // below can reuse it without a substrate check.
-      // Founder-rescue boost (sim-lab/06 iter-73). In soil, small colonies
-      // get an extra extension boost that tapers to zero at FALLOFF cells.
-      // flowFactor stays at 1.0 above grass and for mature colonies.
+      // Two-phase soil flow (sim-lab/06 iter-73 + sim-lab/07 iter-79):
+      //   • Founder phase (cellCount < FALLOFF): size-gated growth boost
+      //     (founder-rescue, iter-74's sweet spot).
+      //   • Mature phase (cellCount ≥ FALLOFF): substrate-field source-sink
+      //     boost — extension favours rich-pocket areas (iter-71's shape
+      //     mechanism). Phases don't overlap thanks to size-gating, so
+      //     stacking is additive in spirit, not multiplicative chaos.
       let flowFactor = 1;
       if (kind[i] === SOIL) {
-        const sizeT = Math.max(0, 1 - (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
-        flowFactor = 1 + FOUNDER_BOOST_MAX_SOIL * sizeT;
+        const cells = col.cellCount || 0;
+        if (cells < FOUNDER_BOOST_FALLOFF_SOIL) {
+          const sizeT = 1 - cells / FOUNDER_BOOST_FALLOFF_SOIL;
+          flowFactor = 1 + FOUNDER_BOOST_MAX_SOIL * sizeT;
+        } else {
+          const flow = localSourceField(nutrient, i, SOURCE_SINK_RADIUS_SOIL);
+          const t = Math.min(1, flow / MATURE_RICH_THRESHOLD_SOIL);
+          flowFactor = 1 + MATURE_RICH_MAX_SOIL * t;
+        }
         baseExtend *= flowFactor;
       }
       if (rng() <= baseExtend) {

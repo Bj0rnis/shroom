@@ -39,6 +39,18 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/07-lattice-mature begins · iter-77 · vision 1 (close shape gap)
 
+## 2026-05-24 · sim-lab/07-lattice-mature · iter-79 · [mechanic] · [stuck]
+Agent: claude-sonnet-4-6
+Plain: Tried "phased stacking" — small colonies still get the founder-rescue boost, mature colonies (past 300 cells) get iter-71's substrate-field boost on top. Shape recovered partway (median 0.25, max 0.41 close to iter-71's record) but aggregate collapsed to 18 — the mature substrate boost pushes seeds past the 800-cell fruit gate, fragmenting them (16 fruits across the seed set). Phasing didn't prevent the issue because the mature boost is too strong in productive ground.
+Hypothesis: founder-rescue handles small colonies, mature substrate-field source-sink handles shape — size-gating prevents the iter-72 multiplicative disaster.
+Setup: in growHyphae, soil extension splits on cellCount<FALLOFF vs ≥FALLOFF. Founder branch identical to iter-74. Mature branch: `flowFactor = 1 + 0.5 × min(1, sum/4000)` (iter-71's curve). DLA-K scaling reverted to flat 0.15. PERP weight reverted to flat 4×.
+Result: shape 0/5 median **0.254** (recovered toward parked 0.282), max **0.407** (close to record 0.461). modestSize 3/5. soilDispersion 2/5 (collapse from 5/5). descended 3/5. multipleDescents 2/5 (down from record 4/5). noPrematureFruit 3/5 (**16 fruits!** — 314 has 5 fruits/5 colonies, 555 has 3 colonies). notSaturated 5/5. Per-seed: 42=5/7 (344 single), 1337=5/7 (381 single), 314=2/7 (468 across 5), 271=2/7 (99 — also lost), 555=4/7 (286 across 3). **Aggregate 18/35**.
+Reading: phasing worked structurally — 42 and 1337 mature beautifully into single founders with shape. But 314's substrate must enter the rich-pocket regime in a way that triggers runaway extension. 271 also regressed (99 cells, not the iter-74 161) — unexpected since 271 stays under FALLOFF; possibly a stream-position effect from the changed code paths, worth investigating. Substrate-field as a mature-only mechanic still produces overshoot.
+Next: iter-80 — drop mature substrate-field. Try **periphery-interior asymmetry** instead: in mature colonies (cellCount ≥ 300), non-leader extension probabilities go to 0. Only leaders drive mature growth. Should clean up interior churn without adding bulk; aligns with the "active tips only" biology.
+
+---
+
+
 ## 2026-05-24 · sim-lab/07-lattice-mature · iter-78 · [tweak] · [stuck]
 Agent: claude-sonnet-4-6
 Plain: Reverted iter-77's perpendicular scaling and tried DLA-edge intensity scaling instead — founder uses the parked 0.15, mature colonies push to 0.30 (stronger crowding penalty → finer lacework). Shape recovered partway (0.20 from iter-77's 0.12, vs parked 0.28) but aggregate fell to 23 — worse than parked iter-74 and worse than iter-77. 271 lost its rescue (96 cells, 2/7) and 42 fragmented (5 colonies). DLA-K scaling alone is not the shape lever.

@@ -168,7 +168,7 @@ function Aside({ children, accent }) {
 // ── LoadingPassage ────────────────────────────────────────────────────────
 // Centered italic-serif line for pre-snapshot states. Used by /index and
 // /engine while world or spec is loading. Voice register: an unhurried
-// observation, not a UI label. See docs/design/REVIEW.md #09.
+// observation, not a UI label. See docs/archive/design-review.md #09.
 function LoadingPassage({ message = 'the world stirs.' }) {
   return (
     <span style={{

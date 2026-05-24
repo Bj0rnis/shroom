@@ -56,10 +56,10 @@ app/
 
 BALANCE.md         ← live record of sim balance decisions
 CLAUDE.md          ← working contract — read this first
-EVOCHORA_NOTES.md  ← upstream research (Evochora alife project)
 INSTALL.md         ← user-facing install guide
 README.md          ← project overview, voice, current state
-docs/design/       ← design audit kanban, audit reviews
+docs/archive/      ← historical docs (Evochora notes, May 18 design audit) —
+                     read-only record, not steering
 ```
 
 ---
@@ -120,10 +120,10 @@ When the PR merges, the branch is auto-deleted (squash + delete).
 | `app/lib/sim-lab/NOTES.md` | Lab iteration journal. One entry per iter. | Before any lab work. |
 | `app/lib/sim-lab/RESEARCH.md` | Vision targets and why. | When you're unsure what "good" means. |
 | `app/lib/sim-lab/PROCESS.md` | Lab agent contract. | Before iterating. |
-| `docs/design/REVIEW.md` | Design audit kanban. | If you're touching the UI. |
 | `BALANCE.md` | Sim balance decisions. | Before tuning a sim constant. |
 | `CLAUDE.md` | Working contract for the whole repo. | First. Always first. |
-| `EVOCHORA_NOTES.md` | Pre-build research from Evochora. | If you're wondering where a mechanic came from. |
+| `docs/archive/design-review.md` | The May 2026 UI audit kanban (archived; record only). | If a code comment points you here for design rationale. |
+| `docs/archive/evochora-notes.md` | Pre-build research from Evochora (archived; record only). | If you're wondering where a mechanic came from. |
 
 ---
 

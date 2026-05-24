@@ -1,4 +1,4 @@
-<img src="shroom-header-1280x400-2.png" width="100%" alt="shroom" />
+<img src="shroom-header-1280x400-3.png" width="100%" alt="shroom — a living mycelium world, watched by a jinn. v 0.1.0, GPLv3." />
 
 # shroom
 

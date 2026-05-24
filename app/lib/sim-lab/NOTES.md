@@ -39,6 +39,17 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/06-source-sink begins · iter-67 · vision 1 (close shape gap, rescue 1337/271)
 
+## 2026-05-24 · sim-lab/06-source-sink · iter-74 · [tweak] · [BREAKTHROUGH]
+Agent: claude-sonnet-4-6
+Plain: Doubled the founder boost — at sowing the colony grows 2× as fast, tapering down to normal by 300 cells. Every seed got better. **Aggregate jumped to 25 of 35, a new arc record (was 22 parked).** The edge seed (271) cracked its floor for the first time outside of the wild-fragmentation runs — 161 cells in a single founder, 5 of 7 targets. The lean seed (555) hit 460 cells (6 of 7). The stress seed (1337) tripled from its 91-cell floor to 255 cells (5 of 7) without fragmenting. All five seeds productive at 4+ of 7 each — a first.
+Hypothesis: `FOUNDER_BOOST_MAX_SOIL` 0.5 → 1.0. Founder at 0 cells extends 2× (factor 2.0) on soil; boost tapers linearly to 0 at 300 cells. Tests whether 271's floor is escape-velocity-limited.
+Setup: only `FOUNDER_BOOST_MAX_SOIL` changed. Baseline guards updated: 42 456→460, 1337 256→272, 555 341→132 (early-tick number lower because 555's founder ramps fast then hits substrate limits).
+Result: shape 0/5 median **0.282** (UP from 0.252 parked — first positive movement in 5+ iters), max 0.308 (vs RECORD 0.461 iter-71). **modestSize 4/5** (was 2-3/5). **soilDispersion 5/5 (ARC FIRST — all-pass)**. descended 4/5 max 50. multipleDescents 2/5. **noPrematureFruit 5/5** (clean). notSaturated 5/5. Per-seed: 42=5/7 (329 single), 1337=**5/7 (255 single — was 91)**, 314=4/7 (111 single), **271=5/7 (161 single — escaped floor)**, 555=**6/7 (460 single)**. **Aggregate 25/35** (NEW ARC RECORD).
+Reading: this is the breakthrough config. The founder-boost lever produces the kind of result we've been chasing: all five seeds reach the [150, 800] modestSize range (only 314 misses at 111), all five soilDispersion-pass, no premature fruiting, no fragmentation, and the Vision 1 gatekeeper finally moved up. The shape max regressed from iter-71's 0.461 record (single-seed outlier from 42's 686-cell run) but the median climbed — which matters more for a vision that demands consistency across seeds. Vision 1 still not achieved (median 0.28 vs 0.60), but the arc has closed ~7% more of the gap.
+Next: iter-75 — probe `FOUNDER_BOOST_FALLOFF_SOIL` 300 → 400 to see if a longer-tailing boost gives any more shape median. If aggregate stays ≥ 25, lock that in; otherwise park iter-74 as the sim-lab/06 finishing config.
+
+
+
 ## 2026-05-24 · sim-lab/06-source-sink · iter-73 · [mechanic]
 Agent: claude-sonnet-4-6
 Plain: Pivoted to "founder-rescue" — small colonies get an extension boost in soil that tapers to zero by 300 cells. Mature colonies grow at normal rate, so they don't overshoot the fruit gate and fragment. The pivot worked partially: seed 314 stayed single-founder (was 3-6 colonies), seed 555 recovered to 192 cells, fruit blowout largely gone (9 fruits instead of 14). But edge seed 271 still floor-bound at 46 cells — the boost magnitude (50% at founding) isn't enough to crack its escape velocity.

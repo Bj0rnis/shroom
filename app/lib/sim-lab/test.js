@@ -74,9 +74,9 @@ process.stdout.write('sim determinism\n');
 process.stdout.write('baseline guards\n');
 {
   const BASELINES = [
-    { seed: 42,   ticks: 5000, cells: 456, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-73: size-gated founder boost
-    { seed: 1337, ticks: 5000, cells: 256, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-73 (was 330)
-    { seed: 555,  ticks: 5000, cells: 341, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-73 (was 434)
+    { seed: 42,   ticks: 5000, cells: 460, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-74: founder boost MAX 1.0
+    { seed: 1337, ticks: 5000, cells: 272, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-74 (was 256)
+    { seed: 555,  ticks: 5000, cells: 132, fruits: 0, deaths: 0 }, // updated sim-lab/06 iter-74 (was 341)
   ];
   for (const b of BASELINES) {
     const w = createWorld(b.seed);

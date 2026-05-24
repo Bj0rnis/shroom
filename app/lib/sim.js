@@ -76,7 +76,7 @@ const DLA_EDGE_K_SOIL = 0.15;
 // into child colonies — see iter-69/70/72 fruit blowouts).
 // flowFactor = 1 + FOUNDER_BOOST_MAX × max(0, 1 - cellCount / FOUNDER_BOOST_FALLOFF).
 // Boost falls linearly from MAX at 0 cells to 0 at FALLOFF cells.
-const FOUNDER_BOOST_MAX_SOIL     = 0.5;
+const FOUNDER_BOOST_MAX_SOIL     = 1.0;
 const FOUNDER_BOOST_FALLOFF_SOIL = 300;
 
 // Vertical-bias soil descent (sim-lab/05 iter-60). gene[2] (vertical_bias)

@@ -293,6 +293,16 @@ app.get('/api/hall', (req, res) => {
   res.json({ entries: persistence.loadHall() });
 });
 
+// Debug endpoints — world-modifying triggers (sow, toofan, reset, …) used
+// for manual testing and live-world poking. Gated on SHROOM_DEV=true so a
+// public deployment can't be wiped by anyone who finds the URL.
+app.use('/api/debug', (req, res, next) => {
+  if (!DEV_MODE) {
+    return res.status(403).json({ ok: false, error: 'set SHROOM_DEV=true to enable debug endpoints' });
+  }
+  next();
+});
+
 app.post('/api/debug/nigehban-wake', async (req, res) => {
   nigehban.notify('manual-wake');
   await nigehban.tryWake(world);

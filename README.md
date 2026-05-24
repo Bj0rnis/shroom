@@ -159,7 +159,9 @@ data/
 
 ## Debug endpoints
 
-All `POST`, all return JSON.
+All `POST`, all return JSON. **Gated on `SHROOM_DEV=true`** — off in
+production by default so a public deployment can't be wiped by anyone
+who finds the URL. Flip the env var when you need them, then back off.
 
 | Endpoint | Effect |
 |---|---|
@@ -169,6 +171,8 @@ All `POST`, all return JSON.
 | `/api/debug/inscribe` | Inscribe the top alive colony into the hall. |
 | `/api/debug/save` | Force a world.json save now. |
 | `/api/debug/reset` | Wipe and start a fresh volume 1. |
+| `/api/debug/spawn-tree` | Spawn a sapling (add `?grown=1` for full height). |
+| `/api/debug/fell-tree` | Fell a living tree by id, or any living tree. |
 
 ---
 

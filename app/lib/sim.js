@@ -662,25 +662,28 @@ function growHyphae(world) {
       // ground slow proportionally; tips next to rich pockets keep their full
       // rate. flowFactor stays declared at 1.0 above grass so the bif block
       // below can reuse it without a substrate check.
-      // Two-phase soil flow (sim-lab/06 iter-73 + sim-lab/07 iter-79):
-      //   • Founder phase (cellCount < FALLOFF): size-gated growth boost
-      //     (founder-rescue, iter-74's sweet spot).
-      //   • Mature phase (cellCount ≥ FALLOFF): substrate-field source-sink
-      //     boost — extension favours rich-pocket areas (iter-71's shape
-      //     mechanism). Phases don't overlap thanks to size-gating, so
-      //     stacking is additive in spirit, not multiplicative chaos.
+      // Founder-rescue boost (sim-lab/06 iter-73). In soil, small colonies
+      // get an extra extension boost that tapers to zero at FALLOFF cells.
+      // Reverted to iter-74's exact form in sim-lab/07 iter-80 — phased
+      // stacking with substrate-field at iter-79 caused fruit overshoot.
       let flowFactor = 1;
       if (kind[i] === SOIL) {
-        const cells = col.cellCount || 0;
-        if (cells < FOUNDER_BOOST_FALLOFF_SOIL) {
-          const sizeT = 1 - cells / FOUNDER_BOOST_FALLOFF_SOIL;
-          flowFactor = 1 + FOUNDER_BOOST_MAX_SOIL * sizeT;
-        } else {
-          const flow = localSourceField(nutrient, i, SOURCE_SINK_RADIUS_SOIL);
-          const t = Math.min(1, flow / MATURE_RICH_THRESHOLD_SOIL);
-          flowFactor = 1 + MATURE_RICH_MAX_SOIL * t;
-        }
+        const sizeT = Math.max(0, 1 - (col.cellCount || 0) / FOUNDER_BOOST_FALLOFF_SOIL);
+        flowFactor = 1 + FOUNDER_BOOST_MAX_SOIL * sizeT;
         baseExtend *= flowFactor;
+      }
+
+      // Periphery-interior asymmetry (sim-lab/07 iter-81). In genuinely old
+      // colonies (cellCount ≥ PERIPHERY_GATE), non-leader extension is muted
+      // entirely. iter-80 set the gate at 300 (founder-rescue boundary) and
+      // killed every mature colony — non-leader extension is load-bearing for
+      // sustained growth past founder. iter-81 pushes the gate to 600 — well
+      // past founder, past iter-77's modestSize range — to test whether the
+      // mechanic helps only in the very-mature regime where the painting
+      // wants the network to stop adding bulk.
+      const PERIPHERY_GATE = 600;
+      if (kind[i] === SOIL && !isLeader && (col.cellCount || 0) >= PERIPHERY_GATE) {
+        baseExtend = 0;
       }
       if (rng() <= baseExtend) {
         let r = rng() * totalW;

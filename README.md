@@ -273,6 +273,22 @@ A loose list of milestones. Day-to-day commits live in `git log`; this
 section is for the moments that changed what the world is.
 
 - **2026-05-24** — Open-sourced under GPLv3. Self-host docker-compose added.
+- **2026-05-24** — `1-1.md` opens a new journal for direction-setting chats
+  between the maintainer and the agent — separate from the iteration NOTES.
+  First entry reframes the next sim-lab branch around questioning the
+  silent topology cap. The `/research` dashboard's UNTRIED tags now reflect
+  reality; four new mechanic ideas join the buffet.
+- **2026-05-24** — sim-lab/07 closes without a new park. Five mechanics
+  probed (size-scaled perpendicular bias, DLA-K, phased substrate-field,
+  periphery-interior at two gates) and none move the Vision 1 gatekeeper
+  past sim-lab/06's baseline. A useful no-find — the conversation that
+  followed reframed the next branch.
+- **2026-05-24** — sim-lab/06 parked at iter-74. The founder-rescue boost
+  doubles extension speed at sowing and tapers to zero by 300 cells.
+  Aggregate climbs to 25 of 35 — a research-arc record. All five seeds
+  productive at once for the first time: the edge-log seed escapes its
+  35-cell floor, the stress-log seed triples without fragmenting, and
+  soilDispersion passes on every seed.
 - **2026-05-24** — sim-lab/05 parked at iter-66. Two new mechanics stack
   on sim-lab/04's lattice work: per-colony vertical-bias variance and
   DLA-style edge preference. Shape match hits a new max of 0.441; the

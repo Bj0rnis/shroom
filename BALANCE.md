@@ -20,6 +20,54 @@ Rules:
 
 ---
 
+## 2026-05-28 — soil stratigraphy + perp bif 8× · sim-lab/09 iter-108
+
+**Branch**: `sim-lab/09-column-locking`
+
+**Lab runs**: sim-lab/09 iter-96 → iter-115 (twenty iterations, parked at
+iter-108 confirmed bit-identical at iter-115).
+
+The maintainer caught the failure mode that the lab had been hiding:
+under the v3 multi-day window, founders were *dying mid-test*. Seed 1337
+grew up to 721 cells, then starved down to 6 cells over the remaining
+four days. The "best snapshot" scoring was rewarding a flash-peak before
+collapse, not a sustainable state.
+
+Root cause: soil baseline nutrient was 22–29 out of 100, about a quarter
+of a fresh log's richness. Colonies ate the log, dropped into soil,
+found nothing, and starved. The lean soil had been a *deliberate*
+gradient driver — pockets in the deep band gave mycelium a reason to
+tunnel downward — but it was too lean to sustain transit cells along
+the way.
+
+We explored four substrate variants (uniform rich, many small pockets,
+hybrid stratigraphy, interior pocket placement) and three orthogonal
+mechanic tweaks (perp bif boost, log bif boost, lower-soil floor lift)
+across eleven iterations. The combination that parked:
+
+| change | before | after |
+|---|---|---|
+| `world.js` soil nutrient | uniform 22–29 | **hybrid**: 50–60 in top 40% of soil band, 22–29 below |
+| `sim.js` perp bif weight (soil only) | 4× | **8×** |
+| `sim.js` `LOG_DESCENT_PENALTY` | (not present) | 0.5 (iter-101 finding) |
+
+The hybrid profile matches real forest stratigraphy — organic-rich
+humus over leaner mineral subsoil — and gives founders a survivable
+landing zone just below the grass row while preserving the gradient
+that pulls descents toward deep pockets. The perp bif bump from 4× to
+8× recovers the lateral spread that uniformly-rich soil softened, fixing
+the matting tendency we'd seen in iter-103.
+
+**Lab outcome**: aggregate 28/35 (vs prior park 22/35, vs v3 baseline
+21/35). 6 of 7 vision-1 scorers now pass on a majority of seeds.
+modestSize 5/5 (sustainability fixed), multipleDescents 4/5 (the
+original gatekeeper from iter-95), soilDispersion 4/5, descended 5/5.
+Shape composite still 0.290 (gate 0.60) — open for sim-lab/10.
+
+**Live outcome**: TBD — parked for observation.
+
+---
+
 ## 2026-05-18 — colony-level starvation · perimeter retraction
 
 **Branch**: `hyphae-mortality-tuning`

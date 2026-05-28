@@ -56,12 +56,13 @@ function IterCard({ entry, live }) {
       )}
       {live && (
         <span title={`commit ${live.commitShort} · tick ${live.tick} · seed ${live.seed}`} style={{
-          fontFamily: MONO, fontSize: 10,
-          color: COL.inkDeep, background: COL.hyphaHi || COL.grassHi,
-          padding: '2px 8px', borderRadius: 2,
-          letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600,
+          fontFamily: MONO, fontSize: 12,
+          color: COL.inkDeep, background: COL.glow || COL.hyphaHi,
+          padding: '4px 12px', borderRadius: 2,
+          letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700,
+          boxShadow: `0 0 12px ${COL.glow || COL.hyphaHi}`,
         }}>
-          live · day {live.day} · {live.season}
+          ● running now · day {live.day} · {live.season}
         </span>
       )}
     </div>

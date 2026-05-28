@@ -18,6 +18,9 @@ if (!configId) {
 let label = null;
 const lbIdx = args.indexOf('--label');
 if (lbIdx >= 0) label = args[lbIdx + 1] || null;
+let durationDays = null;
+const dyIdx = args.indexOf('--days');
+if (dyIdx >= 0) durationDays = parseFloat(args[dyIdx + 1]);
 
 const configPath = path.resolve(__dirname, '../lib/sim-lab/configs', `${configId}.js`);
 if (!fs.existsSync(configPath)) {
@@ -35,6 +38,6 @@ const { runVisionTarget } = require('../lib/sim-lab/driver');
 const { renderReport }    = require('../lib/sim-lab/report');
 
 (async () => {
-  const outcome = await runVisionTarget(config.vision, { seeds: config.seeds });
+  const outcome = await runVisionTarget(config.vision, { seeds: config.seeds, durationDays });
   process.stdout.write(renderReport(outcome, { label }));
 })().catch(e => { console.error(e.stack || e); process.exit(1); });

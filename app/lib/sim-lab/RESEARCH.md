@@ -94,7 +94,10 @@ pass on a majority of the seed set (3+ of 5).
 
 ### Status
 
-_In progress — early scorer pass at iter-20 was misleading._
+_In progress — best park yet at iter-108/115 (2026-05-28). 6 of 7 scorers
+now pass on a majority of seeds; only the composite shape scorer (median
+0.290 vs gate 0.60) keeps the vision technically open. Parked for live
+observation while we watch the server._
 
 iter-20 cleared all six original scorers (modestSize, branchedDensity,
 descended, multipleDescents, noPrematureFruit, notSaturated) but the
@@ -127,7 +130,54 @@ starting point for the next iter cycle.
 Live world still uses `randomGenome()` — natural variance preserved
 outside the lab.
 
-#### Latest park (sim-lab/04 iter-8)
+#### Latest park (sim-lab/09 iter-108 / confirmed iter-115)
+
+The substrate fix. After 12 iterations of mechanic tweaks (column-locking,
+log-descent penalty, perp-bif variants) the maintainer caught what the
+lab had been hiding: under the multi-day window, founders were *dying*
+mid-test. Seed 1337 grew up to 721 cells then starved down to 6 over the
+remaining four days. The shape-score "ceiling" was a snapshot of the
+peak, not a sustainable state.
+
+The cause was soil. Baseline nutrient sat at 22–29 out of 100 — a quarter
+of a fresh log's richness. Colonies ate the log, dropped into soil,
+found nothing, and starved. We explored four substrate experiments
+(uniform rich, many small pockets, hybrid stratigraphy, interior
+pocket placement) and three mechanic stacks (perp-bif boost, log-bif
+boost, lower-soil floor lift). The combination that worked:
+
+- **Hybrid soil profile** — rich humus 50–60 in the top 40% of the soil
+  band, lean mineral 22–29 below. Mimics real forest stratigraphy.
+  Survivable transit just under the grass row; descent gradient toward
+  deep pockets intact.
+- **Perpendicular bifurcation 8×** (was 4×) — recovers the lateral
+  spread the hybrid profile slightly softens. Soil-only; log behavior
+  unchanged.
+- **LOG_DESCENT_PENALTY 0.5** (iter-101) — leaders prefer to walk along
+  the log before crossing.
+
+| scorer | iter-8 (prior park) | iter-108/115 |
+|---|---|---|
+| shape | 0/5 (med 0.258) | 0/5 (med **0.290**) |
+| modestSize | 4/5 | **5/5** |
+| soilDispersion | 2/5 | 4/5 |
+| descended | 4/5 | **5/5** |
+| **multipleDescents** | 2/5 | **4/5** |
+| noPrematureFruit | 5/5 | 5/5 |
+| notSaturated | 5/5 | 5/5 |
+
+Aggregate **28/35** (vs prior park's 22/35, +27%). Per-seed: 42=6/7,
+1337=6/7, 314=6/7, 271=6/7, 555=4/7. Confirmed bit-identical across two
+runs (PROCESS.md two-consecutive-iterations rule).
+
+**Vision 1 is substantially met but not formally cleared.** The shape
+composite (median 0.290 vs gate 0.60) is the only failing scorer; the
+*qualitative* goal — colonies that survive, branch, separate descents at
+the grass row, and look like the painting — is hit. Parked at this
+state for live observation; sim-lab/10 will decide whether to push the
+shape gate or retire it as fantasy.
+
+#### Earlier park (sim-lab/04 iter-8)
 
 Substrate-aware bifurcation: `TIP_BIFURCATION_PROB_SOIL=0.55` (vs base
 0.30 above grass), and the bif-child in soil prefers perpendicular

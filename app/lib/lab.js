@@ -402,7 +402,7 @@ function renderAscii(world, opts = {}) {
 
 // ── Run a scenario ──────────────────────────────────────
 
-async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
+async function runScenario(scenarioId, { seed, restoreHooks, durationDays } = {}) {
   const scenario = SCENARIOS.find(s => s.id === scenarioId);
   if (!scenario) throw new Error(`unknown scenario: ${scenarioId}`);
 
@@ -454,7 +454,8 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
     }
   }
 
-  const totalTicks = scenario.durationDays * TICKS_PER_SIM_DAY;
+  const effectiveDays = durationDays ?? scenario.durationDays;
+  const totalTicks = effectiveDays * TICKS_PER_SIM_DAY;
   const t0 = Date.now();
   samples.push(captureSample(world));
 
@@ -544,7 +545,7 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
     seed:          world.meta.seed,
     startedAt:     new Date(t0).toISOString(),
     durationMs:    Date.now() - t0,
-    durationDays:  scenario.durationDays,
+    durationDays:  effectiveDays,
     constants:     CONSTANTS,
     metrics:       collectMetrics(world),
     colonies:      summarizeColonies(world),

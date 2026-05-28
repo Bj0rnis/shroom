@@ -123,6 +123,7 @@ Key numbers in `app/lib/sim.js` and what they control:
 | `COLONY_OLD_AGE_DAYS` | 365 | Days at which old-age pressure is maximum |
 | `STARVATION_GRACE_TICKS` | ~6 sim hours | Grace before colony-level starvation retraction starts |
 | `STARVATION_RAMP_TICKS` | ~18 sim hours | Additional ticks to ramp to full starvation pressure |
+| `LOG_DESCENT_PENALTY` | 0.5 | Weight multiplier on downward extension when leader is on the log — encourages lateral log spread before crossing |
 
 Hyphae cells do **not** die when the pixel of substrate beneath them is
 exhausted — they persist as transport pipes connecting absorbing tips to
@@ -147,10 +148,19 @@ descents. Leaders senesce after `LEADER_LIFESPAN = 120` extensions.
 Bifurcation produces Y-shaped branches: when a leader extends, it rolls a
 second extension into a different free neighbour at `TIP_BIFURCATION_PROB =
 0.30` (above grass) or `TIP_BIFURCATION_PROB_SOIL = 0.55` (in soil — added
-sim-lab/04 for lattice formation). In soil the bif-child also gets a 4×
-weight bias toward neighbours perpendicular to the parent's move — that's
-what produces the painting's lateral lacework instead of a fat single
-bundle.
+sim-lab/04 for lattice formation). In soil the bif-child also gets an 8×
+weight bias toward neighbours perpendicular to the parent's move
+(sim-lab/09 iter-108: was 4×). The lateral lacework comes from this
+perpendicular bias — a leader heading down forks a sibling sideways,
+producing the painting's L-shape spread instead of a fat single bundle.
+
+Soil is stratified (sim-lab/09 iter-105). The top 40% of the soil band
+is rich (50–60 nutrient out of 100, the "humus layer"); the bottom 60%
+is lean (22–29, the "mineral subsoil"). Founder colonies that cross
+the grass row find survivable substrate immediately, but the lean lower
+band preserves the descent gradient toward deep nutrient pockets. The
+prior uniform-22-29 baseline produced a multi-day boom-bust death
+spiral as colonies ate the log and couldn't sustain on the lean soil.
 
 All growth is multiplied by `growthRate` (genome) and `seasonMult` (season).
 Winter suppresses growth significantly; spring amplifies it.

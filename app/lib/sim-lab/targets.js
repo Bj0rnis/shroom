@@ -200,6 +200,37 @@ function shape(world, opts = {}, ctx = {}) {
   };
 }
 
+// Research v3 shape scorer. Reads ctx.asciiSnapshots — an array of
+// per-day founder-only renderings — and returns the BEST score across
+// the window. The founder reaching painting topology on day 3 is still
+// the founder reaching painting topology; the 1-day gate was a
+// self-imposed constraint, not a vision requirement.
+//
+// Falls back to ctx.founderAscii (or ctx.ascii) if no snapshots are
+// supplied — older scenarios still work.
+function shapeBest(world, opts = {}, ctx = {}) {
+  if (!_shapeMod) _shapeMod = require('./shape');
+  const painting = _shapeMod.paintingFeatures();
+  const threshold = opts.threshold ?? 0.6;
+  const candidates = (ctx.asciiSnapshots && ctx.asciiSnapshots.length)
+    ? ctx.asciiSnapshots
+    : [{ day: null, ascii: ctx.founderAscii || ctx.ascii }];
+  let best = { score: 0, day: null };
+  for (const snap of candidates) {
+    if (!snap.ascii) continue;
+    const f = _shapeMod.extractFeatures(snap.ascii);
+    const r = _shapeMod.shapeScore(f, painting);
+    if (r.score > best.score) best = { score: r.score, day: snap.day };
+  }
+  return {
+    ok: best.score >= threshold,
+    value: best.score,
+    note: best.day != null
+      ? `shape=${(best.score * 100).toFixed(0)}% best on day ${best.day} (want ≥${threshold * 100}%)`
+      : `shape=${(best.score * 100).toFixed(0)}% (want ≥${threshold * 100}%)`,
+  };
+}
+
 // ── Vision 2 scorers — week-long persistence ──────────────
 //
 // Vision 2 reads the founder colony at the *end* of the run (driver passes
@@ -298,11 +329,31 @@ const VISION_1_DAY1_ROOT = {
   ],
 };
 
+// Vision 1 v3 — same gatekeeper at threshold 0.60, but evaluated against
+// the founder colony in isolation across a 3-sim-day window, taking the
+// best per-day snapshot. The other scorers stay as they were; with
+// germination disabled in the v3 scenario, the focal colony is the
+// founder, so they read the same colony as shape does.
+const VISION_1_V3 = {
+  id: 'vision-1-v3',
+  description: 'v3: founder reaches painting topology within a 3-day window. Germination off; best-of-3 snapshots scored.',
+  scenarioId: 'vision-1-multi-day',
+  scorers: [
+    { name: 'shape',           fn: shapeBest,             opts: { threshold: 0.6 } },
+    { name: 'modestSize',      fn: modestSize,            opts: { min: 150, max: 800 } },
+    { name: 'soilDispersion',  fn: soilDispersion,        opts: { min: 0.50 } },
+    { name: 'descended',       fn: descended,             opts: { min: 10 } },
+    { name: 'multipleDescents',fn: multipleDescentPoints, opts: { min: 2, minGap: 3 } },
+    { name: 'noPrematureFruit',fn: noPrematureFruit,      opts: { maxByEnd: 3 } },
+    { name: 'notSaturated',    fn: notSaturated,          opts: { max: 0.20 } },
+  ],
+};
+
 module.exports = {
   modestSize, soilDispersion, descended, multipleDescentPoints,
-  noPrematureFruit, notSaturated, shape,
+  noPrematureFruit, notSaturated, shape, shapeBest,
   survivesToWeek, nonTrivialAtWeek, shapeStillHolds, noAutoBootstrap,
   colonyCells, boundingBox, grassCrossings, descentDepth,
   soilDispersionScore, pickFocalColony, pickFounderColony,
-  VISION_1_DAY1_ROOT, VISION_2_PERSISTENCE,
+  VISION_1_DAY1_ROOT, VISION_1_V3, VISION_2_PERSISTENCE,
 };

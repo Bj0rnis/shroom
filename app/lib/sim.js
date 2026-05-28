@@ -1137,6 +1137,10 @@ function driftSpores(world) {
 }
 
 function germinateSpores(world) {
+  // Research v3: lab scenarios can disable germination so fragmentation
+  // can't pad the shape score with parent+child overlay. Spores still
+  // exist and drift; they just never sprout.
+  if (world.meta.disableGermination) return;
   const { kind, nutrient, colony } = world.grid;
   const seasonMult = SEASON_SPORE_MULT[world.meta.season];
   const remaining = [];

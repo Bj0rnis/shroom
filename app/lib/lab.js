@@ -55,6 +55,24 @@ const SCENARIOS = [
     setup(world) { sowOnLog(world, 1); },
   },
   {
+    // Research v3: extends Vision 1's window to 3 days and disables
+    // germination so the founder is measured in isolation. Painting
+    // topology on day 2 or 3 is still painting topology; the 1-day
+    // window had been pressuring mechanics that didn't match the
+    // qualitative goal. Snapshots captured each sim-day so the scorer
+    // can take the best.
+    id: 'vision-1-multi-day',
+    name: 'Vision 1 — multi-day',
+    description: 'One colony, log center — 3 sim-days, germination disabled. Scorer takes best per-day snapshot.',
+    durationDays: 3,
+    captureDailySnapshots: true,
+    telemetry: true,
+    setup(world) {
+      world.meta.disableGermination = true;
+      sowOnLog(world, 1);
+    },
+  },
+  {
     id: 'soil-germination',
     name: 'Soil germination',
     description: 'Three spores in a fertile soil pocket — 5 sim-days.',
@@ -307,7 +325,12 @@ function captureSample(world) {
 // Priority: colony > fruit > tree crown/trunk > log > grass > rich soil >
 // soil > spore-in-air > air.
 
-function renderAscii(world) {
+function renderAscii(world, opts = {}) {
+  // opts.colonyId — if set, only cells belonging to that colony render
+  // as live hypha. Other colonies' cells fall back to substrate (so the
+  // scorer sees the founder against bare log/soil/grass). Used by the
+  // Research v3 multi-day scorer to measure the founder in isolation.
+  const onlyColonyId = opts.colonyId;
   const { kind, nutrient, colony } = world.grid;
   const block = 4;
   const ascW  = Math.floor(W / block);
@@ -341,8 +364,11 @@ function renderAscii(world) {
           const x = bx * block + dx, y = by * block + dy;
           const i = y * W + x;
           if (colony[i] !== 0) {
-            colonyCounts[colony[i]] = (colonyCounts[colony[i]] || 0) + 1;
-            continue;
+            if (onlyColonyId == null || colony[i] === onlyColonyId) {
+              colonyCounts[colony[i]] = (colonyCounts[colony[i]] || 0) + 1;
+              continue;
+            }
+            // Else: fall through to substrate paint for "other" colonies.
           }
           const k = kind[i];
           if      (k === LOG)   logCount++;
@@ -432,6 +458,32 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
   const t0 = Date.now();
   samples.push(captureSample(world));
 
+  // Identify the founder colony immediately after setup. The scenario
+  // sows at tick 0, so the lowest-id (or only) colony is the founder.
+  // Captured here so v3 scoring measures the founder specifically,
+  // regardless of fragmentation later.
+  const founderColonyId = (() => {
+    const ids = Object.keys(world.colonies).map(Number);
+    if (!ids.length) return null;
+    return ids.reduce((a, b) => {
+      const ca = world.colonies[a], cb = world.colonies[b];
+      return (ca.foundedTick ?? 0) <= (cb.foundedTick ?? 0) ? a : b;
+    });
+  })();
+
+  // v3: per-day ASCII snapshots of the founder colony in isolation.
+  // Scorers iterate the array and take the best. Always-on capture
+  // since the cost is one renderAscii per sim-day (~3 ms at 80×45).
+  const asciiSnapshots = [];
+  const captureDaily = !!scenario.captureDailySnapshots;
+
+  // v3: per-tick telemetry. Lab writes NDJSON of feature traces if the
+  // scenario opts in. One entry per TELEMETRY_INTERVAL ticks. Reader
+  // util later; today we just dump.
+  const TELEMETRY_INTERVAL = Math.max(1, Math.floor(TICKS_PER_SIM_DAY / 24)); // ~hourly
+  const telemetry = [];
+  const collectTelemetry = !!scenario.telemetry;
+
   currentJob = {
     scenarioId,
     scenarioName: scenario.name,
@@ -447,6 +499,27 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
       if (i % tsInterval === 0) {
         samples.push(captureSample(world));
         ingestWorldEvents();
+      }
+      // v3: capture founder-only ASCII at each day boundary.
+      if (captureDaily && (i + 1) % TICKS_PER_SIM_DAY === 0) {
+        asciiSnapshots.push({
+          day: Math.floor((i + 1) / TICKS_PER_SIM_DAY),
+          tick: i + 1,
+          ascii: founderColonyId != null
+            ? renderAscii(world, { colonyId: founderColonyId })
+            : renderAscii(world),
+        });
+      }
+      // v3: cheap per-interval telemetry. One row per TELEMETRY_INTERVAL.
+      if (collectTelemetry && i % TELEMETRY_INTERVAL === 0) {
+        const c = founderColonyId != null ? world.colonies[founderColonyId] : null;
+        telemetry.push({
+          tick: i,
+          cells: c?.cellCount ?? 0,
+          alive: !!c?.alive,
+          reserves: Math.round(c?.reserves ?? 0),
+          leaders: c?.leaders?.length ?? 0,
+        });
       }
       // Update progress + yield event loop in the same window so polls land
       // on a consistent currentTick.
@@ -479,6 +552,15 @@ async function runScenario(scenarioId, { seed, restoreHooks } = {}) {
     samples,
     snapshot:      buildGridSnapshot(world),
     ascii:         renderAscii(world),
+    // v3: founder-only ascii at end of run, plus per-day snapshots and
+    // hourly telemetry. Back-compat: legacy scorers can keep reading
+    // `ascii`; v3 scorers read `asciiSnapshots` / `founderAscii`.
+    founderColonyId,
+    founderAscii:  founderColonyId != null
+      ? renderAscii(world, { colonyId: founderColonyId })
+      : renderAscii(world),
+    asciiSnapshots,
+    telemetry,
   };
   persistRun(run);
   currentJob = null;

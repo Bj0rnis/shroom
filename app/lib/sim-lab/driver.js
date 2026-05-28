@@ -4,7 +4,21 @@
 // rng-determinism foundation in place, so identical (seed, sim) → identical
 // output.
 
-const lab = require('../lab');
+const fs   = require('fs');
+const path = require('path');
+const lab  = require('../lab');
+
+// v3: dump telemetry rows to NDJSON for offline reading. One file per
+// seed per run, in $DATA_DIR/telemetry/. Cheap (1 row per ~hour of sim).
+function dumpTelemetry(run, vision) {
+  if (!run.telemetry || !run.telemetry.length) return null;
+  const dir = path.join(process.env.DATA_DIR || '/tmp/shroom-lab-scratch', 'telemetry');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${vision.id}-seed${run.seed}-${run.id}.ndjson`);
+  const out = run.telemetry.map(r => JSON.stringify({ seed: run.seed, ...r })).join('\n') + '\n';
+  fs.writeFileSync(file, out);
+  return file;
+}
 
 // Seed names — each seed determines an entire world (log position, substrate
 // richness, every random decision the sim makes). We run the same mechanic
@@ -41,9 +55,18 @@ async function runVisionTarget(vision, opts = {}) {
   for (const { seed, tag } of seeds) {
     const run = await lab.runScenario(vision.scenarioId, { seed });
     const world = reconstructWorld(run);
+    const telemetryFile = dumpTelemetry(run, vision);
+    // v3: pass per-day snapshots + founder-only ascii to scorers via ctx.
+    // Legacy scorers keep reading ctx.ascii; v3-aware scorers use
+    // ctx.asciiSnapshots (array of {day, tick, ascii}) and ctx.founderAscii.
     const scores = vision.scorers.map(s => ({
       name: s.name,
-      ...s.fn(world, s.opts || {}, { ascii: run.ascii }),
+      ...s.fn(world, s.opts || {}, {
+        ascii:           run.ascii,
+        founderAscii:    run.founderAscii,
+        asciiSnapshots:  run.asciiSnapshots || [],
+        founderColonyId: run.founderColonyId,
+      }),
     }));
     const passed = scores.filter(s => s.ok).length;
     results.push({
@@ -56,6 +79,10 @@ async function runVisionTarget(vision, opts = {}) {
       maxColonyCells: run.metrics.maxColonyCells,
       fruitsTotal: world.meta.lifetime?.fruitsTotal ?? 0,
       ascii: run.ascii,
+      founderAscii:    run.founderAscii,
+      asciiSnapshots:  run.asciiSnapshots || [],
+      founderColonyId: run.founderColonyId,
+      telemetryFile,
       scores,
       passedTargets: passed,
       totalTargets: vision.scorers.length,

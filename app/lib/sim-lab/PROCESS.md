@@ -90,6 +90,14 @@ The agent may, without asking:
 - Pivot the active hypothesis between iterations
 - Run more or fewer than 5 seeds if a specific seed is informative
 
+**Iteration hygiene — one constant or one mechanic per iteration.** Two
+changes in one iter can match the parked aggregate by coincidence and
+leave you with no idea which one was responsible. If two changes feel
+necessary, run two iterations. The lab is fast on purpose; spend the
+extra few minutes on attribution. (sim-lab/08 iter-89 ate four constants
+at once, tied parked aggregate, and the next iter had no usable signal.
+Named here so it sticks.)
+
 The agent must escalate before:
 
 - **Retargeting the vision.** Changing what "day-1 root" means, or starting

@@ -110,47 +110,99 @@
   }
 
   // cfg.stars = 0..1 alpha multiplier. ~180 deterministic pin-pricks.
+  // Twinkle (SKY.md item 2): about half the stars wobble in brightness,
+  // each with its own period (3–8s) and phase so the field never breathes
+  // in unison. Amplitude stays under 30% so it reads as atmospheric
+  // flicker, not blinking lights. A separate rng stream keeps the original
+  // star positions stable across this change.
   function paintStars(pb, cfg) {
     const s = cfg.stars || 0;
     if (s < 0.05) return;
-    const rng = mkRng(11);
+    const rng  = mkRng(11);
+    const tRng = mkRng(23);
     const n = Math.round(s * 180);
+    const t = (cfg.t || 0) / 1000;
     for (let i = 0; i < n; i++) {
       const x = (rng() * W) | 0;
       const y = (rng() * GRASS_Y * 0.85) | 0;
-      const a = Math.round(s * (60 + rng() * 195));
+      // Magnitude variance (SKY.md item 8): a uniform draw raised to ^2.5
+      // skews most stars dim with a long bright tail — the night sky
+      // reads as deep instead of a wall of equal pin-pricks.
+      const mag = rng();
+      const magCurve = Math.pow(mag, 2.5);
+      const aBase = s * (30 + magCurve * 225);
+      const twinkles = tRng() < 0.55;
+      const period   = 3 + tRng() * 5;
+      const phase    = tRng() * Math.PI * 2;
+      const amp      = 0.15 + tRng() * 0.15;
+      const aMul = twinkles
+        ? 1 + amp * Math.sin((t / period) * Math.PI * 2 + phase)
+        : 1;
+      const a = Math.round(aBase * aMul);
       pb.blend(x, y, 245, 240, 222, a);
-      if (rng() < 0.18) pb.blend(x, y, 255, 250, 230, Math.min(255, a + 40));
+      // Bright stars (top end of the magnitude curve) get the rare
+      // shine pixel; faint stars stay quiet.
+      if (magCurve > 0.55 && rng() < 0.45) {
+        pb.blend(x, y, 255, 250, 230, Math.min(255, a + 40));
+      } else {
+        rng(); // keep rng stream aligned across this branch
+      }
     }
   }
 
   // cfg.cloudCover (0..1) · cfg.cloudSeed · cfg.sky.bot for hue match
+  // cfg.t (ms, monotonic) drives drift. Three parallax layers: back (small,
+  // slow, high), mid, front (larger, faster, lower). Each cloud is painted
+  // three times (cx, cx-W, cx+W) so it wraps smoothly across the edges
+  // — pb.blend clips OOB pixels so the two off-screen copies cost only math.
   function paintClouds(pb, cfg) {
     const cover = cfg.cloudCover != null ? cfg.cloudCover : 0;
     if (cover < 0.04) return;
     const base   = lerpRgb(cfg.sky.bot, [240, 234, 222], 0.55);
     const shadow = lerpRgb(cfg.sky.bot, [10, 8, 6], 0.45);
-    const rng = mkRng((cfg.cloudSeed || 53) * 7);
-    const n = Math.round(2 + cover * 12);
-    for (let i = 0; i < n; i++) {
-      const cx = rng() * W;
-      const cy = 4 + rng() * (GRASS_Y * 0.55);
-      const sz = 5 + (rng() * 12) | 0;
-      for (let dy = -3; dy <= 2; dy++) {
-        for (let dx = -sz; dx <= sz; dx++) {
-          const d = Math.sqrt((dx / sz) * (dx / sz) + (dy / 2.6) * (dy / 2.6));
-          if (d > 1.05) continue;
-          const a = Math.round((1 - d) * 230);
-          const c = dy > 0 ? shadow : base;
-          pb.blend((cx + dx) | 0, (cy + dy) | 0, c[0], c[1], c[2], a);
+    const t = cfg.t || 0;
+    const totalN = Math.round(2 + cover * 12);
+    const seedBase = (cfg.cloudSeed || 53) * 7;
+
+    // speed in pixels per second; yBand is fractional GRASS_Y range.
+    const layers = [
+      { speed: 0.25, szMin: 3, szRange: 4, yMin: 0.02, yRange: 0.18, alphaMul: 0.55, share: 0.40 },
+      { speed: 0.70, szMin: 5, szRange: 5, yMin: 0.15, yRange: 0.22, alphaMul: 0.85, share: 0.35 },
+      { speed: 1.50, szMin: 8, szRange: 7, yMin: 0.28, yRange: 0.25, alphaMul: 1.00, share: 0.25 },
+    ];
+
+    for (let li = 0; li < layers.length; li++) {
+      const L = layers[li];
+      const n = Math.max(1, Math.round(totalN * L.share));
+      const rng = mkRng(seedBase + li * 1009);
+      const drift = (t / 1000) * L.speed;
+      for (let i = 0; i < n; i++) {
+        const baseX = rng() * W;
+        const cy = 4 + (GRASS_Y * L.yMin) + (rng() * GRASS_Y * L.yRange);
+        const sz = L.szMin + ((rng() * L.szRange) | 0);
+        let cx = (baseX + drift) % W;
+        if (cx < 0) cx += W;
+        for (let dy = -3; dy <= 2; dy++) {
+          for (let dx = -sz; dx <= sz; dx++) {
+            const d = Math.sqrt((dx / sz) * (dx / sz) + (dy / 2.6) * (dy / 2.6));
+            if (d > 1.05) continue;
+            const a = Math.round((1 - d) * 230 * L.alphaMul);
+            const c = dy > 0 ? shadow : base;
+            const y = (cy + dy) | 0;
+            const xMid = (cx + dx) | 0;
+            pb.blend(xMid,     y, c[0], c[1], c[2], a);
+            pb.blend(xMid - W, y, c[0], c[1], c[2], a);
+            pb.blend(xMid + W, y, c[0], c[1], c[2], a);
+          }
         }
       }
     }
+
     if (cover > 0.8) {
       const bandAlpha = Math.round((cover - 0.8) * 700);
       for (let y = 0; y < GRASS_Y * 0.5; y++) {
-        const t = 1 - y / (GRASS_Y * 0.5);
-        const a = Math.round(bandAlpha * t);
+        const ty = 1 - y / (GRASS_Y * 0.5);
+        const a = Math.round(bandAlpha * ty);
         for (let x = 0; x < W; x++) pb.blend(x, y, base[0], base[1], base[2], a);
       }
     }
@@ -177,13 +229,35 @@
       for (let y = topY + Math.round(t.h * 0.4); y < baseY; y++) {
         pb.blend(t.x, y, haze[0], haze[1], haze[2], 110);
       }
-      for (let y = topY; y < topY + Math.round(t.h * 0.5); y++) {
-        const wid = Math.round((1 - (y - topY) / (t.h * 0.5)) * 2.5 + 1.5);
+      // Crown silhouette — narrow at the peak, widening to a soft
+      // plateau near the base. Previously this loop ran wide-at-top
+      // narrow-at-bottom, which read as a flat-topped block; now it's
+      // a proper teardrop V where the trunk emerges from the wide
+      // lower half.
+      const crownH = Math.round(t.h * 0.65);
+      for (let y = topY; y < topY + crownH; y++) {
+        const u = (y - topY) / crownH;
+        const profile = Math.sin(Math.min(1, u * 1.4) * Math.PI * 0.5);
+        const wid = Math.round(profile * 4);
         for (let dx = -wid; dx <= wid; dx++) {
           const a = 90 - Math.abs(dx) * 12;
           if (a > 0) pb.blend(t.x + dx, y, haze[0], haze[1], haze[2], a);
         }
       }
+    }
+    // Atmospheric haze ribbon (SKY.md item 9) — pushes the far layer
+    // back from the foreground regardless of time-of-day. Sky-bot
+    // colored, low alpha, peaks at the far-tree midline and fades up
+    // and down. Foreground trees/logs paint after paintFarLayer so they
+    // stay crisp; everything behind them reads softer and further.
+    const sb = cfg.sky.bot;
+    const bandTop = GRASS_Y - 22, bandBot = GRASS_Y - 1;
+    const center  = GRASS_Y - 10;
+    for (let y = bandTop; y < bandBot; y++) {
+      const d = Math.abs(y - center) / 12;
+      const a = Math.round((1 - d) * 38);
+      if (a <= 0) continue;
+      for (let x = 0; x < W; x++) pb.blend(x, y, sb[0], sb[1], sb[2], a);
     }
   }
 

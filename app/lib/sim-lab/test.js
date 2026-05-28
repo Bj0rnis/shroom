@@ -77,6 +77,13 @@ process.stdout.write('baseline guards\n');
     { seed: 42,   ticks: 5000, cells: 257, fruits: 0, deaths: 0 }, // updated sim-lab/09 iter-101: LOG_DESCENT_PENALTY=0.5 (was 460 under iter-74)
     { seed: 1337, ticks: 5000, cells: 414, fruits: 0, deaths: 0 }, // updated sim-lab/09 iter-101 (was 272)
     { seed: 555,  ticks: 5000, cells: 62,  fruits: 0, deaths: 0 }, // updated sim-lab/09 iter-101 (was 132)
+    // Day-tier (28800 ticks = one sim day, v3 vision-1 scenario duration).
+    // 5000-tick snapshots catch on-log regressions; these catch post-grass
+    // descent and soil-band changes that don't surface until founders cross.
+    // Captured 2026-05-28 against sim-lab/09 iter-108 (hybrid soil + 8× perp bif).
+    { seed: 42,   ticks: 28800, cells: 3,   fruits: 0, deaths: 0 },
+    { seed: 1337, ticks: 28800, cells: 147, fruits: 0, deaths: 0 },
+    { seed: 555,  ticks: 28800, cells: 19,  fruits: 0, deaths: 0 },
   ];
   for (const b of BASELINES) {
     const w = createWorld(b.seed);

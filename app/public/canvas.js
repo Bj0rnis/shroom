@@ -253,6 +253,12 @@ function worldToCfg(snap, now, t = 0) {
     dew:        sky.hour < 7.5,
     personaWisp,
     autumnFog:  season === 'autumn' && sky.hour < 9,
+    // Year-round mist at the grass line. Triangular bells peaking at
+    // dawn (~6.5) and dusk (~19.25), zero outside those windows.
+    mistAlpha:  Math.max(
+      Math.max(0, 1 - Math.abs(sky.hour - 6.5)  / 1.5),
+      Math.max(0, 1 - Math.abs(sky.hour - 19.25) / 1.25),
+    ),
     fallingLeaves: season === 'autumn',
     fallingSnow:   season === 'winter',
     aliveCount,
@@ -582,6 +588,27 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid, t = 0) {
     grd.addColorStop(0,   'rgba(180, 150, 130, 0)');
     grd.addColorStop(0.4, 'rgba(180, 150, 130, 0.32)');
     grd.addColorStop(1,   'rgba(180, 150, 130, 0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, fogTop, CANVAS_W, fogBot - fogTop);
+    ctx.restore();
+  }
+
+  // ── dawn/dusk mist band (year-round, all seasons). ───────────────
+  // A slim cool-toned ribbon that hugs the grass line at dawn and
+  // dusk, regardless of season. Sits in front of the far-tree
+  // silhouettes and behind the foreground logs, giving a felt depth
+  // break between layers. The warmer, taller autumnFog above still
+  // fires on autumn dawn — they compose, so autumn mornings just read
+  // foggier than other seasons.
+  if (cfg.mistAlpha > 0.04) {
+    ctx.save();
+    const a = cfg.mistAlpha * 0.20;
+    const fogTop = (A.GRASS_Y - 3) * sy;
+    const fogBot = (A.GRASS_Y + 9) * sy;
+    const grd = ctx.createLinearGradient(0, fogTop, 0, fogBot);
+    grd.addColorStop(0,    'rgba(196, 206, 216, 0)');
+    grd.addColorStop(0.45, `rgba(196, 206, 216, ${a})`);
+    grd.addColorStop(1,    'rgba(196, 206, 216, 0)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, fogTop, CANVAS_W, fogBot - fogTop);
     ctx.restore();

@@ -40,11 +40,11 @@ nothing changes visibly above the world.
 
 1. **Cloud drift, multi-layer parallax.** ✅ Shipped (#66) — three depth
    layers, each at its own px/s, wrap-safe.
-2. **Star twinkle.** Subtle brightness oscillation at night. Restrained
-   register — not Christmas lights.
-3. **Seasonal sky cues.** Autumn brings drifting leaves from the trees
-   we already render; winter brings snow flurries even without a
-   toofan.
+2. **Star twinkle.** ✅ Shipped (#66) — ~55% of stars wobble with their
+   own period and phase, capped at 30% amplitude.
+3. **Seasonal sky cues.** ✅ Winter snow shipped (#66) — quiet ambient
+   flurries even without a toofan. (Autumn leaves were already
+   wired via `cfg.fallingLeaves`.)
 4. **Time-of-day mist.** Extend the existing autumn-dawn fog idea to a
    year-round dawn and dusk mist band at the grass line.
 5. **Birds passing.** Occasional silhouette across the sky. Rare enough
@@ -94,7 +94,9 @@ refinement.
 
 ## Next pickup
 
-Item 1 (cloud drift) shipped in PR #66. Next is item 2 — star twinkle
-— a small, restrained, night-side counterpart to the daytime drift.
+Items 1–3 shipped on PR #66. Next is item 4 — year-round dawn/dusk
+mist band at the grass line. The autumn-only dawn fog is already in;
+extending it to a year-round soft mist (lighter, shorter window) gives
+the diorama a felt depth break between far layers and foreground.
 Sit with each change for a sim day or two before picking the next.
 Sky changes are easy to over-cook.

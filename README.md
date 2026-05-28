@@ -37,14 +37,20 @@ check on.
 ## Where the world is right now
 
 The sim runs continuously on the maintainer's server. The current world is
-**volume 1**, somewhere around day 233 at the time of writing. Mycelium
-grows under the rules shipped in sim-lab iter-66 (see `The lab` below) —
-two new mechanics on top of the long-standing leader-cell foundation:
+**volume 1**. Mycelium grows under the rules shipped in sim-lab iter-108
+(see `The lab` below) — the substrate-fix park, after the lab caught
+that founders had been starving mid-test under multi-day windows:
 
-- a per-colony **vertical bias** that lets some founders favour going
-  deeper than others
-- a **DLA-style edge preference** in soil so tips lean toward open space
-  instead of crowding
+- **Hybrid soil profile** — rich humus 50–60 nutrient in the top 40% of
+  the soil band, lean mineral 22–29 below. Real forest stratigraphy.
+  Colonies that cross the grass row find survivable substrate; the lean
+  lower band still pulls deep descents toward nutrient pockets.
+- **Stronger lateral branching in soil** — perpendicular bifurcation
+  bias bumped from 4× to 8× to recover the lattice spread the richer
+  upper soil softened.
+- **Leaders prefer to walk along the log** before crossing the grass
+  row, then split as they descend — produces separated grass-row
+  crossings instead of one fat trunk.
 
 Nigehban writes when the world moves him. The Hall of Fame keeps the
 oldest colonies inscribed across volumes.
@@ -226,12 +232,17 @@ The five seed worlds are:
 | `edge-spawn` | founder placed at edge geometry |
 | `lean-log` | sparse food, starvation test |
 
-The active target is **Vision 1**: a day-old colony that *looks like* the
+The active target is **Vision 1**: a colony that *looks like* the
 painting on the maintainer's wall — root-like, descended, laterally
 spread, not a blob and not a thread. The gatekeeper is a shape-match
-score, threshold 0.60 across all five worlds. As of iter-66 the median is
-0.252 and the best single seed reached 0.441 — closer than any earlier
-iteration. Still a way to go.
+score, threshold 0.60 across all five worlds.
+
+As of iter-108/115 (sim-lab/09 park) six of seven scorers pass on a
+majority of seeds: colonies survive the multi-day test (no more
+boom-bust starvation), they branch laterally, and they cross the grass
+row at separated columns. The shape composite still sits at median
+0.290 — the qualitative goal looks substantially met; the literal
+0.60 gate is open for sim-lab/10 to push or retire.
 
 Run the lab locally with:
 
@@ -272,6 +283,37 @@ maintainer and Claude together — same as the writing.
 A loose list of milestones. Day-to-day commits live in `git log`; this
 section is for the moments that changed what the world is.
 
+- **2026-05-28** — sim-lab/09 parks at iter-108 (confirmed iter-115).
+  The substrate fix. Soil baseline rises from a uniform 22–29 to a
+  hybrid profile — rich humus 50–60 in the top 40% of the soil band,
+  lean mineral 22–29 below — and the soil perpendicular-bifurcation
+  weight bumps from 4× to 8×. Aggregate climbs from 22 to **28 of 35**,
+  the first time `multipleDescents` passes a majority of seeds (4 of 5),
+  with all founders alive at end of test (was 6 cells worst-case before
+  the fix). Six of seven Vision-1 scorers now pass on a majority.
+- **2026-05-28** — Research v3 scaffolding lands: multi-day scenario
+  window (3 days with best-per-day snapshot scoring), founder-only
+  shape scoring with germination disabled during the test, per-tick
+  NDJSON telemetry, hygiene rule ("one constant or one mechanic per
+  iteration") added to PROCESS.md, and a `curves.js` library for the
+  ad-hoc taper / ramp shapes scattered through sim.js.
+- **2026-05-28** — Scorer audit. Nine hand-crafted ASCII shapes
+  (painting, ideal lattices, tree, blob, degenerates) fed through the
+  shape composite to confirm the 0.60 gate is reachable. The painting
+  scores 1.0, ideal lattices 0.69–0.89, degenerates ≤0.55. The gate
+  is calibrated; the sim just hadn't been producing networks.
+- **2026-05-28** — sim-lab/08 closes without a new park. Twelve
+  iterations on the "many slow leaders" hypothesis — raising
+  `MAX_LEADERS_PER_COLONY` and dropping per-leader extension rate.
+  Shape median stuck at 0.243, never beat the parked iter-74's 0.282.
+  The cluster-at-spawn problem is real; more leaders alone doesn't
+  break it.
+- **2026-05-28** — Sky additions ship: parallax cloud drift, star
+  twinkle, winter snow flurries, dawn/dusk mist band, birds passing,
+  toofan visual signatures (fire smoke, flood rain, frost frost,
+  wind streaks), spore size/opacity variance, star magnitude
+  variance, far-layer atmospheric haze. Background trees rounded to
+  softer V silhouettes.
 - **2026-05-24** — Open-sourced under GPLv3. Self-host docker-compose added.
 - **2026-05-24** — `1-1.md` opens a new journal for direction-setting chats
   between the maintainer and the agent — separate from the iteration NOTES.

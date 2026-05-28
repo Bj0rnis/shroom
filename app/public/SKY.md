@@ -38,26 +38,26 @@ nothing changes visibly above the world.
 
 ### Movement (sky aliveness)
 
-1. **Cloud drift, multi-layer parallax.** Clouds at two or three depths
-   moving at different horizontal speeds. Foreground clouds wider and
-   faster; background clouds smaller and slower. The single biggest
-   visible fix and it doubles as depth. Wrap at the edges or repaint
-   off-canvas.
-2. **Toofan visual signatures.** Each storm flavour gets a sky cast
+1. **Cloud drift, multi-layer parallax.** ✅ Shipped (#66) — three depth
+   layers, each at its own px/s, wrap-safe.
+2. **Star twinkle.** Subtle brightness oscillation at night. Restrained
+   register — not Christmas lights.
+3. **Seasonal sky cues.** Autumn brings drifting leaves from the trees
+   we already render; winter brings snow flurries even without a
+   toofan.
+4. **Time-of-day mist.** Extend the existing autumn-dawn fog idea to a
+   year-round dawn and dusk mist band at the grass line.
+5. **Birds passing.** Occasional silhouette across the sky. Rare enough
+   that catching one feels like a moment, not decoration.
+6. **Toofan visual signatures.** Each storm flavour gets a sky cast
    while the toofan is active and for a window after:
    - Fire — distant smoke columns, orange tint on the sky gradient
    - Flood — falling rain streaks
    - Frost — snow flurries
    - Wind — visible dust streaks, stronger spore and leaf drift
-3. **Star twinkle.** Subtle brightness oscillation at night. Restrained
-   register — not Christmas lights.
-4. **Birds passing.** Occasional silhouette across the sky. Rare enough
-   that catching one feels like a moment, not decoration.
-5. **Seasonal sky cues.** Autumn brings drifting leaves from the trees
-   we already render; winter brings snow flurries even without a
-   toofan.
-6. **Time-of-day mist.** Extend the existing autumn-dawn fog idea to a
-   year-round dawn and dusk mist band at the grass line.
+
+   *Pushed to the back of the queue: toofans are rare events. The sky
+   should feel alive on a normal day first.*
 
 ### Depth (spatial)
 
@@ -94,6 +94,7 @@ refinement.
 
 ## Next pickup
 
-Start with item 1 — cloud drift and parallax. Single self-contained
-change, biggest visible payoff. Then sit with the result for a sim day
-or two before picking the next item. Sky changes are easy to over-cook.
+Item 1 (cloud drift) shipped in PR #66. Next is item 2 — star twinkle
+— a small, restrained, night-side counterpart to the daytime drift.
+Sit with each change for a sim day or two before picking the next.
+Sky changes are easy to over-cook.

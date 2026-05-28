@@ -254,6 +254,7 @@ function worldToCfg(snap, now, t = 0) {
     personaWisp,
     autumnFog:  season === 'autumn' && sky.hour < 9,
     fallingLeaves: season === 'autumn',
+    fallingSnow:   season === 'winter',
     aliveCount,
   };
 }
@@ -613,6 +614,33 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid, t = 0) {
       ctx.ellipse(0, 0, 2.2 * sx, 1.1 * sx, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ── winter snow flurries. ────────────────────────────────────────
+  // Quiet ambient snow — happens even without a toofan, so winter days
+  // feel different from autumn ones. Slower, smaller, and more
+  // numerous than the leaves; no rotation. Wraps like the leaves so
+  // the layer is always populated without per-flake state.
+  if (cfg.fallingSnow) {
+    ctx.save();
+    const srng = A.mkRng(727);
+    const grassPx = A.GRASS_Y * sy;
+    for (let i = 0; i < 22; i++) {
+      const baseX    = srng() * CANVAS_W;
+      const phase    = srng() * grassPx;
+      const fallSpd  = 6 + srng() * 10;            // px/s — slow
+      const swayAmp  = 4 + srng() * 10;            // px — gentle drift
+      const swayFreq = 0.25 + srng() * 0.45;
+      const r        = (0.9 + srng() * 1.1) * sx;  // 1–2 px before upscale
+      const alpha    = 0.55 + srng() * 0.35;
+      const fx = baseX + Math.sin(tSec * swayFreq + i * 0.7) * swayAmp;
+      const fy = (phase + tSec * fallSpd) % grassPx;
+      ctx.fillStyle = `rgba(235, 240, 246, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(fx, fy, r, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }

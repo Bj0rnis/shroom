@@ -47,8 +47,8 @@ nothing changes visibly above the world.
    wired via `cfg.fallingLeaves`.)
 4. **Time-of-day mist.** ✅ Shipped (#66) — slim cool ribbon at the
    grass line, peaks at dawn 6.5 and dusk 19.25, all seasons.
-5. **Birds passing.** Occasional silhouette across the sky. Rare enough
-   that catching one feels like a moment, not decoration.
+5. **Birds passing.** ✅ Shipped (#66) — one V silhouette every ~4
+   min of real time, 30s crossing, deterministic per pass.
 6. **Toofan visual signatures.** Each storm flavour gets a sky cast
    while the toofan is active and for a window after:
    - Fire — distant smoke columns, orange tint on the sky gradient
@@ -94,8 +94,10 @@ refinement.
 
 ## Next pickup
 
-Items 1–4 shipped on PR #66. Next is item 5 — birds passing.
-Occasional silhouette across the sky, restrained enough that catching
-one feels like a moment, not decoration. Sit with each change for a
-sim day or two before picking the next. Sky changes are easy to
-over-cook.
+Items 1–5 shipped on PR #66 — the whole movement scope minus toofan
+signatures (which got pushed back: rare events, low payoff per code
+line). The remaining items are the three depth refinements (7–9):
+spore size/opacity variance, star magnitude variance, mist band
+between layers. Mist band may already be partially covered by item
+4. Worth merging #66, sitting with it on the live server for a
+sim day or two, and revisiting the depth list with fresh eyes.

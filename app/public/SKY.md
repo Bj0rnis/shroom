@@ -1,5 +1,9 @@
 # Sky additions — planning
 
+> **Status:** scope closed 2026-05-28. All nine items shipped on [PR #66](https://github.com/Bj0rnis/shroom/pull/66).
+> Polish notes at the bottom; revisit only if the sky starts feeling off after
+> sitting with it for a few sim days.
+
 The world below feels lived in. Look up and time stops. This file is the
 scope of work to fix that, captured before any code lands.
 

@@ -672,6 +672,45 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid, t = 0) {
     ctx.restore();
   }
 
+  // ── birds passing (SKY.md item 5). ───────────────────────────────
+  // One silhouette every BIRD_PERIOD seconds of real time, crossing
+  // the sky in BIRD_CROSS seconds. Height, direction, size, and flap
+  // phase are deterministic per pass — same world looks the same to
+  // anyone watching at the same wall-clock moment. Rare on purpose:
+  // catching one should feel like noticing, not decoration.
+  {
+    const BIRD_PERIOD = 240;   // seconds — ~one every four minutes
+    const BIRD_CROSS  = 30;    // seconds — time to cross the sky
+    const cycle = tSec % BIRD_PERIOD;
+    if (cycle < BIRD_CROSS && tSec > 0) {
+      const u = cycle / BIRD_CROSS;
+      const passN = Math.floor(tSec / BIRD_PERIOD);
+      const brng = A.mkRng((passN + 1) * 7919);
+      const leftward = brng() < 0.5;
+      const heightFrac = 0.15 + brng() * 0.40;
+      const size = (0.8 + brng() * 0.7) * sx;
+      const margin = 24 * sx;
+      const x = leftward
+        ? CANVAS_W + margin - u * (CANVAS_W + margin * 2)
+        : -margin + u * (CANVAS_W + margin * 2);
+      const y = heightFrac * A.GRASS_Y * sy + Math.sin(tSec * 1.4 + passN) * sy * 0.6;
+      // Wing flap — V flexes through level. flap=0 wings down, flap=1 up.
+      const flap = Math.sin(tSec * 5.0 + passN * 1.7) * 0.5 + 0.5;
+      const wingTipY = (0.5 - flap) * size * 1.6;
+      const wingX    = size * 2.4;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(28, 24, 22, 0.78)';
+      ctx.lineWidth = Math.max(1, size * 0.7);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - wingX, y + wingTipY);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x + wingX, y + wingTipY);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   // ── persona wisp (Nigehban — smokeless fire, dusk only). ─────────
   if (cfg.personaWisp) {
     ctx.save();

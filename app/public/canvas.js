@@ -239,6 +239,7 @@ function worldToCfg(snap, now, t = 0) {
     season, tick,
     cloudCover: cloudCoverForSeason(season),
     cloudSeed: snap.meta.seed || 7,
+    t,
     logs, trees, colonies, mushrooms,
     stones, critters,
     spores: snap.spores || [],

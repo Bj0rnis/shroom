@@ -125,32 +125,58 @@
   }
 
   // cfg.cloudCover (0..1) · cfg.cloudSeed · cfg.sky.bot for hue match
+  // cfg.t (ms, monotonic) drives drift. Three parallax layers: back (small,
+  // slow, high), mid, front (larger, faster, lower). Each cloud is painted
+  // three times (cx, cx-W, cx+W) so it wraps smoothly across the edges
+  // — pb.blend clips OOB pixels so the two off-screen copies cost only math.
   function paintClouds(pb, cfg) {
     const cover = cfg.cloudCover != null ? cfg.cloudCover : 0;
     if (cover < 0.04) return;
     const base   = lerpRgb(cfg.sky.bot, [240, 234, 222], 0.55);
     const shadow = lerpRgb(cfg.sky.bot, [10, 8, 6], 0.45);
-    const rng = mkRng((cfg.cloudSeed || 53) * 7);
-    const n = Math.round(2 + cover * 12);
-    for (let i = 0; i < n; i++) {
-      const cx = rng() * W;
-      const cy = 4 + rng() * (GRASS_Y * 0.55);
-      const sz = 5 + (rng() * 12) | 0;
-      for (let dy = -3; dy <= 2; dy++) {
-        for (let dx = -sz; dx <= sz; dx++) {
-          const d = Math.sqrt((dx / sz) * (dx / sz) + (dy / 2.6) * (dy / 2.6));
-          if (d > 1.05) continue;
-          const a = Math.round((1 - d) * 230);
-          const c = dy > 0 ? shadow : base;
-          pb.blend((cx + dx) | 0, (cy + dy) | 0, c[0], c[1], c[2], a);
+    const t = cfg.t || 0;
+    const totalN = Math.round(2 + cover * 12);
+    const seedBase = (cfg.cloudSeed || 53) * 7;
+
+    // speed in pixels per second; yBand is fractional GRASS_Y range.
+    const layers = [
+      { speed: 0.25, szMin: 3, szRange: 4, yMin: 0.02, yRange: 0.18, alphaMul: 0.55, share: 0.40 },
+      { speed: 0.70, szMin: 5, szRange: 5, yMin: 0.15, yRange: 0.22, alphaMul: 0.85, share: 0.35 },
+      { speed: 1.50, szMin: 8, szRange: 7, yMin: 0.28, yRange: 0.25, alphaMul: 1.00, share: 0.25 },
+    ];
+
+    for (let li = 0; li < layers.length; li++) {
+      const L = layers[li];
+      const n = Math.max(1, Math.round(totalN * L.share));
+      const rng = mkRng(seedBase + li * 1009);
+      const drift = (t / 1000) * L.speed;
+      for (let i = 0; i < n; i++) {
+        const baseX = rng() * W;
+        const cy = 4 + (GRASS_Y * L.yMin) + (rng() * GRASS_Y * L.yRange);
+        const sz = L.szMin + ((rng() * L.szRange) | 0);
+        let cx = (baseX + drift) % W;
+        if (cx < 0) cx += W;
+        for (let dy = -3; dy <= 2; dy++) {
+          for (let dx = -sz; dx <= sz; dx++) {
+            const d = Math.sqrt((dx / sz) * (dx / sz) + (dy / 2.6) * (dy / 2.6));
+            if (d > 1.05) continue;
+            const a = Math.round((1 - d) * 230 * L.alphaMul);
+            const c = dy > 0 ? shadow : base;
+            const y = (cy + dy) | 0;
+            const xMid = (cx + dx) | 0;
+            pb.blend(xMid,     y, c[0], c[1], c[2], a);
+            pb.blend(xMid - W, y, c[0], c[1], c[2], a);
+            pb.blend(xMid + W, y, c[0], c[1], c[2], a);
+          }
         }
       }
     }
+
     if (cover > 0.8) {
       const bandAlpha = Math.round((cover - 0.8) * 700);
       for (let y = 0; y < GRASS_Y * 0.5; y++) {
-        const t = 1 - y / (GRASS_Y * 0.5);
-        const a = Math.round(bandAlpha * t);
+        const ty = 1 - y / (GRASS_Y * 0.5);
+        const a = Math.round(bandAlpha * ty);
         for (let x = 0; x < W; x++) pb.blend(x, y, base[0], base[1], base[2], a);
       }
     }

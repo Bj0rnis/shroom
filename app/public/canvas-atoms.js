@@ -125,7 +125,12 @@
     for (let i = 0; i < n; i++) {
       const x = (rng() * W) | 0;
       const y = (rng() * GRASS_Y * 0.85) | 0;
-      const aBase = s * (60 + rng() * 195);
+      // Magnitude variance (SKY.md item 8): a uniform draw raised to ^2.5
+      // skews most stars dim with a long bright tail — the night sky
+      // reads as deep instead of a wall of equal pin-pricks.
+      const mag = rng();
+      const magCurve = Math.pow(mag, 2.5);
+      const aBase = s * (30 + magCurve * 225);
       const twinkles = tRng() < 0.55;
       const period   = 3 + tRng() * 5;
       const phase    = tRng() * Math.PI * 2;
@@ -135,7 +140,13 @@
         : 1;
       const a = Math.round(aBase * aMul);
       pb.blend(x, y, 245, 240, 222, a);
-      if (rng() < 0.18) pb.blend(x, y, 255, 250, 230, Math.min(255, a + 40));
+      // Bright stars (top end of the magnitude curve) get the rare
+      // shine pixel; faint stars stay quiet.
+      if (magCurve > 0.55 && rng() < 0.45) {
+        pb.blend(x, y, 255, 250, 230, Math.min(255, a + 40));
+      } else {
+        rng(); // keep rng stream aligned across this branch
+      }
     }
   }
 
@@ -225,6 +236,20 @@
           if (a > 0) pb.blend(t.x + dx, y, haze[0], haze[1], haze[2], a);
         }
       }
+    }
+    // Atmospheric haze ribbon (SKY.md item 9) — pushes the far layer
+    // back from the foreground regardless of time-of-day. Sky-bot
+    // colored, low alpha, peaks at the far-tree midline and fades up
+    // and down. Foreground trees/logs paint after paintFarLayer so they
+    // stay crisp; everything behind them reads softer and further.
+    const sb = cfg.sky.bot;
+    const bandTop = GRASS_Y - 22, bandBot = GRASS_Y - 1;
+    const center  = GRASS_Y - 10;
+    for (let y = bandTop; y < bandBot; y++) {
+      const d = Math.abs(y - center) / 12;
+      const a = Math.round((1 - d) * 38);
+      if (a <= 0) continue;
+      for (let x = 0; x < W; x++) pb.blend(x, y, sb[0], sb[1], sb[2], a);
     }
   }
 

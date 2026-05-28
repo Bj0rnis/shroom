@@ -260,7 +260,9 @@ function worldToCfg(snap, now, t = 0) {
       Math.max(0, 1 - Math.abs(sky.hour - 19.25) / 1.25),
     ),
     fallingLeaves: season === 'autumn',
-    fallingSnow:   season === 'winter',
+    fallingSnow:   season === 'winter' || snap.meta.weather === 'frost',
+    weather:       snap.meta.weather || 'clear',
+    toofanPressure: snap.meta.toofanPressure || 0,
     aliveCount,
   };
 }
@@ -570,10 +572,16 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid, t = 0) {
       const sxx = (sp.x + driftX) * sx;
       const syy = (sp.y + driftY) * sy;
       const ageFade = Math.max(0, 1 - (sp.age || 0) / 200);
-      const r = 1.2 * sx;
-      ctx.fillStyle = `rgba(232, 220, 180, ${0.32 * ageFade})`;
+      // Per-spore depth (SKY.md item 7) — hash from position so the same
+      // spore always reads the same "near" or "far" register. Near spores
+      // are larger and brighter; far ones tiny and faint.
+      const depth   = ((Math.sin(sp.x * 12.9898 + sp.y * 78.233) * 43758.5453) % 1 + 1) % 1;
+      const sizeMul  = 0.55 + depth * 0.95;   // 0.55..1.50
+      const alphaMul = 0.55 + depth * 0.55;   // 0.55..1.10
+      const r = 1.2 * sx * sizeMul;
+      ctx.fillStyle = `rgba(232, 220, 180, ${0.32 * ageFade * alphaMul})`;
       ctx.beginPath(); ctx.arc(sxx, syy, r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `rgba(232, 220, 180, ${0.08 * ageFade})`;
+      ctx.fillStyle = `rgba(232, 220, 180, ${0.08 * ageFade * alphaMul})`;
       ctx.beginPath(); ctx.arc(sxx, syy, r * 2.2, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
@@ -709,6 +717,97 @@ function paintOverlays(ctx, cfg, colonyU16, coloniesByCid, t = 0) {
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  // ── toofan visual signatures (SKY.md item 6). ────────────────────
+  // Each storm flavour casts the sky differently while weather is set.
+  // Sim-driven via snap.meta.weather (one of clear/fire/flood/frost/wind).
+  // Frost is already handled by the snow block above (which also reads
+  // weather === 'frost'). Here: fire, flood, wind.
+  if (cfg.weather === 'fire') {
+    ctx.save();
+    // Orange-pink sky cast first so columns sit on top of the tint.
+    const tint = ctx.createLinearGradient(0, 0, 0, A.GRASS_Y * sy);
+    tint.addColorStop(0,   'rgba(220, 110, 60, 0.28)');
+    tint.addColorStop(0.6, 'rgba(220, 110, 60, 0.14)');
+    tint.addColorStop(1,   'rgba(220, 110, 60, 0)');
+    ctx.fillStyle = tint;
+    ctx.fillRect(0, 0, CANVAS_W, A.GRASS_Y * sy);
+    // Distant smoke columns: narrow trapezoids widening upward, dense
+    // at the horizon and fading into the sky.
+    const columns = [
+      { x: 0.18 * CANVAS_W, base: 5 * sx, h: A.GRASS_Y * 0.70 * sy, ph: 0.0 },
+      { x: 0.52 * CANVAS_W, base: 4 * sx, h: A.GRASS_Y * 0.55 * sy, ph: 1.3 },
+      { x: 0.81 * CANVAS_W, base: 6 * sx, h: A.GRASS_Y * 0.80 * sy, ph: 2.5 },
+    ];
+    const bottom = A.GRASS_Y * sy;
+    for (const col of columns) {
+      const sway = Math.sin(tSec * 0.5 + col.ph) * col.base * 1.4;
+      const cx = col.x;
+      const topX = cx + sway;
+      const top = bottom - col.h;
+      const halfBase = col.base * 0.5;
+      const halfTop  = col.base * 3.5;
+      const grd = ctx.createLinearGradient(cx, top, cx, bottom);
+      grd.addColorStop(0,   'rgba(70, 60, 55, 0)');
+      grd.addColorStop(0.6, 'rgba(60, 50, 45, 0.32)');
+      grd.addColorStop(1,   'rgba(40, 32, 28, 0.60)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.moveTo(cx - halfBase, bottom);
+      ctx.lineTo(cx + halfBase, bottom);
+      ctx.lineTo(topX + halfTop, top);
+      ctx.lineTo(topX - halfTop, top);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  if (cfg.weather === 'flood') {
+    ctx.save();
+    // Cool overcast tint first — flood weather darkens the whole sky.
+    ctx.fillStyle = 'rgba(80, 95, 110, 0.18)';
+    ctx.fillRect(0, 0, CANVAS_W, A.GRASS_Y * sy);
+    // ~160 diagonal rain streaks; wrap modulo the canvas. Streaks fall
+    // fast and slant slightly so they read as rain at any zoom.
+    const rng = A.mkRng(503);
+    const grassPx = A.GRASS_Y * sy;
+    const streakLen = 9 * sx, slant = 2.4 * sx;
+    ctx.strokeStyle = 'rgba(200, 220, 235, 0.70)';
+    ctx.lineWidth = Math.max(1, 0.9 * sx);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 160; i++) {
+      const baseX = rng() * (CANVAS_W + streakLen * 2);
+      const offset = rng() * grassPx;
+      const speed = 420 + rng() * 240;
+      const y = (offset + tSec * speed) % grassPx;
+      const x = ((baseX - tSec * speed * 0.35) % (CANVAS_W + streakLen * 2)
+              + (CANVAS_W + streakLen * 2)) % (CANVAS_W + streakLen * 2) - streakLen;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + slant, y + streakLen);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if (cfg.weather === 'wind') {
+    ctx.save();
+    // Dust streaks — warmer, near-horizontal, fast, sparse.
+    const rng = A.mkRng(631);
+    const streakLen = 18 * sx;
+    ctx.strokeStyle = 'rgba(190, 165, 130, 0.32)';
+    ctx.lineWidth = Math.max(1, 0.6 * sx);
+    for (let i = 0; i < 38; i++) {
+      const baseX = rng() * CANVAS_W;
+      const baseY = (0.05 + rng() * 0.75) * A.GRASS_Y * sy;
+      const speed = 280 + rng() * 240;
+      const x = ((baseX + tSec * speed) % (CANVAS_W + streakLen * 2)) - streakLen;
+      ctx.beginPath();
+      ctx.moveTo(x, baseY);
+      ctx.lineTo(x + streakLen, baseY + 1.2 * sy);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // ── persona wisp (Nigehban — smokeless fire, dusk only). ─────────

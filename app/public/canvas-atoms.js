@@ -110,15 +110,30 @@
   }
 
   // cfg.stars = 0..1 alpha multiplier. ~180 deterministic pin-pricks.
+  // Twinkle (SKY.md item 2): about half the stars wobble in brightness,
+  // each with its own period (3–8s) and phase so the field never breathes
+  // in unison. Amplitude stays under 30% so it reads as atmospheric
+  // flicker, not blinking lights. A separate rng stream keeps the original
+  // star positions stable across this change.
   function paintStars(pb, cfg) {
     const s = cfg.stars || 0;
     if (s < 0.05) return;
-    const rng = mkRng(11);
+    const rng  = mkRng(11);
+    const tRng = mkRng(23);
     const n = Math.round(s * 180);
+    const t = (cfg.t || 0) / 1000;
     for (let i = 0; i < n; i++) {
       const x = (rng() * W) | 0;
       const y = (rng() * GRASS_Y * 0.85) | 0;
-      const a = Math.round(s * (60 + rng() * 195));
+      const aBase = s * (60 + rng() * 195);
+      const twinkles = tRng() < 0.55;
+      const period   = 3 + tRng() * 5;
+      const phase    = tRng() * Math.PI * 2;
+      const amp      = 0.15 + tRng() * 0.15;
+      const aMul = twinkles
+        ? 1 + amp * Math.sin((t / period) * Math.PI * 2 + phase)
+        : 1;
+      const a = Math.round(aBase * aMul);
       pb.blend(x, y, 245, 240, 222, a);
       if (rng() < 0.18) pb.blend(x, y, 255, 250, 230, Math.min(255, a + 40));
     }

@@ -150,11 +150,18 @@ function paintBaseTerrain(world) {
         nutrient[i] = 25 + Math.floor(rng() * 10);
       } else {
         kind[i] = SOIL;
-        // Flat, lean baseline. The substrate doesn't push hyphae any direction
-        // on its own — variation lives in addDeepNutrientPockets, which seeds
-        // rich seams in the lower soil band and gives mycelium a reason to
-        // tunnel downward.
-        nutrient[i] = 22 + Math.floor(rng() * 8);  // 22–29
+        // Hybrid soil profile (sim-lab/09 iter-105+, route A). Upper soil
+        // (top 40% of soil band) is rich 50–60 — the "humus layer" — so
+        // colonies that cross the grass row find survivable substrate
+        // immediately. Lower soil (bottom 60%) stays lean 22–29 — the
+        // "mineral subsoil" — preserving the gradient that gives mycelium
+        // a reason to descend toward deep nutrient pockets.
+        const depthFrac = (y - GRASS_Y) / (H - GRASS_Y);
+        if (depthFrac < 0.40) {
+          nutrient[i] = 50 + Math.floor(rng() * 11);  // 50–60 upper (iter-108 sweet spot)
+        } else {
+          nutrient[i] = 22 + Math.floor(rng() * 8);   // 22–29 lower (iter-108 sweet spot)
+        }
       }
     }
   }

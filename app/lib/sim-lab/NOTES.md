@@ -41,6 +41,179 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/08-many-leaders begins · iter-83 · vision 1 (test topology cap directly)
 
+### sim-lab/09-column-locking begins · iter-96 · vision 1 v3 (spaced descents at grass crossing)
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-115 · [park] · [confirmed]
+Agent: claude-sonnet-4-7
+Plain: Confirmed iter-108's 28/35 reproduces bit-identical. Two consecutive runs at the same constants — PROCESS-rule park. Branch parks at the A+B cross. The original "column-locking" framing was wrong (iter-97-99 all stuck); the real bug was substrate starvation (the maintainer caught this) and the fix is a hybrid soil profile + perp bif boost, both shared with the live sim. Smoke baselines unchanged (5000-tick founder hasn't crossed into the changed soil yet).
+Hypothesis: rerun iter-108 constants verbatim. Verify same numbers.
+Setup: reverted iter-114's TIP_BIFURCATION_PROB back to 0.30. Otherwise iter-108 state (hybrid soil 50-60/22-29 at depth 0.40, perp bif 8×, LOG_DESCENT_PENALTY 0.5 from iter-101).
+Result: shape median **0.290**, modestSize **5/5**, soilDispersion 4/5 (median 0.537), descended **5/5**, multipleDescents **4/5** max 4, noPrematureFruit 5/5, notSaturated 5/5. **Aggregate 28/35**. Per-seed identical to iter-108: 42=6/7, 1337=6/7, 314=6/7, 271=6/7, 555=4/7.
+Reading: park earned. Beats parked iter-74 (25/35) by +3, beats v3 baseline iter-96 (21/35) by +7. Shape median 0.290 still below the 0.60 gate, but every other scorer is in passing range. The remaining shape gap is topology aesthetic — colony has 4-5 well-spread descents; painting wants 15-20+ tips. Hypothesis for sim-lab/10: with sustainability fixed, push topology richness via leader count or branching density. Or: retire shape gate, since modestSize + soilDispersion + descented + multipleDescents now all pass on majority of seeds and the *qualitative* goal is met.
+Next: PR sim-lab/09 to main. Queue 1-1 entry for sim-lab/10 to decide retarget vs push.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-114 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Last sweep attempt — bumped log surface bifurcation prob 0.30 → 0.50 to give leaders more chances to fork before crossing the grass row. Backfired: faster log-surface growth tripped the fruit gate (premature fruit 2/5), and crowded leaders bundled into one descent (multipleDescents 0/5). Aggregate dropped from iter-108's 28 to 17. Reverted.
+Hypothesis: TIP_BIFURCATION_PROB on log 0.30 → 0.50 (match soil rate). More forks = more leaders = more separated crossings.
+Setup: one constant change vs iter-108 baseline.
+Result: aggregate **17/35**. shape median 0.208, modestSize 2/5, soilDispersion 4/5 max 0.644, descended 4/5, multipleDescents **0/5**, noPrematureFruit **2/5**. Per-seed mostly 2-4/7.
+Reading: log bif rate is load-bearing the *opposite* direction from intuition — keeping it low means fewer leaders, more reserves per leader, longer before fruit gate fires. Bumping it accelerates the boom-bust we're trying to flatten. The fruit-cost mechanic (FRUIT_MIN_CELL_COUNT=800) doesn't gate hard enough when log absorption is fast.
+Next: iter-115 (park confirmation) — revert TIP_BIFURCATION_PROB to 0.30. Verify iter-108's 28/35 reproduces.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-113 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Tried lifting the *lower* soil band floor 22-29 → 30-37 to see if survivable lower soil helped sustain deep descents. It didn't. Aggregate 26/35 vs iter-108's 28 — slight regression, multipleDescents dropped 4/5 → 3/5. The lean lower band is load-bearing for the topology gradient. Reverted.
+Hypothesis: lower band 22-29 → 30-37 to give descending tips a survivable floor between deep pockets.
+Setup: one knob inside the hybrid-soil profile.
+Result: aggregate **26/35**, shape median 0.290, modestSize 4/5, soilDispersion 4/5, multipleDescents 3/5 max 4.
+Reading: the *contrast* between humus and mineral subsoil is what drives the descent topology. Flattening the gradient softens the pull toward pockets. iter-108's stratification (50-60 vs 22-29) is the sweet spot.
+Next: iter-114 — sweep TIP_BIFURCATION_PROB on log instead.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-112 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Pushed the perpendicular bif bias 8× → 12× on top of iter-108 to see if more lateral spread helps. Shape median jumped to 0.354 (highest 5-day yet, beats iter-101). But seed 314 died (0 cells), modestSize 3/5, multipleDescents dropped to 2/5. Pushed too hard.
+Hypothesis: stronger perp bias = more lateral branching = better shape composite.
+Setup: one constant change vs iter-108.
+Result: shape median **0.354**, shape max 0.410, aggregate **23/35**, seed 314 0 cells (first formal death in the sweep).
+Reading: 8× is the sweet spot; 12× over-corrects and starves seeds that don't get a strong founder boom. The shape-vs-survival trade has a knife edge between the two values.
+Next: revert to perp 8, try lower-band soil floor (iter-113).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-111 · [mechanic] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: A+B+C triple cross — iter-108's hybrid soil + perp 8× layered with iter-107's interior pockets. The pockets brought premature fruiting back (seed 555 fruited 7×) and dropped aggregate to 23/35 from iter-108's 28. Interior pockets are incompatible with hybrid soil.
+Hypothesis: pocket diversity on top of A+B might unlock more separated descents.
+Setup: pocket count/placement from iter-107 (4-8 medium, depth 30-90%) added to iter-108 base.
+Result: aggregate **23/35**, multipleDescents 2/5 max 4, noPrematureFruit 4/5 (was 5/5).
+Reading: when soil is hybrid (rich upper), pockets in the upper portion let colonies feed and fruit before they descend — same failure mode as iter-104. Pockets only help when the upper soil is lean enough that they're the *better* destination.
+Next: iter-112 — sweep perp bif further.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-110 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Sweep — thinner humus layer (0.40 → 0.30). Two seeds collapsed to single digits. Thinner humus means colonies hit the lean lower band sooner and starve before establishing deep descents.
+Hypothesis: humus depth threshold 0.40 → 0.30 (thinner rich band).
+Setup: one knob in the hybrid profile.
+Result: aggregate **22/35**, modestSize 3/5, multipleDescents 1/5 max 2. Seeds 1337 (1 cell) and 314 (12 cells) collapsed.
+Reading: 0.40 is the sweet spot. Both directions (0.30 and 0.50) regress.
+Next: cross with route C (iter-111).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-109 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Sweep — thicker humus layer (0.40 → 0.50). Three seeds collapsed. Thicker rich band means colonies don't reach the descent gradient before the fruit gate or the boom ends. Worse aggregate (23) and multipleDescents (2/5).
+Hypothesis: humus depth threshold 0.40 → 0.50 (thicker rich band).
+Setup: one knob in the hybrid profile.
+Result: aggregate **23/35**, modestSize 2/5, multipleDescents 2/5 max 4. Three seeds 10-22 cells.
+Reading: 0.40 is the sweet spot.
+Next: try the other direction (iter-110).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-108 · [mechanic] · [park]
+Agent: claude-sonnet-4-7
+Plain: A+B cross — hybrid soil profile (route A) + perpendicular bif weight 8× (route B mechanic). **Aggregate 28/35 — beats parked iter-74's 25.** First time multipleDescents passes on a majority of seeds (4/5). All five seeds alive 212-310 cells. modestSize 5/5 (PASSING), soilDispersion 4/5, multipleDescents 4/5. Shape median still 0.290 (below 0.60 gate) but every other scorer is in range.
+Hypothesis: hybrid soil profile (iter-105) + perp bif 4× → 8× (iter-106) target independent levers — soil sustains the colony, perp bif drives branching topology. Stack should help.
+Setup: world.js hybrid 50-60 / 22-29 at depth 0.40. sim.js perp bif weight 4 → 8 (inside the SOIL bif `others.map`).
+Result: shape median 0.290 max 0.354, modestSize **5/5**, soilDispersion 4/5 (median 0.537), descended 5/5, multipleDescents **4/5** max 4, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 42=6/7, 1337=6/7, 314=6/7, 271=6/7, 555=4/7. **Aggregate 28/35**.
+Reading: the hybrid soil fixed the boom-bust starvation (iter-103 finding) without losing the descent gradient (iter-104 failure mode). The perp bif bump on top recovered the lateral spread that hybrid soil alone diluted (iter-105 had matting tendency). Two independent fixes for two independent problems — composes cleanly. The remaining gap to shape gate 0.60 isn't a sustainability problem now; it's a topology aesthetic gap. The painting wants 15-20+ tips; we have 4-5 well-spread descents.
+Next: confirm reproduction (iter-115), update test.js BASELINES, PR sim-lab/09.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-107 · [mechanic] · [route-C-scout]
+Agent: claude-sonnet-4-7
+Plain: Route C scout — iter-103 rich soil baseline (50-60 uniform) + interior medium pockets (4-8 pockets, radius 6-8, depth 30-90%, no top 30%). The interior pocket placement gives the descent a series of mid-band destinations. Strongest 3-day result yet (24/35, tightest per-seed distribution: all seeds 4-5/7). 5-day dropped to 21/35 — interior pockets exhaust within 3 days and don't sustain longer.
+Hypothesis: medium pockets in the descent band (no top 30%) preserve the descent gradient while giving more spatial diversity.
+Setup: world.js pocket count 5-7 → 4-8, radius 8-13 → 6-8, depth 55-95% → 30-90%. Otherwise iter-103.
+Result: 3-day **24/35** (shape median 0.254, modestSize 4/5, soilDispersion 4/5, multipleDescents 2/5 max 4). 5-day 21/35 (shape median **0.361** highest yet, soilDispersion max **0.722**, modestSize 2/5, multipleDescents 1/5).
+Reading: pockets in the descent band sharpen topology (shape median 0.361 best across scouts) but don't sustain longer-window runs. Trade-off: pocket-driven topology vs. soil-driven sustainability. iter-108 (route A+B) wins both at 5-day.
+Next: cross with iter-108 (iter-111).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-106 · [mechanic] · [route-B-scout]
+Agent: claude-sonnet-4-7
+Plain: Route B scout — iter-103 rich soil baseline (50-60 uniform) + perpendicular bif weight 4× → 8× to fight matting. Two seeds at 6/7, soilDispersion 5/5, multipleDescents max 4 — but bimodal (seeds 1337 and 555 collapsed to ~10 cells). Aggregate 24/35.
+Hypothesis: rich uniform soil keeps colonies alive but mats. Stronger perp bif in soil drives lateral branching to recover topology.
+Setup: sim.js perp bif weight 4 → 8 (only in the SOIL bif step). world.js rich 50-60 uniform.
+Result: shape median 0.290, modestSize 2/5, soilDispersion 5/5, descended 5/5, multipleDescents 2/5 max **4**, noPrematureFruit 5/5. Per-seed: 314=6/7, 271=6/7, 42=4/7, 1337=4/7 (12 cells), 555=4/7 (10 cells). **Aggregate 24/35**.
+Reading: perp 8× recovers topology in uniform-rich soil but doesn't cure the bimodal survival problem. Colonies that find rich substrate flourish; ones that don't starve before perp bif can help. Stronger lever than route A's soil profile but more brittle.
+Next: route C (iter-107).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-105 · [mechanic] · [route-A-scout]
+Agent: claude-sonnet-4-7
+Plain: Route A scout — hybrid soil profile. Upper 40% of soil rich (50-60, "humus layer"), lower 60% lean (22-29, "mineral subsoil"). Founder finds survivable substrate immediately after crossing the grass row, but the lean lower band still pulls deep descents toward pockets. **Aggregate 25/35 at 5-day — matches parked iter-74.** soilDispersion **5/5 PASSING** for first time in v3 founder-only scoring. Seed 1337 ended at 400 cells (was 6 in iter-101).
+Hypothesis: real forest stratigraphy — organic-rich topsoil + leaner mineral soil below — sustains colonies without flattening the descent gradient.
+Setup: world.js soil paint conditional on depth fraction; upper if <0.40.
+Result: 3-day 20/35 (shape median 0.254, multipleDescents 2/5 max 4). 5-day **25/35** (shape median 0.290, modestSize 4/5, soilDispersion **5/5** median 0.533, descended 5/5, multipleDescents 1/5 max 3). Seed 555 6/7, 1337 5/7. All five colonies alive 61-553 cells.
+Reading: the soil profile alone is enough to match the prior park aggregate, with founder-only scoring, and to *cure the boom-bust death spiral*. iter-101's seed 1337 died to 6 cells; iter-105's seed 1337 ended at 400. The matting tendency is real but mild — shape median (0.290) is below iter-101's (0.337) by ~14%, but every survivability scorer improved. Route A is the substrate fix; pairing with route B (perp bif) is the obvious next move.
+Next: route B (iter-106) then route C (iter-107).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-104 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: "Many small pockets" experiment — 5-7 big deep pockets → 25-40 small distributed pockets (radius 3-5, depth 5-95%). Hypothesis was that distributed small targets would stimulate transport branching. Backfired: total pocket nutrient is actually *lower* (cells covered: 1250-2000 vs 1600-2240), upper-band pockets trigger premature fruit (noPrematureFruit 5/5 → 3/5), each tiny pocket sustains only ~10 cells, and the founder can only reach 5-8 pockets in 5 days. Aggregate dropped to 15/35 at 5-day.
+Hypothesis: pocket count 5-7 → 25-40, radius 8-13 → 3-5, depth 55-95% → 5-95%. Same total radial coverage in theory, but distributed.
+Setup: world.js addDeepNutrientPockets parameter rewrite.
+Result: 3-day aggregate **14/35**, 5-day **15/35**. modestSize 2/5, soilDispersion 2/5, multipleDescents 0/5 max 0 (worst yet).
+Reading: pocket geometry matters more than count. The intuition ("many destinations = more branching") was right in principle but wrong in execution. The maintainer's read: try interior placement (route C, iter-107) on the rich-baseline foundation instead.
+Next: revert pockets, branch into three scout routes (A/B/C).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-103 · [mechanic] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: First crack at the boom-bust problem (the maintainer flagged colonies were dying during multi-day tests). Raised soil baseline 22-29 → 50-60 uniform. Colonies stayed alive (modestSize 5/5, seed 1337 ended at 337 cells vs 6 in iter-101). Aggregate **22/35 at 5-day** — best yet. But colonies *matted* instead of branching: soilDispersion 2/5, shape median dropped to 0.227.
+Hypothesis: soil too lean to sustain colonies over multi-day window. Raise everything uniformly.
+Setup: world.js soil baseline change. No other edits.
+Result: shape median 0.227, modestSize **5/5**, soilDispersion 2/5, descended 5/5, multipleDescents 1/5 max 3. Aggregate **22/35**. Seed 555 6/7.
+Reading: the boom-bust was real and rich soil cures it. But uniform rich soil also kills the descent topology — mycelium has no reason to branch. The lean soil was secretly a *shape driver*, not just a stress test. Next iteration needs to recover topology without losing sustainability.
+Next: try many small pockets (iter-104) — maintainer's intuition.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-102 · [tweak] · [park-candidate]
+Agent: claude-sonnet-4-7
+Plain: Bracket sweep — tried PENALTY=0.35 between iter-100's too-strong 0.2 and iter-101's +1 0.5. 0.35 gave 20/35, worse than iter-101's 22 and the v3 baseline 21. So 0.5 is the local peak for this knob. Parking the branch at iter-101's value. Aggregate gain is small (+1) and shape median (0.260) still doesn't beat parked iter-74 (0.282 in old-world scoring) — but the mechanic is a real lever and the soilDispersion improvement is durable.
+Hypothesis: 0.35 might balance descent vs spread better than 0.5.
+Setup: LOG_DESCENT_PENALTY 0.5 → 0.35. Otherwise iter-101.
+Result: shape median 0.171 (down from 0.260), modestSize 4/5 (up from 3/5), soilDispersion 3/5 (median 0.536), descended 3/5 (down from 5/5), multipleDescents 0/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 42=5/7, 1337=4/7, 314=2/7, 271=5/7, 555=4/7. **Aggregate ~20/35**.
+Reading: not monotonic in the constant — 0.5 is the sweet spot. The mechanic gives a small but real gain on soilDispersion and descended, at the cost of multipleDescents (the gatekeeper that started this branch). Net +1 vs v3 baseline, still −3 vs parked iter-74 under old-world scoring. The "leaders walk before crossing" intuition is valid but doesn't unlock the gate alone — the dispersion gain is in soil-region width, not at the grass row itself.
+Next: revert to PENALTY=0.5 (iter-101's park-candidate state). Update test.js BASELINES. PR the branch with iter-101 parked + iter-96-102 as the journey. Open question for sim-lab/10: stack a second mechanic on top of PENALTY=0.5 — likely either a soil-region perpendicular bias bump (4× → 8×) to widen post-descent spread, or branch-hunger for leader pruning. Carrying that forward as the next 1-1 thread.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-100 · [mechanic]
+Agent: claude-sonnet-4-7
+Plain: New mechanic — penalize the downward move when a leader is on the log surface, so leaders walk along the log before crossing into soil. First pass with strong penalty (5× bias against down). One seed jumped to **4 distinct descents** (the best multipleDescents we've seen). But the shape composite tanked — descents went deep and narrow instead of wide and rooted. The mechanic works but the constant is too aggressive.
+Hypothesis: when parent cell is LOG and candidate is the south neighbour, multiply candidate weight by LOG_DESCENT_PENALTY. Leaders prefer log-walking → wider footprint → separated grass crossings.
+Setup: add LOG_DESCENT_PENALTY=0.2 constant. One-liner in candidate-weighting block: `if (kind[i] === LOG && j === i + W) w *= LOG_DESCENT_PENALTY`. No other changes.
+Result: shape median **0.135** (was 0.282 — collapsed), modestSize 2/5 (was 4/5), soilDispersion 4/5 (median **0.533**, was 0.491), descended 3/5 (was 4/5), multipleDescents 1/5 (was 2/5) — **but max=4** (was 2), noPrematureFruit 4/5 (seed 42 fruited 6×), notSaturated 5/5. Per-seed: 42=4/7, 1337=2/7, 314=5/7, 271=5/7, 555=3/7. **Aggregate ~19/35**.
+Reading: the mechanism is right but the constant is too strong. With 5× bias against descent, leaders that finally cross have huge accumulated log-surface reserves and shoot deep without lateral spread in soil — the painting topology needs *width* below grass, not just *separated crossings*. seed 42 hit multipleDescents=4, soilDispersion=0.53, modestSize PASS, descended PASS — but the colony is mostly far-deep, not the upper-soil painting band. Shape composite includes lateralSpread + soilDispersion (both improved) but also descentColumns shape (wants distributed, not concentrated). Lighter penalty should let leaders cross sooner so they spread in upper soil before plunging.
+Next: iter-101 — sweep LOG_DESCENT_PENALTY from 0.2 → 0.5 (2× bias instead of 5×). Same mechanic, just gentler.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-99 · [mechanic] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Pivoted from column-locking to extending the soil perpendicular-bif bias up onto the log surface — the idea being that leaders bifurcating on the log would fan horizontally before descending. The log surface did fan out but the descents still bundled. Aggregate dropped 2 points; noPrematureFruit cracked (one seed fruited 12 times). Reverting.
+Hypothesis: extend the existing `kind[i] === SOIL` perpendicular-bif weighting to also fire when `kind[i] === LOG`. Bif-children on the log get pushed to horizontal candidates → wider founder footprint before grass crossing.
+Setup: condition changed to `kind[i] === SOIL || kind[i] === LOG`. One-line change. No new constants.
+Result: shape median 0.287 (≈ baseline 0.282), modestSize 2/5 (was 4/5), soilDispersion 3/5 (median 0.500), descended 5/5 (was 4/5), multipleDescents **0/5** (was 2/5), noPrematureFruit 4/5 (was 5/5 — seed 271 fruited 12×), notSaturated 5/5. **Aggregate ~19/35**.
+Reading: the log fans horizontally but the leaders that descend still bundle. Once a leader crosses the grass row, the recursive perp-bif bias in soil now triggers MORE on the same column — the colony gets a wider log presence but a tighter descent. The mechanic helps the wrong dimension. Aggregate dropped because horizontal log mass → faster fruit gate trip (seed 271 fruited prematurely). Column-locking class is fully stuck. Next iter pivots from bif-only mechanisms entirely.
+Next: iter-100 — revert iter-99, try primary-extension horizontal preference on log (not via bif). When parent cell is LOG and candidate is the south (down) neighbour, multiply candidate weight by LOG_DESCENT_PENALTY. Makes leaders prefer to walk along the log surface before crossing. Different from iter-97 (which penalized only at GRASS_Y row); this penalizes the whole log→soil transition.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-98 · [mechanic] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Moved the lock to only affect the bif-child (the spreader), leaving the primary descent alone. The colonies survived this time but only 1 in 5 seeds split into two crossings — same wall as baseline, no real movement. Closing the column-locking class. The lock acts after leaders have already crossed; the cluster forms before that.
+Hypothesis: restrict column-lock to the bifurcation step's `others` candidate set. Primary leader extension is unweighted. Bif-children at GRASS_Y get pushed away from existing crossings.
+Setup: revert iter-97's candidate-loop lock, add equivalent lock inside the bif `others` re-weighting block in `growHyphae`. COLUMN_LOCK_RADIUS=8, COLUMN_LOCK_MIN_W=0.05.
+Result: shape median **0.282** (= baseline), modestSize 3/5 (was 4/5), soilDispersion 3/5 (median 0.500 — at the gate, was 0.491), multipleDescents 1/5 (was 2/5), descended 4/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 42=5/7, 1337=4/7, 314=4/7, 271=3/7, 555=5/7. **Aggregate ~21/35** (≈ baseline).
+Reading: bif-only barely moved the gatekeeper and slightly regressed it. Bifurcation in soil is the only place the bif lock fires often, but the founder's two leaders are usually already past the grass row when they bifurcate — so the lock checks `j === GRASS_Y` against soil candidates that aren't even in the protected band. The mechanic class doesn't address the actual failure mode: leaders cluster at spawn and descend together as a bundle BEFORE any column-lock could act. Per PROCESS.md, two iters of the same mechanic class without aggregate movement → stop. Telemetry too coarse to diagnose further (just cells/reserves/leaders, no positions).
+Next: iter-99 — revert column-locking, confirm baseline reproduction, then pivot. Bootstrap is the wall; the next mechanic should attack the founder's leader spread before descent (horizontal-preference on log, or per-leader reserve pools as in branch hunger).
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-97 · [mechanic]
+Agent: claude-sonnet-4-7
+Plain: First try at column-locking — penalize a leader's next step if it lands on the grass row near where the colony already crossed. Dispersion in the soil improved (4 of 5 seeds passed, up from 2). But colonies got smaller and *fewer* of them had two separate crossings (0 of 5, was 2). Leaders sidestepped along the log instead of descending. The mechanic is right, the application is wrong — the lock punishes the *primary* descent too.
+Hypothesis: penalize candidate weight by distance to existing same-colony cells at GRASS_Y. Linear ramp from COLUMN_LOCK_MIN_W (d=0) to 1.0 (d≥R). Forces second crossing apart.
+Setup: COLUMN_LOCK_RADIUS=8, COLUMN_LOCK_MIN_W=0.05. Penalty applied to every candidate at row GRASS_Y inside the per-cell candidate-weighting block in `growHyphae`. Precomputed crossingsByCid map at tick start.
+Result: shape median 0.282→**0.274**, modestSize 4/5→**2/5**, soilDispersion 2/5→**4/5** (median 0.491→0.517, max 0.602), descended 4/5 (same), multipleDescents 2/5→**0/5**, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 42=5/7, 1337=4/7, 314=4/7, 271=5/7, 555=2/7. **Aggregate 21/35→20/35**. Seed 555 collapsed 232→13 cells.
+Reading: the lock pushed leaders sideways along the log rather than into soil — the *first* crossing fires, but every subsequent leader prefers the unlocked lateral candidates and never reaches the grass row again. The dispersion gain is incidental: where descents did happen, fewer competing crossings nearby let the soil tree spread. The mechanic logic is right but it should affect only the *spreader* path (bif-child), not the primary extension. The primary descent should be free; the bif-child is what spreads sideways under the painting.
+Next: iter-98 — restrict column-lock to the bifurcation step (the bif-child candidate set only), leave primary extension unweighted. Same constants. If that still locks too hard, raise COLUMN_LOCK_MIN_W next.
+
+## 2026-05-28 · sim-lab/09-column-locking · iter-96 · [observe]
+Agent: claude-sonnet-4-7
+Plain: First run under the new v3 setup — three-day window, founder-only, no spore kids — before changing any mechanic. The same constants that scored 25 out of 35 in the old setup score 21 out of 35 here. Two seeds still bundle through the grass row instead of splitting into separate descents, which is the gap we want to close.
+Hypothesis: v3 baseline. No sim.js change. Confirm what the parked state looks like under multi-day founder-only scoring before introducing a mechanic.
+Setup: `node app/cli/lab.js v3`. VISION_1_V3, default seeds, telemetry on. sim.js unchanged from iter-95 park.
+Result: shape median **0.282**, modestSize 4/5, soilDispersion 2/5, descended 4/5, multipleDescents 2/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 42=5/7, 1337=5/7, 314=4/7, 271=3/7, 555=5/7. **Aggregate 21/35**. soilDispersion median **0.491** (just under the 0.50 gate).
+Reading: v3 is not a free pass — shape median ties the parked state. The aggregate dip vs iter-95's 25/35 is the founder-only filter biting: without sporeling fragments, soilDispersion drops from 5/5 to 2/5 and descended from 5/5 to 4/5. Confirms the iter-95 reading — the founder alone clusters through the grass row. multipleDescents 2/5 + soilDispersion at 0.491 are both the same wall: leaders cross together. Column-locking targets exactly this.
+Next: iter-97 — add a candidate-weight penalty when extension would land on the grass row near an existing crossing column of the same colony. Forces grass-row crossings apart by COLUMN_LOCK_RADIUS cells. Start COLUMN_LOCK_RADIUS=8, COLUMN_LOCK_MIN_W=0.05.
+
 ## 2026-05-28 · sim-lab/08-many-leaders · iter-95 · [park] · [closed-without-new-park]
 Agent: claude-sonnet-4-7
 Plain: Twelve iterations on the "many slow leaders" hypothesis from 1-1.md. Shape median hit 0.243 at best — never beat parked iter-74's 0.282. Aggregate matched the park at iter-89 (25/35) but never exceeded it. One single-seed outlier early on (iter-83 shape max 0.610) turned out to be fragmentation, not founder topology. Closing the branch and reverting sim.js to iter-74's parking state. The scorer audit (2026-05-28 memo) was right that the topology cap is real, but more leaders doesn't translate to painting topology — the leaders concentrate at the founder's spawn point and descend together as a bundle regardless of count.

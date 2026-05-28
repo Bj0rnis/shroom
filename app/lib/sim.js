@@ -120,6 +120,15 @@ const MAX_LEADERS_PER_COLONY  = 5;   // sim-lab iter-30: reverted to iter-27/28 
 // Apical dominance — a new bif-born leader cannot be added within this many
 // cells of an existing leader. Forces spatial separation between active threads.
 const APICAL_DOMINANCE_RADIUS = 15;  // sim-lab iter-33: was 5, aggressive separation now that sibling-exemption fix is in
+// Log descent penalty (sim-lab/09 iter-100). When a leader on the log
+// surface considers a downward extension, multiply that candidate's weight
+// by this factor. Leaders prefer to walk along the log before crossing
+// the grass row, giving the founder a wider lateral spread → separated
+// grass crossings. iter-97 and iter-98 (column-locking) attacked the
+// symptom at the membrane; iter-99 (perp-bif on log) attacked the bif
+// step. This attacks the primary extension directly — the most direct
+// fix for the iter-95 "cluster at spawn" reading.
+const LOG_DESCENT_PENALTY = 0.5;   // sim-lab/09 iter-101: parked. Sweep: 0.2 deep-tunnels regression; 0.35 mixed regression; 0.5 +1 aggregate vs v3 baseline.
 // Leader senescence: a leader stops being a leader after this many extensions.
 // Real hyphal tips age out — their vigour decays as they age, and growth
 // passes to younger forks. Without this cap the leader-mechanic still
@@ -582,6 +591,14 @@ function growHyphae(world) {
         const filled = occupiedInBox(startSnapshot, j);
         w /= (1 + DLA_EDGE_K_SOIL * filled);
       }
+      // Log descent penalty (sim-lab/09 iter-100). On the log surface,
+      // penalize downward extension so leaders prefer to walk laterally
+      // before crossing into soil. Combined with chemotaxis the leader
+      // still eventually descends, but only after the colony has spread
+      // along the log → multiple separated grass crossings.
+      if (kind[i] === LOG && j === i + W) {
+        w *= LOG_DESCENT_PENALTY;
+      }
       candidates.push({ j, w });
       totalW += w;
     }
@@ -687,7 +704,10 @@ function growHyphae(world) {
                 const dx = (c.j % W) - (i % W);
                 const candVertical = dx === 0;
                 const perpendicular = (parentVertical !== candVertical);
-                return perpendicular ? { j: c.j, w: c.w * 4 } : c;
+                // sim-lab/09 iter-108: perp bias 4× → 8× on top of hybrid
+                // soil. Combines soil sustainability with stronger lateral
+                // branching to fight matting.
+                return perpendicular ? { j: c.j, w: c.w * 8 } : c;
               });
             }
             if (others.length > 0) {

@@ -53,7 +53,7 @@ async function runVisionTarget(vision, opts = {}) {
   const results = [];
 
   for (const { seed, tag } of seeds) {
-    const run = await lab.runScenario(vision.scenarioId, { seed });
+    const run = await lab.runScenario(vision.scenarioId, { seed, durationDays: opts.durationDays });
     const world = reconstructWorld(run);
     const telemetryFile = dumpTelemetry(run, vision);
     // v3: pass per-day snapshots + founder-only ascii to scorers via ctx.

@@ -39,6 +39,125 @@ us will want to A/B model choices; this is the audit trail.
 
 ### sim-lab/07-lattice-mature begins · iter-77 · vision 1 (close shape gap)
 
+### sim-lab/08-many-leaders begins · iter-83 · vision 1 (test topology cap directly)
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-95 · [park] · [closed-without-new-park]
+Agent: claude-sonnet-4-7
+Plain: Twelve iterations on the "many slow leaders" hypothesis from 1-1.md. Shape median hit 0.243 at best — never beat parked iter-74's 0.282. Aggregate matched the park at iter-89 (25/35) but never exceeded it. One single-seed outlier early on (iter-83 shape max 0.610) turned out to be fragmentation, not founder topology. Closing the branch and reverting sim.js to iter-74's parking state. The scorer audit (2026-05-28 memo) was right that the topology cap is real, but more leaders doesn't translate to painting topology — the leaders concentrate at the founder's spawn point and descend together as a bundle regardless of count.
+Hypothesis: revert all sim.js changes from iters 83-94, confirm bit-identical reproduction of parked iter-74.
+Setup: `git checkout origin/main -- app/lib/sim.js`. All sim-lab/08 constants reverted.
+Result: bit-identical to iter-74. shape median **0.282**, modestSize 4/5, soilDispersion 5/5, multipleDescents 2/5, noPrematureFruit 5/5, notSaturated 5/5. Per-seed: 42=5/7, 1337=5/7, 314=4/7, 271=5/7, 555=6/7. **Aggregate 25/35** (parked state confirmed).
+Reading: many-slow-leaders alone doesn't move the gatekeeper. The painting topology requires *spatial separation* of descents at the grass row — and even with 20-30 leaders + 100% bif rate, the founder's leaders cluster at the spawn point and bundle through grass as a single fat trunk. The 1-1.md hypothesis was right about the topology cap but wrong about which mechanic resolves it. Branch hunger (per-leader reserve pools) or column-locking (enforce spaced descents at grass crossing) would each need a deeper sim change, not a constant sweep.
+Next: hand off. Branch parked at iter-74 baseline. Best findings from sim-lab/08 to carry forward: (a) iter-83's shape max 0.610 via spore fragmentation shows the *scorer rewards painting topology when it appears* — the gate is reachable but not from a single founder under current mechanics; (b) iter-89 confirmed 20 leaders + low non-leader rate + high bif matches parked aggregate but doesn't beat shape median — the lever exists, the missing ingredient is column-spacing; (c) iter-91 produced the branch's best shape median (0.243) but at the cost of multipleDescents (1/5) — same tension the 04→07 arc kept hitting.
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-94 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Tried a middle-ground LEADER_EXTEND_PROB (0.05, between parked 0.15 and iter-83's 0.025). Colonies collapsed to 18-87 cells. The low rate of iter-83 was what made many-leaders viable; bumping it back up made the smaller per-leader-share starvation worse.
+Hypothesis: maybe 0.025 was over-correcting for many leaders, 0.05 might balance throughput.
+Setup: LEADER_EXTEND_PROB 0.025 → 0.05, LEADER_EXTEND_JUNCTION 0.008 → 0.017. Bif back to parked 0.55.
+Result: shape median 0.122, modestSize **0/5**, multipleDescents 0/5, aggregate 16/35. All seeds tiny.
+Reading: in the many-leaders regime, leader-rate is the load-bearing constant. The right rate depends on MAX_LEADERS via the reserve-dilution math; no good universal value found within the budget. End the branch.
+Next: revert sim.js, park at iter-74.
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-93 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Tried LOWER soil bifurcation (1.0 → 0.40). Shape median fell to 0.139 — wrong direction. Confirms higher bif is the side that helps within this mechanic class.
+Hypothesis: lower bif → tighter descent spine.
+Setup: TIP_BIFURCATION_PROB_SOIL 1.0 → 0.40.
+Result: shape median 0.139, max 0.227. multipleDescents 3/5 recovered but shape dropped. Aggregate 20/35.
+Reading: bifurcation isn't the lever. The leaders themselves don't separate.
+Next: middle-ground extension rate (iter-94).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-92 · [mechanic] · [no-op]
+Agent: claude-sonnet-4-7
+Plain: Added a cellCount-gated bifurcation rate (low when founder small, high when mature) so the colony builds a tight spine first then forks at depth. Results bit-identical to iter-91 — the leader-bif path apparently fires rarely enough at the founder stage that the gate has no measurable effect.
+Hypothesis: gate bifProb by sizeT = min(1, cellCount/50). Below 50 cells: bifProb × 0.20. Above 50: bifProb × 1.0. Should produce single-spine then lattice.
+Setup: in-line maturity gate added to the leader bif block.
+Result: bit-identical to iter-91. shape median 0.243 max 0.310.
+Reading: bifurcation in soil rarely satisfies the (leader && freeCount≥3 && reserves≥cost && candidates≥2) precondition during the founder stage. The gate fires too rarely to matter.
+Next: revert the gate, try lower bif rate constant instead.
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-91 · [tweak]
+Agent: claude-sonnet-4-7
+Plain: Best shape median of the branch — 0.243. Reverted founder boost to parked 1.0 and used middle-ground apical dominance (radius 7). But multipleDescents fell to 1/5 — the same tension the older branches hit when leaders spaced too aggressively.
+Hypothesis: dominance=5 was too permissive (leaders cluster), dominance=10 was too aggressive (small colonies can't seed new leaders). Try 7.
+Setup: APICAL_DOMINANCE_RADIUS 10 → 7. FOUNDER_BOOST_MAX_SOIL 1.5 → 1.0.
+Result: shape median **0.243** (best of branch). max 0.310. modestSize 2/5. soilDispersion 4/5. descended 4/5 max 47. multipleDescents **1/5**. aggregate 21/35.
+Reading: shape median is the highest of sim-lab/08 but still 0.04 below parked iter-74's 0.282. multipleDescents tradeoff is the same one sim-lab/04-07 hit.
+Next: bifurcation gate (iter-92).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-90 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Bumped apical dominance radius from 5 to 10 to force more lateral separation. Colonies became tiny — 25 to 74 cells on most seeds. Too aggressive; bif-born leaders can't get close enough to existing leaders so few new leaders ever spawn.
+Hypothesis: radius 10 should space descents better.
+Setup: APICAL_DOMINANCE_RADIUS 5 → 10.
+Result: shape median 0.128, modestSize 1/5, aggregate **15/35** (collapse).
+Reading: dominance bites the small-colony seed phase too hard. Step back to 7.
+Next: middle ground (iter-91).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-89 · [tweak]
+Agent: claude-sonnet-4-7
+Plain: Tied parked iter-74 aggregate (25/35) for the first time on the branch. descended hit 5/5 — first time in the entire research arc. soilDispersion max 0.644 (highest yet). But shape median 0.194 — still below parked 0.282. Reaches the floor, doesn't crack the gate.
+Hypothesis: 30 leaders dilute reserves too much; 20 leaders × low NON_LEADER × moderate founder boost should sweet-spot the regime.
+Setup: MAX_LEADERS_PER_COLONY 30 → 20. NON_LEADER_EXTEND_PROB 0.012 → 0.003. NON_LEADER_EXTEND_JUNC 0.002 → 0.0005. FOUNDER_BOOST_MAX_SOIL 2.5 → 1.5.
+Result: shape median 0.194 max 0.281. modestSize 3/5. soilDispersion 4/5 (max 0.644 ARC RECORD on the per-seed reading). **descended 5/5 (ARC FIRST)**. multipleDescents 3/5. noPrematureFruit 5/5. Aggregate **25/35** (ties parked iter-74).
+Reading: this config ties the parked aggregate but loses shape median to it (0.194 vs 0.282). Not a new park. The fat-trunk problem persists — leaders cluster at founder spawn and descend together.
+Next: higher apical dominance to force the descents apart (iter-90).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-88 · [tweak]
+Agent: claude-sonnet-4-7
+Plain: Big founder boost (1.0 → 2.5) to keep many-leader lattice fed before starvation thins it. Overshot — colonies were tiny on most seeds. The boost over-extends initially, depletes substrate, then starvation cascades.
+Hypothesis: 30 leaders share reserves; big founder boost compensates.
+Setup: FOUNDER_BOOST_MAX_SOIL 1.0 → 2.5.
+Result: shape median 0.176, modestSize 2/5, multipleDescents 3/5. Aggregate 22/35.
+Reading: boost too aggressive — leaders extend fast initially, hit substrate exhaustion, network shrinks back to a single trunk. Dial back.
+Next: drop MAX_LEADERS to 20 (iter-89).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-87 · [tweak]
+Agent: claude-sonnet-4-7
+Plain: Pushed soil bifurcation to 100% (every soil extension forks). Shape median climbed slightly to 0.230, max to 0.335. descended hit 4/5 with max depth 37. But multipleDescents fell from 3 to 2.
+Hypothesis: 100% bif maximally produces Y-fork topology.
+Setup: TIP_BIFURCATION_PROB_SOIL 0.85 → 1.0.
+Result: shape median 0.230, max 0.335, modestSize 3/5, multipleDescents 2/5, aggregate 23/35.
+Reading: more bif doesn't actually produce more *separated* descents — the bif-children stay close to the parent column, just denser within it. The topology cap is leader-clustering at spawn, not bifurcation rate.
+Next: bigger founder boost to keep many leaders fed (iter-88).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-86 · [tweak]
+Agent: claude-sonnet-4-7
+Plain: Lifted soil bifurcation 0.55 → 0.85 to push toward the painting's near-every-row Y-fork density. Shape median climbed to 0.224 (up from 0.110), no premature fruits, modestSize 4/5.
+Hypothesis: high bif rate + many leaders → recursive lattice.
+Setup: TIP_BIFURCATION_PROB_SOIL 0.55 → 0.85.
+Result: shape median 0.224, max 0.253. modestSize 4/5. multipleDescents 3/5. noPrematureFruit 5/5. Aggregate 23/35.
+Reading: direction correct but still below iter-74's 0.282. Push bif higher.
+Next: 1.0 bif (iter-87).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-85 · [tweak]
+Agent: claude-sonnet-4-7
+Plain: Reverted the leader-rate, raised FRUIT_MIN_CELL_COUNT 800 → 1500 to kill the premature-fruit cascade. Cleared the fruit regression — 0 fruits across all seeds. But shape median dropped to 0.110, and the iter-83 shape breakthrough disappeared (it had come from a fragmented child colony, not the founder).
+Hypothesis: revert iter-84 + harder fruit gate → shape preserved without the fruit cascade.
+Setup: LEADER_EXTEND_PROB → 0.025, LEADER_EXTEND_JUNCTION → 0.008, FRUIT_MIN_CELL_COUNT 800 → 1500.
+Result: shape median 0.110, max 0.161. modestSize 3/5. soilDispersion 4/5. noPrematureFruit **5/5**. multipleDescents 3/5. Aggregate 22/35.
+Reading: the iter-83 breakthrough was via fragmentation, not real founder topology. The founder produces fat trunks even with 30 slow leaders. Pivot to harder bifurcation.
+Next: raise soil bif (iter-86).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-84 · [tweak] · [stuck]
+Agent: claude-sonnet-4-7
+Plain: Bumped LEADER_EXTEND_PROB +60% so 30-leader colonies could reach modestSize before fruiting. Backfired — aggregate collapsed to 14/35, and the founders grew so fast they crossed the 800-cell fruit gate inside day 1, spawning child colonies that fruited again, producing 21 fruits in one seed.
+Hypothesis: raise extension rate so 30-leader colonies grow into modestSize range before fruiting.
+Setup: LEADER_EXTEND_PROB 0.025 → 0.04, LEADER_EXTEND_JUNCTION 0.008 → 0.013.
+Result: shape median 0.205, max 0.392, modestSize 3/5, multipleDescents **0/5**, noPrematureFruit **0/5** (10-21 fruits per seed). Aggregate 14/35.
+Reading: the fruit cascade is the failure mode — faster leaders → colony crosses 800 cells fast → fruits → spores → child colonies → more fruits. Need to either slow growth (back to iter-83) or raise the fruit gate.
+Next: revert + raise fruit gate (iter-85).
+
+## 2026-05-28 · sim-lab/08-many-leaders · iter-83 · [mechanic] · [BREAKTHROUGH]
+Agent: claude-sonnet-4-7
+Plain: Tried something bold — 6× more leaders (5→30), each grows 6× slower (LEADER_EXTEND_PROB 0.15→0.025). Same idea as the painting: 15-20 small tips spreading wide instead of 5 fat drillers. **One seed broke through — shape max hit 0.61, first crossing of the gate in the entire research arc.** Aggregate slipped to 24 of 35 (was 25), but the shape ceiling that's been stuck for seven branches just got punched through.
+Hypothesis: per the 2026-05-28 scorer audit, 5 leaders concentrate growth into fat trunks (soilDispersion ~0.17), which dooms shape. 30 leaders with proportionally weaker per-tip throughput should spread cells into isolated lacework. This is the 1-1.md "many slow leaders" hypothesis tested directly.
+Setup: MAX_LEADERS_PER_COLONY 5→30, LEADER_EXTEND_PROB 0.15→0.025, LEADER_EXTEND_JUNCTION 0.05→0.008, APICAL_DOMINANCE_RADIUS 15→5 (must drop so 30 leaders can coexist).
+Result: shape **1/5 (max 0.610 ARC FIRST)** median 0.112. modestSize 4/5. soilDispersion 4/5 (was 5/5). descended 4/5. multipleDescents **3/5 (up from 2/5)**. noPrematureFruit 3/5 (REGRESSED, 12 fruits). notSaturated 5/5. Per-seed: 42=4/7 (323, 2 colonies — fragmented), **1337=6/7 (195 single, shape PASSED)**, 314=5/7 (215 single), 271=4/7 (75 — small), 555=5/7 (552 across 3). **Aggregate 24/35**.
+Reading: the directional bet works. Many leaders → more dispersed cells → multipleDescents climbs, and at least one seed produces real lattice topology with shape ≥ 0.60. The cost: colonies are smaller (six of the five seeds under 250 single-founder), and small founders fruit too fast (12 total premature fruits, was 0 at iter-74). The gate's been crossed; now find the volume.
+Next: iter-84 — LEADER_EXTEND_PROB 0.025 → 0.04 (1.6×) so colonies get bigger before fruiting. Keep MAX_LEADERS at 30. If aggregate climbs and shape median rises toward 0.30+, we have a config beating iter-74. If premature fruit doesn't fall, the fruit gate itself is the bottleneck — pivot to raising FRUIT_COST.
+
 ## 2026-05-24 · sim-lab/07-lattice-mature · iter-82 · [park] · [closed-without-new-park]
 Agent: claude-sonnet-4-6
 Plain: Five iterations into sim-lab/07, every mechanic class probed (size-scaled perpendicular bias, size-scaled DLA-K, phased substrate-field stacking, periphery-interior at two gates) traded one scorer for another with no net Vision 1 progress. The Vision 1 gatekeeper — shape median — never beat the sim-lab/06 park of 0.282. Stuck signal across the whole branch. Closing the branch and reverting sim.js to iter-74's parking state. Two findings to keep for future agents: (a) the shape-vs-multipleDescents tension is intrinsic to perpendicular-bias levers (sim-lab/04 iter-5 finding confirmed); (b) the mature-phase substrate-field boost can produce shape max RECORD 0.461 but the magnitude that does so also overshoots the fruit gate — needs a fundamentally different stop condition, not just a curve.

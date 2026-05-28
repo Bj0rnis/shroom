@@ -45,8 +45,8 @@ nothing changes visibly above the world.
 3. **Seasonal sky cues.** ✅ Winter snow shipped (#66) — quiet ambient
    flurries even without a toofan. (Autumn leaves were already
    wired via `cfg.fallingLeaves`.)
-4. **Time-of-day mist.** Extend the existing autumn-dawn fog idea to a
-   year-round dawn and dusk mist band at the grass line.
+4. **Time-of-day mist.** ✅ Shipped (#66) — slim cool ribbon at the
+   grass line, peaks at dawn 6.5 and dusk 19.25, all seasons.
 5. **Birds passing.** Occasional silhouette across the sky. Rare enough
    that catching one feels like a moment, not decoration.
 6. **Toofan visual signatures.** Each storm flavour gets a sky cast
@@ -94,9 +94,8 @@ refinement.
 
 ## Next pickup
 
-Items 1–3 shipped on PR #66. Next is item 4 — year-round dawn/dusk
-mist band at the grass line. The autumn-only dawn fog is already in;
-extending it to a year-round soft mist (lighter, shorter window) gives
-the diorama a felt depth break between far layers and foreground.
-Sit with each change for a sim day or two before picking the next.
-Sky changes are easy to over-cook.
+Items 1–4 shipped on PR #66. Next is item 5 — birds passing.
+Occasional silhouette across the sky, restrained enough that catching
+one feels like a moment, not decoration. Sit with each change for a
+sim day or two before picking the next. Sky changes are easy to
+over-cook.

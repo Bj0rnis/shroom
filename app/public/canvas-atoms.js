@@ -621,29 +621,13 @@
         }
       }
     } else {
-      // oak / birch — asymmetric crown: taller and narrowing toward the
-      // peak (softer V), rounded where it joins the trunk. ccy sits at
-      // the top of the trunk; vRadUp reaches the pointed top, vRadDown
-      // the rounded bottom. nx is taken against an x-radius that itself
-      // shrinks above ccy so the silhouette tapers cleanly into the
-      // peak instead of sitting flat-topped under a clipped ellipse.
-      const ccy      = topY - 1;
-      const vRadUp   = crownH * 0.95;
-      const vRadDown = crownH * 0.50;
-      const xTaperTop = 0.55; // x-radius at the peak (fraction of crownW)
-      const yTop = Math.round(ccy - vRadUp);
-      const yBot = Math.round(ccy + vRadDown);
-      for (let y = yTop; y <= yBot; y++) {
-        const dy = y - ccy;
-        const vRad = dy < 0 ? vRadUp : vRadDown;
-        const ny = dy / vRad;
-        // Above ccy, narrow the horizontal radius progressively toward
-        // the peak. Below ccy, keep the full crownW so the base reads
-        // round and broad.
-        const upT = dy < 0 ? -dy / vRadUp : 0;
-        const xRad = crownW * (1 - upT * (1 - xTaperTop));
-        for (let dx = -Math.ceil(xRad); dx <= Math.ceil(xRad); dx++) {
-          const nx = dx / xRad;
+      // oak / birch — broad rounded crown peaking above topY.
+      const ccy  = topY + crownH * 0.25;
+      const vRad = crownH * 0.75;
+      for (let y = topY - crownRise; y < crownStart + 3; y++) {
+        for (let dx = -crownW; dx <= crownW; dx++) {
+          const ny = (y - ccy) / vRad;
+          const nx = dx / crownW;
           if (nx * nx + ny * ny > 1) continue;
           if (rng() < (season === 'autumn' ? 0.18 : 0.08)) continue;
           const c = rng() < 0.3 ? leafDark : leaf;
@@ -652,8 +636,8 @@
       }
       if (season === 'autumn') {
         for (let i = 0; i < 6; i++) {
-          const bx = tree.x + ((rng() - 0.5) * crownW * 1.6) | 0;
-          const by = yTop + (rng() * (yBot - yTop) * 0.7) | 0;
+          const bx = tree.x + ((rng() - 0.5) * crownW * 1.8) | 0;
+          const by = (topY - crownRise) + (rng() * crownH * 0.7) | 0;
           pb.blend(bx, by, trunkDark[0], trunkDark[1], trunkDark[2], 200);
         }
       }

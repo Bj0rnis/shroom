@@ -229,8 +229,16 @@
       for (let y = topY + Math.round(t.h * 0.4); y < baseY; y++) {
         pb.blend(t.x, y, haze[0], haze[1], haze[2], 110);
       }
-      for (let y = topY; y < topY + Math.round(t.h * 0.5); y++) {
-        const wid = Math.round((1 - (y - topY) / (t.h * 0.5)) * 2.5 + 1.5);
+      // Crown silhouette — narrow at the peak, widening to a soft
+      // plateau near the base. Previously this loop ran wide-at-top
+      // narrow-at-bottom, which read as a flat-topped block; now it's
+      // a proper teardrop V where the trunk emerges from the wide
+      // lower half.
+      const crownH = Math.round(t.h * 0.65);
+      for (let y = topY; y < topY + crownH; y++) {
+        const u = (y - topY) / crownH;
+        const profile = Math.sin(Math.min(1, u * 1.4) * Math.PI * 0.5);
+        const wid = Math.round(profile * 4);
         for (let dx = -wid; dx <= wid; dx++) {
           const a = 90 - Math.abs(dx) * 12;
           if (a > 0) pb.blend(t.x + dx, y, haze[0], haze[1], haze[2], a);

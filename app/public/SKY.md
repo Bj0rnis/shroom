@@ -49,27 +49,24 @@ nothing changes visibly above the world.
    grass line, peaks at dawn 6.5 and dusk 19.25, all seasons.
 5. **Birds passing.** ✅ Shipped (#66) — one V silhouette every ~4
    min of real time, 30s crossing, deterministic per pass.
-6. **Toofan visual signatures.** Each storm flavour gets a sky cast
-   while the toofan is active and for a window after:
-   - Fire — distant smoke columns, orange tint on the sky gradient
-   - Flood — falling rain streaks
-   - Frost — snow flurries
-   - Wind — visible dust streaks, stronger spore and leaf drift
-
-   *Pushed to the back of the queue: toofans are rare events. The sky
-   should feel alive on a normal day first.*
+6. **Toofan visual signatures.** ✅ Shipped (#66) — driven by
+   `snap.meta.weather`:
+   - Fire — orange-pink sky cast + three narrow smoke columns
+   - Flood — cool overcast tint + ~160 diagonal rain streaks
+   - Frost — quiet snow flurries (reuses the winter snow block)
+   - Wind — warm horizontal dust streaks
 
 ### Depth (spatial)
 
-7. **Spore size and opacity variance.** Some spores feel close, some
-   far. Almost free.
-8. **Star brightness variance.** Magnitude differences sell the night
-   sky as deep, not a wall.
-9. **Mist band between far and near layers.** Physical separation
-   between the far-tree silhouettes and the foreground.
-
-Item 1 covers depth-from-clouds already; items 7–9 are further
-refinement.
+7. **Spore size and opacity variance.** ✅ Shipped (#66) — per-spore
+   depth hashed from position; near ones larger and brighter, far
+   ones small and faint.
+8. **Star brightness variance.** ✅ Shipped (#66) — magnitude curve
+   ^2.5 makes most stars dim with a long bright tail; only bright
+   stars get the rare shine pixel.
+9. **Mist band between far and near layers.** ✅ Shipped (#66) — a
+   subtle sky-bot tinted haze ribbon at the far-tree midline. Time-
+   of-day agnostic; complements the dawn/dusk mist from item 4.
 
 ---
 
@@ -94,10 +91,17 @@ refinement.
 
 ## Next pickup
 
-Items 1–5 shipped on PR #66 — the whole movement scope minus toofan
-signatures (which got pushed back: rare events, low payoff per code
-line). The remaining items are the three depth refinements (7–9):
-spore size/opacity variance, star magnitude variance, mist band
-between layers. Mist band may already be partially covered by item
-4. Worth merging #66, sitting with it on the live server for a
-sim day or two, and revisiting the depth list with fresh eyes.
+All nine items shipped on PR #66 — the whole sky scope is done.
+Merge, deploy, and let it run. Worth sitting with the live world for
+a few sim days before opening anything new; the sky just gained five
+sources of motion and four toofan signatures, and it's easy to
+over-cook from here.
+
+If a follow-up surfaces, the obvious places to look are:
+- Smoke column polish — they read pale at small canvas sizes; may
+  want a higher base alpha or denser bottom.
+- Toofan signature fade-in/out — currently pops in/out the moment
+  `weather` changes. A 1–2 second ramp would feel less abrupt.
+- Frost-specific tweaks — right now the frost storm looks the same as
+  a quiet winter day. May want extra density and a bluer tint when
+  `weather === 'frost'`.
